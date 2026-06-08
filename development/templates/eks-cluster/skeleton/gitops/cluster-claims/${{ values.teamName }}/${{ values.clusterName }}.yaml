@@ -1,10 +1,17 @@
-apiVersion: aws.eks.crossplane.io/v1alpha1
+apiVersion: platform.io/v1alpha1
 kind: EKSCluster
 metadata:
   name: ${{ values.clusterName }}
+  namespace: clusters
 spec:
-  teamName: ${{ values.teamName }}
-  environment: ${{ values.environment }}
-  awsRegion: ${{ values.awsRegion }}
-  nodeCount: ${{ values.nodeCount }}
-  instanceType: ${{ values.instanceType }}
+  parameters:
+    clusterName: ${{ values.clusterName }}
+    region: ${{ values.awsRegion }}
+    nodeInstanceType: ${{ values.instanceType }}
+    nodeCount: ${{ values.nodeCount }}
+    kubernetesVersion: "1.29"
+    environment: ${{ values.environment }}
+    teamName: ${{ values.teamName }}
+  writeConnectionSecretToRef:
+    name: ${{ values.clusterName }}-kubeconfig
+    namespace: clusters
