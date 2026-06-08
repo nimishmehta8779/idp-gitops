@@ -1,0 +1,49 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: all-entities
+  namespace: default
+  description: Root Location importing all other catalog configurations
+spec:
+  type: file
+  targets:
+    - ./org/groups.yaml
+    - ./org/users.yaml
+    - ./systems/developer-platform.yaml
+    - ./components/components.yaml
+    - ./components/crossplane-eks-composition.yaml
+    - ./apis/apis.yaml
+    - ./resources/resources.yaml
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: new-service-template-location
+  namespace: default
+spec:
+  type: file
+  target: ../templates/new-service/template.yaml
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: rename-service-template-location
+  namespace: default
+spec:
+  type: file
+  target: ../templates/rename-service/template.yaml
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: request-eks-cluster-template-location
+  namespace: default
+spec:
+  type: file
+  target: ../templates/eks-cluster/template.yaml
+
+
+

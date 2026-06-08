@@ -1,0 +1,191 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: request-eks-cluster
+  title: Request EKS Cluster
+  description: A template to request a new EKS cluster using Crossplane and GitOps.
+spec:
+  owner: group:platform-team
+  type: resource
+
+  parameters:
+    - title: Cluster Specifications
+      required:
+        - teamName
+        - clusterName
+        - environment
+        - awsRegion
+        - nodeCount
+        - instanceType
+      properties:
+        teamName:
+          title: Team Name
+          type: string
+          description: Select the owner group for the EKS cluster.
+          enum:
+            - platform-team
+            - team-alpha
+            - team-beta
+        clusterName:
+          title: Cluster Name
+          type: string
+          description: Name of the EKS cluster.
+        environment:
+          title: Environment
+          type: string
+          description: Target environment for the EKS cluster.
+          enum:
+            - dev
+            - staging
+        awsRegion:
+          title: AWS Region
+          type: string
+          description: AWS region to provision the cluster in.
+          default: us-east-1
+        nodeCount:
+          title: Node Count
+          type: integer
+          description: Number of worker nodes in the cluster (1-10).
+          default: 2
+          minimum: 1
+          maximum: 10
+        instanceType:
+          title: Instance Type
+          type: string
+          description: EC2 instance type for worker nodes.
+          enum:
+            - t3.medium
+            - t3.large
+            - m5.large
+
+  steps:
+    - id: fetch_base
+      name: Fetch Base Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          teamName: ${{ parameters.teamName }}
+          clusterName: ${{ parameters.clusterName }}
+          environment: ${{ parameters.environment }}
+          awsRegion: ${{ parameters.awsRegion }}
+          nodeCount: ${{ parameters.nodeCount }}
+          instanceType: ${{ parameters.instanceType }}
+
+    # Staging Branching Strategy: Exclude GitOps folder from initial main branch push
+    - id: delete_gitops_staging
+      name: Exclude GitOps Claim from Main
+      if: ${{ parameters.environment == 'staging' }}
+      action: fs:delete
+      input:
+        files:
+          - gitops
+
+    # Publish Dev: Push everything to main directly
+    - id: publish_dev
+      name: Publish directly to GitHub (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
+        defaultBranch: main
+
+    # Publish Staging: Create Repo on main with only metadata (README and catalog-info)
+    - id: publish_staging
+      name: Publish Repository Structure (Staging)
+      if: ${{ parameters.environment == 'staging' }}
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
+        defaultBranch: main
+        protectDefaultBranch: true
+
+    # Staging PR flow: Fetch skeleton again to get the claim file, then clean metadata
+    - id: fetch_claim_staging
+      name: Fetch GitOps Claim (Staging)
+      if: ${{ parameters.environment == 'staging' }}
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          teamName: ${{ parameters.teamName }}
+          clusterName: ${{ parameters.clusterName }}
+          environment: ${{ parameters.environment }}
+          awsRegion: ${{ parameters.awsRegion }}
+          nodeCount: ${{ parameters.nodeCount }}
+          instanceType: ${{ parameters.instanceType }}
+
+    - id: clean_metadata_staging
+      name: Clean Workspace Metadata for PR
+      if: ${{ parameters.environment == 'staging' }}
+      action: fs:delete
+      input:
+        files:
+          - README.md
+          - catalog-info.yaml
+
+    # Publish Pull Request (Staging only)
+    - id: pr_staging
+      name: Create Pull Request for Cluster Claim
+      if: ${{ parameters.environment == 'staging' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
+        branchName: cluster-request/${{ parameters.clusterName }}
+        targetBranchName: main
+        title: "[Cluster Request] ${{ parameters.clusterName }} - ${{ parameters.teamName }}"
+        description: |
+          ### EKS Cluster Request Details
+          - **Cluster Name**: `${{ parameters.clusterName }}`
+          - **Team Name**: `${{ parameters.teamName }}`
+          - **Environment**: `${{ parameters.environment }}`
+          - **AWS Region**: `${{ parameters.awsRegion }}`
+          - **Node Count**: `${{ parameters.nodeCount }}`
+          - **Instance Type**: `${{ parameters.instanceType }}`
+          
+          Please review the Crossplane EKSCluster claim details before merging.
+
+    # Label PR (Staging only)
+    - id: label_pr_staging
+      name: Label Staging Pull Request
+      if: ${{ parameters.environment == 'staging' }}
+      action: github:issues:label
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
+        number: ${{ steps.pr_staging.output.pullRequestNumber | int }}
+        labels:
+          - cluster-request
+          - needs-review
+
+    # Wait for GitHub to index files
+    - id: wait_for_github
+      name: Wait for GitHub Indexing
+      action: debug:wait
+      input:
+        seconds: 10
+
+    # Register in Backstage Catalog
+    - id: register_dev
+      name: Register in Catalog (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps.publish_dev.output.repoContentsUrl }}/catalog-info.yaml
+
+    - id: register_staging
+      name: Register in Catalog (Staging)
+      if: ${{ parameters.environment == 'staging' }}
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps.publish_staging.output.repoContentsUrl }}/catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish_dev.output.remoteUrl or steps.publish_staging.output.remoteUrl }}
+      - title: Pull Request
+        url: ${{ steps.pr_staging.output.remoteUrl }}
+        if: ${{ parameters.environment == 'staging' }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register_dev.output.entityRef or steps.register_staging.output.entityRef }}

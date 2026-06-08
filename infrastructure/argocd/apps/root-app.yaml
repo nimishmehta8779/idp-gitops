@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: idp-root
+  namespace: argocd
+spec:
+  project: idp-platform
+
+  source:
+    repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+    targetRevision: main
+    path: gitops/apps
+    directory:
+      recurse: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

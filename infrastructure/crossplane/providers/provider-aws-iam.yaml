@@ -1,0 +1,8 @@
+# Provider manifest for AWS IAM
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-iam
+  namespace: crossplane-system
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-iam:v0.46.0

@@ -1,0 +1,60 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xeksclusters.platform.io
+spec:
+  group: platform.io
+  names:
+    kind: XEKSCluster
+    plural: xeksclusters
+  claimNames:
+    kind: EKSCluster
+    plural: eksclusters
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    clusterName:
+                      type: string
+                    region:
+                      type: string
+                      default: us-east-1
+                    nodeInstanceType:
+                      type: string
+                      default: t3.medium
+                    nodeCount:
+                      type: integer
+                      default: 2
+                      minimum: 1
+                      maximum: 10
+                    kubernetesVersion:
+                      type: string
+                      default: "1.29"
+                    environment:
+                      type: string
+                      enum: [dev, staging]
+                    teamName:
+                      type: string
+                  required: [clusterName, teamName]
+                writeConnectionSecretToRef:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+              required: [parameters]
+  connectionSecretKeys:
+    - kubeconfig
+    - clusterEndpoint
+    - clusterArn

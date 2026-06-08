@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: developer-platform
+  namespace: default
+  description: The Developer Platform Domain
+spec:
+  owner: group:default/platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: idp-core
+  namespace: default
+  description: Core Backstage IDP Portal
+spec:
+  owner: group:default/platform-team
+  domain: developer-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: eks-provisioning
+  namespace: default
+  description: EKS Cluster Provisioning Capability
+spec:
+  owner: group:default/platform-team
+  domain: developer-platform

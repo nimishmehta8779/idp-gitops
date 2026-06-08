@@ -1,0 +1,88 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: new-backend-service-template
+  title: Create New Backend Service
+  description: A template to bootstrap a new backend service under the nimishmehta8779 GitHub account.
+spec:
+  owner: group:platform-team
+  type: service
+
+  parameters:
+    - title: Basic Information
+      required:
+        - serviceName
+        - description
+        - owner
+        - language
+      properties:
+        serviceName:
+          title: Service Name
+          type: string
+          description: Name of the new backend service.
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: A short description of the service.
+        owner:
+          title: Owner
+          type: string
+          description: Select the owner group for the service.
+          enum:
+            - platform-team
+            - team-alpha
+            - team-beta
+        language:
+          title: Programming Language
+          type: string
+          description: Choose the programming language/framework.
+          enum:
+            - nodejs
+            - python
+            - golang
+
+    - title: Repository Settings
+      required:
+        - repoName
+      properties:
+        repoName:
+          title: GitHub Repository Name
+          type: string
+          description: The repository name under nimishmehta8779 on GitHub.
+          default: ${{ parameters.serviceName }}
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          language: ${{ parameters.language }}
+          repoName: ${{ parameters.repoName }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.repoName }}
+        defaultBranch: main
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps.publish.output.repoContentsUrl }}/catalog-info.yaml
+
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

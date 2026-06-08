@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.serviceName }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/source-location: url:https://github.com/nimishmehta8779/${{ values.repoName }}
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:${{ values.owner }}
+  system: idp-core

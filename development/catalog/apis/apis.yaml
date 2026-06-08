@@ -1,0 +1,80 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: eks-cluster-claim-api
+  namespace: default
+  description: OpenAPI API describing the EKSCluster claim schema
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: group:default/platform-team
+  system: system:default/eks-provisioning
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: EKSCluster Claim API
+      version: 1.0.0
+    paths:
+      /claims:
+        post:
+          summary: Claim an EKS Cluster
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/EKSClusterClaim'
+          responses:
+            '200':
+              description: Successful claim
+    components:
+      schemas:
+        EKSClusterClaim:
+          type: object
+          properties:
+            clusterName:
+              type: string
+            region:
+              type: string
+            nodeCount:
+              type: integer
+            instanceType:
+              type: string
+            environment:
+              type: string
+            teamName:
+              type: string
+          required:
+            - clusterName
+            - region
+            - nodeCount
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: crossplane-xrd-api
+  namespace: default
+  description: gRPC API representing the Crossplane XRD interface
+spec:
+  type: grpc
+  lifecycle: experimental
+  owner: group:default/platform-team
+  system: system:default/eks-provisioning
+  definition: |
+    syntax = "proto3";
+
+    package crossplane.xrd.v1;
+
+    service EKSProvisioner {
+      rpc ProvisionCluster (ProvisionRequest) returns (ProvisionResponse);
+    }
+
+    message ProvisionRequest {
+      string cluster_name = 1;
+      string region = 2;
+    }
+
+    message ProvisionResponse {
+      string cluster_id = 1;
+      string status = 2;
+    }

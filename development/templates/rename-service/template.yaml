@@ -1,0 +1,37 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: rename-service-template
+  title: Rename GitHub Repository
+  description: A template to rename an existing GitHub repository under your personal account nimishmehta8779.
+spec:
+  owner: group:platform-team
+  type: service
+
+  parameters:
+    - title: Rename Settings
+      required:
+        - repoName
+        - newName
+      properties:
+        repoName:
+          title: Current Repository Name
+          type: string
+          description: The name of the GitHub repository to rename under nimishmehta8779 (e.g., my-service).
+        newName:
+          title: New Repository Name
+          type: string
+          description: The new name for the GitHub repository.
+
+  steps:
+    - id: rename
+      name: Rename Repository
+      action: github:repo:rename
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.repoName }}
+        newName: ${{ parameters.newName }}
+
+  output:
+    links:
+      - title: Renamed Repository
+        url: https://github.com/nimishmehta8779/${{ parameters.newName }}

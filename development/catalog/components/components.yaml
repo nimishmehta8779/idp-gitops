@@ -1,0 +1,69 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: idp-frontend
+  namespace: default
+  description: Frontend Portal of the Internal Developer Platform
+  annotations:
+    backstage.io/source-location: url:https://github.com/company/idp-platform
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: website
+  lifecycle: production
+  owner: group:default/platform-team
+  system: system:default/idp-core
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: idp-backend
+  namespace: default
+  description: Backend APIs of the Internal Developer Platform
+  annotations:
+    backstage.io/source-location: url:https://github.com/company/idp-platform
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/platform-team
+  system: system:default/idp-core
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: eks-provisioner
+  namespace: default
+  description: Automatic EKS Cluster Provisioner Service
+  annotations:
+    backstage.io/source-location: url:https://github.com/company/idp-platform
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/platform-team
+  system: system:default/eks-provisioning
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-portal
+  namespace: default
+  description: Backstage portal interface component
+spec:
+  type: website
+  lifecycle: experimental
+  owner: group:default/platform-team
+  system: system:default/idp-core
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: argocd-gitops
+  namespace: default
+  description: ArgoCD GitOps engine component
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/platform-team
+  system: system:default/idp-core
+

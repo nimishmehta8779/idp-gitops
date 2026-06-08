@@ -1,0 +1,45 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: engineering
+  namespace: default
+  description: Root Engineering Group
+spec:
+  type: department
+  children: [platform-team, team-alpha, team-beta]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-team
+  namespace: default
+  description: Platform Engineering Team (Owns the IDP)
+spec:
+  type: team
+  parent: engineering
+  children: []
+  members: [alice, bob]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-alpha
+  namespace: default
+  description: Consumer Team Alpha
+spec:
+  type: team
+  parent: engineering
+  children: []
+  members: [charlie, david]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-beta
+  namespace: default
+  description: Consumer Team Beta
+spec:
+  type: team
+  parent: engineering
+  children: []
+  members: [eve, frank]

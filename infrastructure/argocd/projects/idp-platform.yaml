@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: idp-platform
+  namespace: argocd
+spec:
+  description: IDP platform project — manages Crossplane claims and cluster resources via GitOps
+
+  sourceRepos:
+    - https://github.com/nimishmehta8779/idp-gitops.git
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

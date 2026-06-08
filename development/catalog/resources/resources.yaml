@@ -1,0 +1,30 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: kind-local-cluster
+  namespace: default
+  description: Local kind cluster running Crossplane and ArgoCD
+  annotations:
+    cluster-url: http://localhost:6443
+    environment: local
+spec:
+  type: kubernetes-cluster
+  owner: group:default/platform-team
+  system: system:default/idp-core
+  dependencyOf:
+    - component:default/backstage-portal
+    - component:default/argocd-gitops
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: aws-eks-cluster-template
+  namespace: default
+  description: Template representing a provisioned AWS EKS cluster
+  annotations:
+    aws-region: us-east-1
+    environment: dev
+spec:
+  type: kubernetes-cluster
+  owner: group:default/platform-team
+  system: system:default/eks-provisioning

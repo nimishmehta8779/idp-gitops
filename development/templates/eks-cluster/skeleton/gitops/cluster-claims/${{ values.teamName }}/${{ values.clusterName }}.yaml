@@ -1,0 +1,10 @@
+apiVersion: aws.eks.crossplane.io/v1alpha1
+kind: EKSCluster
+metadata:
+  name: ${{ values.clusterName }}
+spec:
+  teamName: ${{ values.teamName }}
+  environment: ${{ values.environment }}
+  awsRegion: ${{ values.awsRegion }}
+  nodeCount: ${{ values.nodeCount }}
+  instanceType: ${{ values.instanceType }}

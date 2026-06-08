@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: backstage-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: backstage_plugin_catalog
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backstage:
+    build:
+      context: ./backstage
+      dockerfile: packages/backend/Dockerfile
+    container_name: backstage-app
+    ports:
+      - "7007:7007"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      NODE_ENV: production
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
