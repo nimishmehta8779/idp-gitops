@@ -9,7 +9,7 @@ set -euo pipefail
 # in the kind cluster confirms the ArgoCD → Crossplane handoff is working.
 # ---------------------------------------------------------------------------
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CLAIM_SRC="${REPO_ROOT}/infrastructure/crossplane/eks/claim-example.yaml"
 CLAIM_DST="${REPO_ROOT}/gitops/cluster-claims/team-alpha/alpha-test.yaml"
 CLAIM_NAME="alpha-test"
