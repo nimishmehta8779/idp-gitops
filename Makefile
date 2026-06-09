@@ -8,3 +8,8 @@ backstage-stop:
 
 backstage-restart:
 	$(MAKE) -C infrastructure backstage-restart
+
+.PHONY: estimate-cost
+estimate-cost:
+	@./scripts/estimate-cost.sh t3.large 3
+

@@ -1,0 +1,56 @@
+name: Validate EKS Cluster Claim
+
+on:
+  pull_request:
+    paths:
+      - 'gitops/cluster-claims/**'
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install PyYAML
+
+      - name: Get modified files
+        id: modified-files
+        run: |
+          FILES=$(git diff --name-only origin/main...HEAD | grep '^gitops/cluster-claims/' | grep '\.ya\?ml$' | xargs || true)
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+          echo "Modified files to validate: $FILES"
+
+      - name: Run validation script
+        if: steps.modified-files.outputs.files != ''
+        id: run-validation
+        run: |
+          python3 scripts/validate-claim.py ${{ steps.modified-files.outputs.files }}
+
+      - name: Post PR Comment
+        if: always() && steps.modified-files.outputs.files != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('pr-comment.md')) {
+              const body = fs.readFileSync('pr-comment.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
