@@ -16,13 +16,4 @@ metadata:
 spec:
   owner: group:default/platform-team
   domain: developer-platform
----
-apiVersion: backstage.io/v1alpha1
-kind: System
-metadata:
-  name: eks-provisioning
-  namespace: default
-  description: EKS Cluster Provisioning Capability
-spec:
-  owner: group:default/platform-team
-  domain: developer-platform
+

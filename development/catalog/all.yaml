@@ -10,6 +10,7 @@ spec:
     - ./org/groups.yaml
     - ./org/users.yaml
     - ./systems/developer-platform.yaml
+    - ./systems/eks-provisioning-system.yaml
     - ./components/components.yaml
     - ./components/crossplane-eks-composition.yaml
     - ./apis/apis.yaml

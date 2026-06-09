@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: eks-provisioning
+  namespace: default
+  description: EKS Cluster Provisioning Capability
+  tags:
+    - eks
+    - infrastructure
+    - platform
+  links:
+    - url: http://localhost:8080
+      title: ArgoCD UI
+      icon: dashboard
+    - url: https://github.com/nimishmehta8779/idp-gitops
+      title: GitOps Repository
+      icon: github
+spec:
+  owner: group:default/platform-team
+  domain: developer-platform

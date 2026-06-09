@@ -168,7 +168,7 @@ spec:
           kind: Cluster
           spec:
             forProvider:
-              version: "1.29"
+              version: "1.34"
         patches:
         - fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "metadata.name"

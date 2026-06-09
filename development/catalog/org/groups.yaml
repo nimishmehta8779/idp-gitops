@@ -6,6 +6,10 @@ metadata:
   description: Root Engineering Group
 spec:
   type: department
+  profile:
+    displayName: Engineering Department
+    email: engineering@example.com
+    picture: https://api.dicebear.com/7.x/bottts/svg?seed=engineering
   children: [platform-team, team-alpha, team-beta]
 ---
 apiVersion: backstage.io/v1alpha1
@@ -16,6 +20,10 @@ metadata:
   description: Platform Engineering Team (Owns the IDP)
 spec:
   type: team
+  profile:
+    displayName: Platform Engineering Team
+    email: platform-team@example.com
+    picture: https://api.dicebear.com/7.x/bottts/svg?seed=platform
   parent: engineering
   children: []
   members: [alice, bob]
@@ -28,6 +36,10 @@ metadata:
   description: Consumer Team Alpha
 spec:
   type: team
+  profile:
+    displayName: Consumer Team Alpha
+    email: team-alpha@example.com
+    picture: https://api.dicebear.com/7.x/bottts/svg?seed=alpha
   parent: engineering
   children: []
   members: [charlie, david]
@@ -40,6 +52,10 @@ metadata:
   description: Consumer Team Beta
 spec:
   type: team
+  profile:
+    displayName: Consumer Team Beta
+    email: team-beta@example.com
+    picture: https://api.dicebear.com/7.x/bottts/svg?seed=beta
   parent: engineering
   children: []
   members: [eve, frank]

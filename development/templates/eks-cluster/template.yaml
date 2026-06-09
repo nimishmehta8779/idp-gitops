@@ -17,6 +17,7 @@ spec:
         - awsRegion
         - nodeCount
         - instanceType
+        - kubernetesVersion
       properties:
         teamName:
           title: Team Name
@@ -60,6 +61,15 @@ spec:
             - t3.medium
             - t3.large
             - m5.large
+        kubernetesVersion:
+          title: Kubernetes Version
+          type: string
+          description: Kubernetes version for the EKS cluster.
+          default: "1.34"
+          enum:
+            - "1.34"
+            - "1.33"
+
 
   steps:
     - id: fetch_base
@@ -74,6 +84,8 @@ spec:
           awsRegion: ${{ parameters.awsRegion }}
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
+          kubernetesVersion: ${{ parameters.kubernetesVersion }}
+          createdAt: ${{ now() }}
 
     # Staging Branching Strategy: Exclude GitOps folder from initial main branch push
     - id: delete_gitops_staging
@@ -117,6 +129,8 @@ spec:
           awsRegion: ${{ parameters.awsRegion }}
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
+          kubernetesVersion: ${{ parameters.kubernetesVersion }}
+          createdAt: ${{ now() }}
 
     - id: clean_metadata_staging
       name: Clean Workspace Metadata for PR

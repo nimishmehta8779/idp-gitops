@@ -4,9 +4,23 @@ metadata:
   name: ${{ values.clusterName }}
   description: EKS Cluster resource requested by ${{ values.teamName }}
   annotations:
+    cluster-status: provisioning
     aws-region: ${{ values.awsRegion }}
+    cluster-version: ${{ values.kubernetesVersion }}
+    node-count: "${{ values.nodeCount }}"
+    instance-type: ${{ values.instanceType }}
     environment: ${{ values.environment }}
+    created-by: ${{ values.teamName }}
+    created-at: ${{ values.createdAt }}
+    monthly-cost-estimate: >-
+      {%- if values.instanceType == 't3.medium' -%}
+        ${{ values.nodeCount * 144 }}
+      {%- elif values.instanceType == 't3.large' -%}
+        ${{ values.nodeCount * 200 }}
+      {%- elif values.instanceType == 'm5.large' -%}
+        ${{ values.nodeCount * 280 }}
+      {%- endif -%}
 spec:
   type: kubernetes-cluster
   owner: group:default/${{ values.teamName }}
-  system: eks-provisioning
+  system: system:default/eks-provisioning

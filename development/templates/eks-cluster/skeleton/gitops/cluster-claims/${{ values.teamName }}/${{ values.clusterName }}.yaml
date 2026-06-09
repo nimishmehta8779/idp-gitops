@@ -9,7 +9,7 @@ spec:
     region: ${{ values.awsRegion }}
     nodeInstanceType: ${{ values.instanceType }}
     nodeCount: ${{ values.nodeCount }}
-    kubernetesVersion: "1.29"
+    kubernetesVersion: "${{ values.kubernetesVersion }}"
     environment: ${{ values.environment }}
     teamName: ${{ values.teamName }}
   writeConnectionSecretToRef:
