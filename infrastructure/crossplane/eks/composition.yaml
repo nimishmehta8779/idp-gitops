@@ -8,7 +8,6 @@ spec:
   compositeTypeRef:
     apiVersion: platform.io/v1alpha1
     kind: XEKSCluster
-  
   mode: Pipeline
   pipeline:
   - step: patch-and-transform
@@ -18,7 +17,6 @@ spec:
       apiVersion: pt.fn.crossplane.io/v1beta1
       kind: Resources
       resources:
-      # VPC
       - name: vpc
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -27,18 +25,17 @@ spec:
             forProvider:
               cidrBlock: 10.0.0.0/16
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-vpc"
-        - fromFieldPath: "spec.parameters.teamName"
-          toFieldPath: "spec.forProvider.tags[\"team\"]"
-        - fromFieldPath: "spec.parameters.environment"
-          toFieldPath: "spec.forProvider.tags[\"environment\"]"
-      # Subnet A
+              fmt: '%s-vpc'
+        - fromFieldPath: spec.parameters.teamName
+          toFieldPath: spec.forProvider.tags["team"]
+        - fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags["environment"]
       - name: subnet-a
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -46,35 +43,34 @@ spec:
           spec:
             forProvider:
               cidrBlock: 10.0.1.0/24
-              availabilityZone: ""
+              availabilityZone: ''
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-subnet-a"
-        - fromFieldPath: "spec.parameters.teamName"
-          toFieldPath: "spec.forProvider.tags[\"team\"]"
-        - fromFieldPath: "spec.parameters.environment"
-          toFieldPath: "spec.forProvider.tags[\"environment\"]"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.availabilityZone"
+              fmt: '%s-subnet-a'
+        - fromFieldPath: spec.parameters.teamName
+          toFieldPath: spec.forProvider.tags["team"]
+        - fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags["environment"]
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.availabilityZone
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%sa"
+              fmt: '%sa'
         - type: FromCompositeFieldPath
-          fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.vpcIdRef"
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.vpcIdRef.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-vpc"
-      # Subnet B
+              fmt: '%s-vpc'
       - name: subnet-b
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -82,197 +78,263 @@ spec:
           spec:
             forProvider:
               cidrBlock: 10.0.2.0/24
-              availabilityZone: ""
+              availabilityZone: ''
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-subnet-b"
-        - fromFieldPath: "spec.parameters.teamName"
-          toFieldPath: "spec.forProvider.tags[\"team\"]"
-        - fromFieldPath: "spec.parameters.environment"
-          toFieldPath: "spec.forProvider.tags[\"environment\"]"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.availabilityZone"
+              fmt: '%s-subnet-b'
+        - fromFieldPath: spec.parameters.teamName
+          toFieldPath: spec.forProvider.tags["team"]
+        - fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags["environment"]
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.availabilityZone
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%sb"
+              fmt: '%sb'
         - type: FromCompositeFieldPath
-          fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.vpcIdRef"
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.vpcIdRef.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-vpc"
-      # Internet Gateway
+              fmt: '%s-vpc'
       - name: igw
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
           kind: InternetGateway
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-igw"
+              fmt: '%s-igw'
         - type: FromCompositeFieldPath
-          fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.vpcIdRef"
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.vpcIdRef.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-vpc"
-      # Route Table
+              fmt: '%s-vpc'
       - name: route-table
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
           kind: RouteTable
           spec:
-            forProvider:
-              routes:
-              - destinationCidrBlock: 0.0.0.0/0
-                gatewayIdSelector:
-                  matchLabels:
-                    crossplane.io/name: "{{ .metadata.name }}-igw"
+            forProvider: {}
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-rt"
+              fmt: '%s-rt'
         - type: FromCompositeFieldPath
-          fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.vpcIdRef"
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.vpcIdRef.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-vpc"
-        # associate both subnets
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.associations[0].subnetIdSelector.matchLabels.crossplane.io/name"
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: "%s-subnet-a"
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.associations[1].subnetIdSelector.matchLabels.crossplane.io/name"
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: "%s-subnet-b"
-      # EKS Cluster
+              fmt: '%s-vpc'
       - name: eks-cluster
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
           kind: Cluster
           spec:
             forProvider:
-              version: "1.34"
+              version: '1.34'
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s"
-        - fromFieldPath: "spec.parameters.kubernetesVersion"
-          toFieldPath: "spec.forProvider.version"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.roleArn"
-          # role will be created later and referenced by name
+              fmt: '%s'
+        - fromFieldPath: spec.parameters.kubernetesVersion
+          toFieldPath: spec.forProvider.version
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.roleArn
         - type: FromCompositeFieldPath
-          fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.vpcConfigSubnetIds"
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[0].name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%[1]s-subnet-a,%[1]s-subnet-b"
+              fmt: '%s-subnet-a'
         - type: FromCompositeFieldPath
-          fromFieldPath: "metadata.name"
-          toFieldPath: "spec.forProvider.vpcConfigSecurityGroupIds"
-          # placeholder – will be created automatically by default SG
-      # IAM Role for node group
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[1].name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-subnet-b'
       - name: nodegroup-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
           kind: Role
           spec:
             forProvider:
-              assumeRolePolicyDocument: |
-                {
-                  "Version": "2012-10-17",
-                  "Statement": [{
-                    "Effect": "Allow",
-                    "Principal": {"Service": "ec2.amazonaws.com"},
-                    "Action": "sts:AssumeRole"
-                  }]
-                }
+              assumeRolePolicyDocument: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
+                : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
+                : \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
+                }\n"
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-node-role"
-        - fromFieldPath: "spec.parameters.teamName"
-          toFieldPath: "spec.forProvider.tags[\"team\"]"
-        - fromFieldPath: "spec.parameters.environment"
-          toFieldPath: "spec.forProvider.tags[\"environment\"]"
-        # Managed policies attachment is done via a separate resource (omitted for brevity)
-      # Node Group
+              fmt: '%s-node-role'
+        - fromFieldPath: spec.parameters.teamName
+          toFieldPath: spec.forProvider.tags["team"]
+        - fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags["environment"]
       - name: node-group
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
           kind: NodeGroup
           spec:
             forProvider:
-              nodeRole: ""
+              nodeRole: ''
               instanceTypes: []
               scalingConfig:
                 desiredSize: 2
                 minSize: 1
                 maxSize: 10
         patches:
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "metadata.name"
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-node-group"
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.clusterName"
-        - fromFieldPath: "spec.parameters.nodeInstanceType"
-          toFieldPath: "spec.forProvider.instanceTypes[0]"
-        - fromFieldPath: "spec.parameters.nodeCount"
-          toFieldPath: "spec.forProvider.scalingConfig.desiredSize"
-        - fromFieldPath: "spec.parameters.nodeCount"
-          toFieldPath: "spec.forProvider.scalingConfig.minSize"
-        - fromFieldPath: "spec.parameters.nodeCount"
-          toFieldPath: "spec.forProvider.scalingConfig.maxSize"
-        - fromFieldPath: "spec.parameters.clusterName"
-          toFieldPath: "spec.forProvider.nodeRole"
+              fmt: '%s-node-group'
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.clusterName
+        - fromFieldPath: spec.parameters.nodeInstanceType
+          toFieldPath: spec.forProvider.instanceTypes[0]
+        - fromFieldPath: spec.parameters.nodeCount
+          toFieldPath: spec.forProvider.scalingConfig.desiredSize
+        - fromFieldPath: spec.parameters.nodeCount
+          toFieldPath: spec.forProvider.scalingConfig.minSize
+        - fromFieldPath: spec.parameters.nodeCount
+          toFieldPath: spec.forProvider.scalingConfig.maxSize
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.nodeRole
           transforms:
           - type: string
             string:
               type: Format
-              fmt: "%s-node-role"
+              fmt: '%s-node-role'
+      - name: route-to-igw
+        base:
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: Route
+          spec:
+            forProvider:
+              destinationCidrBlock: 0.0.0.0/0
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-route-igw'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.routeTableIdRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-rt'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.gatewayIdRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-igw'
+      - name: rta-subnet-a
+        base:
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: RouteTableAssociation
+          spec:
+            forProvider: {}
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-rta-a'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.routeTableIdRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-rt'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.subnetIdRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-subnet-a'
+      - name: rta-subnet-b
+        base:
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: RouteTableAssociation
+          spec:
+            forProvider: {}
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-rta-b'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.routeTableIdRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-rt'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.subnetIdRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-subnet-b'
