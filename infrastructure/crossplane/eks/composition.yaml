@@ -213,7 +213,6 @@ spec:
           kind: NodeGroup
           spec:
             forProvider:
-              nodeRole: ''
               instanceTypes: []
               scalingConfig:
                 desiredSize: 2
@@ -238,7 +237,7 @@ spec:
         - fromFieldPath: spec.parameters.nodeCount
           toFieldPath: spec.forProvider.scalingConfig.maxSize
         - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.nodeRole
+          toFieldPath: spec.forProvider.nodeRoleArnRef.name
           transforms:
           - type: string
             string:
