@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-claims
+  namespace: argocd
+spec:
+  project: idp-platform
+  source:
+    repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+    targetRevision: main
+    path: gitops/cluster-claims
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: clusters
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
