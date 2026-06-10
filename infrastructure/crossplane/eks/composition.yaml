@@ -32,7 +32,8 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-vpc"
+              type: Format
+              fmt: "%s-vpc"
         - fromFieldPath: "spec.parameters.teamName"
           toFieldPath: "spec.forProvider.tags[\"team\"]"
         - fromFieldPath: "spec.parameters.environment"
@@ -52,7 +53,8 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-subnet-a"
+              type: Format
+              fmt: "%s-subnet-a"
         - fromFieldPath: "spec.parameters.teamName"
           toFieldPath: "spec.forProvider.tags[\"team\"]"
         - fromFieldPath: "spec.parameters.environment"
@@ -62,14 +64,16 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .region }}a"
+              type: Format
+              fmt: "%sa"
         - type: FromCompositeFieldPath
-          fromFieldPath: "metadata.name"
+          fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.vpcIdRef"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-vpc"
+              type: Format
+              fmt: "%s-vpc"
       # Subnet B
       - name: subnet-b
         base:
@@ -85,7 +89,8 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-subnet-b"
+              type: Format
+              fmt: "%s-subnet-b"
         - fromFieldPath: "spec.parameters.teamName"
           toFieldPath: "spec.forProvider.tags[\"team\"]"
         - fromFieldPath: "spec.parameters.environment"
@@ -95,14 +100,16 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .region }}b"
+              type: Format
+              fmt: "%sb"
         - type: FromCompositeFieldPath
-          fromFieldPath: "metadata.name"
+          fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.vpcIdRef"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-vpc"
+              type: Format
+              fmt: "%s-vpc"
       # Internet Gateway
       - name: igw
         base:
@@ -114,14 +121,16 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-igw"
+              type: Format
+              fmt: "%s-igw"
         - type: FromCompositeFieldPath
-          fromFieldPath: "metadata.name"
+          fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.vpcIdRef"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-vpc"
+              type: Format
+              fmt: "%s-vpc"
       # Route Table
       - name: route-table
         base:
@@ -140,27 +149,31 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-rt"
+              type: Format
+              fmt: "%s-rt"
         - type: FromCompositeFieldPath
-          fromFieldPath: "metadata.name"
+          fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.vpcIdRef"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-vpc"
+              type: Format
+              fmt: "%s-vpc"
         # associate both subnets
-        - fromFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.associations[0].subnetIdSelector.matchLabels.crossplane.io/name"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-subnet-a"
-        - fromFieldPath: "metadata.name"
+              type: Format
+              fmt: "%s-subnet-a"
+        - fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.associations[1].subnetIdSelector.matchLabels.crossplane.io/name"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-subnet-b"
+              type: Format
+              fmt: "%s-subnet-b"
       # EKS Cluster
       - name: eks-cluster
         base:
@@ -175,7 +188,8 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}"
+              type: Format
+              fmt: "%s"
         - fromFieldPath: "spec.parameters.kubernetesVersion"
           toFieldPath: "spec.forProvider.version"
         - fromFieldPath: "spec.parameters.region"
@@ -184,12 +198,13 @@ spec:
           toFieldPath: "spec.forProvider.roleArn"
           # role will be created later and referenced by name
         - type: FromCompositeFieldPath
-          fromFieldPath: "metadata.name"
+          fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.vpcConfigSubnetIds"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-subnet-a,{{ .clusterName }}-subnet-b"
+              type: Format
+              fmt: "%[1]s-subnet-a,%[1]s-subnet-b"
         - type: FromCompositeFieldPath
           fromFieldPath: "metadata.name"
           toFieldPath: "spec.forProvider.vpcConfigSecurityGroupIds"
@@ -216,7 +231,8 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-node-role"
+              type: Format
+              fmt: "%s-node-role"
         - fromFieldPath: "spec.parameters.teamName"
           toFieldPath: "spec.forProvider.tags[\"team\"]"
         - fromFieldPath: "spec.parameters.environment"
@@ -241,7 +257,8 @@ spec:
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-node-group"
+              type: Format
+              fmt: "%s-node-group"
         - fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.clusterName"
         - fromFieldPath: "spec.parameters.nodeInstanceType"
@@ -252,9 +269,10 @@ spec:
           toFieldPath: "spec.forProvider.scalingConfig.minSize"
         - fromFieldPath: "spec.parameters.nodeCount"
           toFieldPath: "spec.forProvider.scalingConfig.maxSize"
-        - fromFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.clusterName"
           toFieldPath: "spec.forProvider.nodeRole"
           transforms:
           - type: string
             string:
-              fmt: "{{ .clusterName }}-node-role"
+              type: Format
+              fmt: "%s-node-role"
