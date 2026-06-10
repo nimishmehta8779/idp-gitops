@@ -12,6 +12,8 @@ spec:
     path: gitops/cluster-claims
     directory:
       recurse: true
+      exclude: "**/catalog-info.yaml"
+
 
   destination:
     server: https://kubernetes.default.svc
