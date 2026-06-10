@@ -624,6 +624,10 @@ spec:
           fromFieldPath: spec.parameters.enableEbsCsi
           toFieldPath: metadata.name
           transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%v'
           - type: match
             match:
               patterns:
