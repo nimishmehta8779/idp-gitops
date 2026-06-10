@@ -206,6 +206,9 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
           toFieldPath: status.oidcIssuer
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
+          toFieldPath: status.oidcIssuer
       - name: nodegroup-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -767,6 +770,343 @@ spec:
           transforms:
           - type: string
             string:
+              fmt: '%s-coredns'
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.clusterName
+      - name: addon-aws-ebs-csi-driver
+        base:
+          apiVersion: eks.aws.upbound.io/v1beta1
+          kind: Addon
+          spec:
+            forProvider:
+              addonName: aws-ebs-csi-driver
+              clusterName: ''
+              resolveConflictsOnUpdate: OVERWRITE
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/owned"]
+          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/team"]
+          toFieldPath: spec.forProvider.tags["backstage.io/team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["environment"]
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["managed-by"]
+          toFieldPath: spec.forProvider.tags["managed-by"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["provisioned-by"]
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.clusterName
+            - fromFieldPath: spec.parameters.enableEbsCsi
+            strategy: string
+            string:
+              fmt: '%s|%v'
+          toFieldPath: metadata.name
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: regexp
+                regexp: ^(.*)\|true$
+                result: \1-ebs-csi
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.clusterName
+            - fromFieldPath: spec.parameters.enableEbsCsi
+            strategy: string
+            string:
+              fmt: '%s|%v'
+          toFieldPath: spec.forProvider.clusterName
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: regexp
+                regexp: ^(.*)\|true$
+                result: \1
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.ebsRoleArn
+          toFieldPath: spec.forProvider.serviceAccountRoleArn
+          policy:
+            fromFieldPath: Required
+      - name: oidc-provider
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: OpenIDConnectProvider
+          spec:
+            forProvider:
+              clientIdList:
+              - sts.amazonaws.com
+              url: ''
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/owned"]
+          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/team"]
+          toFieldPath: spec.forProvider.tags["backstage.io/team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["environment"]
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["managed-by"]
+          toFieldPath: spec.forProvider.tags["managed-by"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["provisioned-by"]
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-oidc'
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.oidcIssuer
+          toFieldPath: spec.forProvider.url
+          policy:
+            fromFieldPath: Required
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: status.oidcProviderArn
+      - name: ebs-csi-role
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: Role
+          spec:
+            forProvider:
+              assumeRolePolicyDocument: ''
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/owned"]
+          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/team"]
+          toFieldPath: spec.forProvider.tags["backstage.io/team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["environment"]
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["managed-by"]
+          toFieldPath: spec.forProvider.tags["managed-by"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["provisioned-by"]
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.clusterName
+            - fromFieldPath: spec.parameters.enableEbsCsi
+            strategy: string
+            string:
+              fmt: '%s|%v'
+          toFieldPath: metadata.name
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: regexp
+                regexp: ^(.*)\|true$
+                result: \1-ebs-role
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: status.oidcProviderArn
+            - fromFieldPath: status.oidcIssuer
+            - fromFieldPath: spec.parameters.enableEbsCsi
+            strategy: string
+            string:
+              fmt: '%s|%s|%v'
+          toFieldPath: spec.forProvider.assumeRolePolicyDocument
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: regexp
+                regexp: ^(.*)\|https://(.*)\|true$
+                result: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"\1"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"\2:sub":"system:serviceaccount:kube-system:ebs-csi-controller-sa","\2:aud":"sts.amazonaws.com"}}}]}'
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: status.ebsRoleArn
+      - name: ebs-csi-role-attachment
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: RolePolicyAttachment
+          spec:
+            forProvider:
+              policyArn: 
+                arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+              role: ''
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.enableEbsCsi
+          toFieldPath: metadata.name
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: literal
+                literal: 'true'
+                result: 'true'
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.clusterName
+            - fromFieldPath: spec.parameters.enableEbsCsi
+            strategy: string
+            string:
+              fmt: '%s|%v'
+          toFieldPath: metadata.name
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: regexp
+                regexp: ^(.*)\|true$
+                result: \1-ebs-attach
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.clusterName
+            - fromFieldPath: spec.parameters.enableEbsCsi
+            strategy: string
+            string:
+              fmt: '%s|%v'
+          toFieldPath: spec.forProvider.role
+          transforms:
+          - type: match
+            match:
+              patterns:
+              - type: regexp
+                regexp: ^(.*)\|true$
+                result: \1-ebs-role
+              fallbackValue: ''
+          policy:
+            fromFieldPath: Required
+      - name: addon-vpc-cni
+        base:
+          apiVersion: eks.aws.upbound.io/v1beta1
+          kind: Addon
+          spec:
+            forProvider:
+              addonName: vpc-cni
+              clusterName: ''
+              resolveConflictsOnCreate: OVERWRITE
+              resolveConflictsOnUpdate: OVERWRITE
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/owned"]
+          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/team"]
+          toFieldPath: spec.forProvider.tags["backstage.io/team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["environment"]
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["managed-by"]
+          toFieldPath: spec.forProvider.tags["managed-by"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["provisioned-by"]
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-vpc-cni'
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.clusterName
+      - name: addon-kube-proxy
+        base:
+          apiVersion: eks.aws.upbound.io/v1beta1
+          kind: Addon
+          spec:
+            forProvider:
+              addonName: kube-proxy
+              clusterName: ''
+              resolveConflictsOnUpdate: OVERWRITE
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/owned"]
+          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/team"]
+          toFieldPath: spec.forProvider.tags["backstage.io/team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["environment"]
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["managed-by"]
+          toFieldPath: spec.forProvider.tags["managed-by"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["provisioned-by"]
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-kube-proxy'
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.clusterName
+      - name: addon-coredns
+        base:
+          apiVersion: eks.aws.upbound.io/v1beta1
+          kind: Addon
+          spec:
+            forProvider:
+              addonName: coredns
+              clusterName: ''
+              resolveConflictsOnUpdate: OVERWRITE
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/owned"]
+          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["backstage.io/team"]
+          toFieldPath: spec.forProvider.tags["backstage.io/team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["environment"]
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["managed-by"]
+          toFieldPath: spec.forProvider.tags["managed-by"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels["provisioned-by"]
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+        - fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
               fmt: '%s-coredns'
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.clusterName
