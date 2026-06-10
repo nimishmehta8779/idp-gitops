@@ -45,6 +45,9 @@ spec:
                       enum: [dev, staging]
                     teamName:
                       type: string
+                    enableEbsCsi:
+                      type: boolean
+                      default: true
                   required: [clusterName, teamName]
                 writeConnectionSecretToRef:
                   type: object

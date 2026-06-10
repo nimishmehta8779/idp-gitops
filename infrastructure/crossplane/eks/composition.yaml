@@ -46,6 +46,7 @@ spec:
             forProvider:
               cidrBlock: 10.0.1.0/24
               availabilityZone: ''
+              mapPublicIpOnLaunch: true
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
@@ -83,6 +84,7 @@ spec:
             forProvider:
               cidrBlock: 10.0.2.0/24
               availabilityZone: ''
+              mapPublicIpOnLaunch: true
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
