@@ -215,7 +215,7 @@ spec:
             forProvider:
               instanceTypes: []
               scalingConfig:
-                desiredSize: 2
+              - desiredSize: 2
                 minSize: 1
                 maxSize: 10
         patches:
@@ -231,11 +231,11 @@ spec:
         - fromFieldPath: spec.parameters.nodeInstanceType
           toFieldPath: spec.forProvider.instanceTypes[0]
         - fromFieldPath: spec.parameters.nodeCount
-          toFieldPath: spec.forProvider.scalingConfig.desiredSize
+          toFieldPath: spec.forProvider.scalingConfig[0].desiredSize
         - fromFieldPath: spec.parameters.nodeCount
-          toFieldPath: spec.forProvider.scalingConfig.minSize
+          toFieldPath: spec.forProvider.scalingConfig[0].minSize
         - fromFieldPath: spec.parameters.nodeCount
-          toFieldPath: spec.forProvider.scalingConfig.maxSize
+          toFieldPath: spec.forProvider.scalingConfig[0].maxSize
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.nodeRoleArnRef.name
           transforms:
