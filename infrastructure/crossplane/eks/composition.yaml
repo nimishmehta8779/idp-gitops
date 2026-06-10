@@ -191,7 +191,7 @@ spec:
           kind: Role
           spec:
             forProvider:
-              assumeRolePolicyDocument: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
+              assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
                 : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
                 : \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
                 }\n"
