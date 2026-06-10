@@ -178,7 +178,13 @@ spec:
         - fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
         - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.roleArn
+          toFieldPath: spec.forProvider.roleArnRef.name
+          type: FromCompositeFieldPath
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-cluster-role'
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[0].name
@@ -253,6 +259,22 @@ spec:
             string:
               type: Format
               fmt: '%s-node-role'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.subnetIdRefs[0].name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-subnet-a'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.subnetIdRefs[1].name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-subnet-b'
         - type: PatchSet
           patchSetName: regional-resource
       - name: route-to-igw
@@ -355,6 +377,127 @@ spec:
               fmt: '%s-subnet-b'
         - type: PatchSet
           patchSetName: regional-resource
+      - name: cluster-role
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: Role
+          spec:
+            forProvider:
+              assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
+                : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
+                : \"eks.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
+                }\n"
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-cluster-role'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.teamName
+          toFieldPath: spec.forProvider.tags["team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags["environment"]
+      - name: cluster-role-attachment
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: RolePolicyAttachment
+          spec:
+            forProvider:
+              policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-cluster-role-attachment'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-cluster-role'
+      - name: nodegroup-policy-workernode
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: RolePolicyAttachment
+          spec:
+            forProvider:
+              policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-node-policy-workernode'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-node-role'
+      - name: nodegroup-policy-cni
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: RolePolicyAttachment
+          spec:
+            forProvider:
+              policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-node-policy-cni'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-node-role'
+      - name: nodegroup-policy-registry
+        base:
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: RolePolicyAttachment
+          spec:
+            forProvider:
+              policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-node-policy-registry'
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+          - type: string
+            string:
+              type: Format
+              fmt: '%s-node-role'
       patchSets:
       - name: regional-resource
         patches:
