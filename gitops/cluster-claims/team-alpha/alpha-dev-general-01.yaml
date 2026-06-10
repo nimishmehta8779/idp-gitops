@@ -19,4 +19,3 @@ spec:
     teamName: team-alpha
   writeConnectionSecretToRef:
     name: alpha-dev-general-01-kubeconfig
-    namespace: clusters

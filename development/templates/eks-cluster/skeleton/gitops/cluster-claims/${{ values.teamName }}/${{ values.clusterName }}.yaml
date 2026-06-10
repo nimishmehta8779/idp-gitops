@@ -14,4 +14,3 @@ spec:
     teamName: ${{ values.teamName }}
   writeConnectionSecretToRef:
     name: ${{ values.clusterName }}-kubeconfig
-    namespace: clusters
