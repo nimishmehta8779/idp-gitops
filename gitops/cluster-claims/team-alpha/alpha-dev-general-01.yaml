@@ -7,15 +7,15 @@ metadata:
     team: team-alpha
     environment: dev
     managed-by: backstage-idp
-spec:
-  parameters:
-    clusterName: alpha-dev-general-01
-    region: us-east-1
-    nodeInstanceType: t3.medium
-    nodeCount: 2
-    kubernetesVersion: "1.34"
-    enableEbsCsi: true
-    environment: dev
-    teamName: team-alpha
-  writeConnectionSecretToRef:
-    name: alpha-dev-general-01-kubeconfig
+## spec:
+##   parameters:
+##     clusterName: alpha-dev-general-01
+##     region: us-east-1
+##     nodeInstanceType: t3.medium
+##     nodeCount: 2
+##     kubernetesVersion: "1.34"
+##     enableEbsCsi: true
+##     environment: dev
+##     teamName: team-alpha
+##   writeConnectionSecretToRef:
+##     name: alpha-dev-general-01-kubeconfig
