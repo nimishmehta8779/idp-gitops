@@ -36,6 +36,8 @@ spec:
           toFieldPath: spec.forProvider.tags["team"]
         - fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags["environment"]
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: subnet-a
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -71,6 +73,8 @@ spec:
             string:
               type: Format
               fmt: '%s-vpc'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: subnet-b
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -106,6 +110,8 @@ spec:
             string:
               type: Format
               fmt: '%s-vpc'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: igw
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -126,6 +132,8 @@ spec:
             string:
               type: Format
               fmt: '%s-vpc'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: route-table
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -148,6 +156,8 @@ spec:
             string:
               type: Format
               fmt: '%s-vpc'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: eks-cluster
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -243,6 +253,8 @@ spec:
             string:
               type: Format
               fmt: '%s-node-role'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: route-to-igw
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -275,6 +287,8 @@ spec:
             string:
               type: Format
               fmt: '%s-igw'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: rta-subnet-a
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -306,6 +320,8 @@ spec:
             string:
               type: Format
               fmt: '%s-subnet-a'
+        - type: PatchSet
+          patchSetName: regional-resource
       - name: rta-subnet-b
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -337,3 +353,11 @@ spec:
             string:
               type: Format
               fmt: '%s-subnet-b'
+        - type: PatchSet
+          patchSetName: regional-resource
+      patchSets:
+      - name: regional-resource
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
