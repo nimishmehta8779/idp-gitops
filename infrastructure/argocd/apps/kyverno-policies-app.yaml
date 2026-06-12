@@ -9,8 +9,6 @@ spec:
     repoURL: https://github.com/nimishmehta8779/idp-gitops.git
     targetRevision: main
     path: infrastructure/kyverno/policies
-    directory:
-      recurse: false
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
