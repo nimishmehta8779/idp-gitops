@@ -39,6 +39,19 @@ install-argocd:
 	kubectl wait --namespace argocd --for=condition=ready pod -l app.kubernetes.io/name=argocd-server --timeout=120s
 	@echo "ArgoCD is installed and accessible at http://localhost:8080."
 
+install-kyverno:
+	helm repo add kyverno https://kyverno.github.io/kyverno/
+	helm repo update
+	helm install kyverno kyverno/kyverno \
+		--namespace kyverno \
+		--create-namespace \
+		--wait
+
+.PHONY: install-kyverno install-kyverno-policies
+install-kyverno-policies:
+	@echo "Applying Kyverno policies manually..."
+	kubectl apply -f kyverno/policies/
+
 install-backstage:
 	@echo "Adding Backstage Helm repository..."
 	helm repo add backstage https://backstage.github.io/charts

@@ -1,0 +1,23 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-cost-acknowledgment
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: check-cost-acknowledgment
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    validate:
+      message: |
+        Cluster claim missing cost acknowledgment.
+        Add annotation: idp.platform.io/cost-acknowledged: "true"
+        Use the Backstage golden path template which adds this automatically.
+      pattern:
+        metadata:
+          annotations:
+            idp.platform.io/cost-acknowledged: "true"

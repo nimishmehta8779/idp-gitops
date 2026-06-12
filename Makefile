@@ -13,3 +13,12 @@ backstage-restart:
 estimate-cost:
 	@./scripts/estimate-cost.sh t3.large 3
 
+.PHONY: catalog-hygiene
+catalog-hygiene:
+	@./scripts/catalog-hygiene.sh
+
+.PHONY: install-kyverno-policies
+install-kyverno-policies:
+	$(MAKE) -C infrastructure install-kyverno-policies
+
+

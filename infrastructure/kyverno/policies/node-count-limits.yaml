@@ -1,0 +1,42 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: node-count-limits
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: dev-limit
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    preconditions:
+      any:
+      - key: "{{ request.object.spec.parameters.environment }}"
+        operator: Equals
+        value: dev
+    validate:
+      message: "dev cluster nodeCount must be between 1 and 10."
+      pattern:
+        spec:
+          parameters:
+            nodeCount: ">=1 & <=10"
+  - name: staging-limit
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    preconditions:
+      any:
+      - key: "{{ request.object.spec.parameters.environment }}"
+        operator: Equals
+        value: staging
+    validate:
+      message: "staging cluster nodeCount must be between 1 and 6."
+      pattern:
+        spec:
+          parameters:
+            nodeCount: ">=1 & <=6"

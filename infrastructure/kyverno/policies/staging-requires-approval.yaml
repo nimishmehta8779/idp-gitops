@@ -1,0 +1,27 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: staging-requires-approval
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: check-approval
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    preconditions:
+      any:
+      - key: "{{ request.object.spec.parameters.environment }}"
+        operator: Equals
+        value: staging
+    validate:
+      message: |
+        Staging cluster claims require platform team approval.
+        Submit via the Backstage golden path template which handles the PR approval flow.
+      pattern:
+        metadata:
+          annotations:
+            idp.platform.io/approved-by: "?*"

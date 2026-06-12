@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: approved-regions
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: check-region
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    validate:
+      message: "Approved regions are: us-east-1, ap-south-1."
+      pattern:
+        spec:
+          parameters:
+            region: "us-east-1 | ap-south-1"

@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: approved-instance-types
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: check-instance-type
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    validate:
+      message: "Approved nodeInstanceType values are: t3.medium, t3.large, m5.large."
+      pattern:
+        spec:
+          parameters:
+            nodeInstanceType: "t3.medium | t3.large | m5.large"

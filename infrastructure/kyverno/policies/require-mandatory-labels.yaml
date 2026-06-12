@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-mandatory-labels
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: check-labels
+    match:
+      any:
+      - resources:
+          kinds:
+          - platform.io/v1alpha1/EKSCluster
+    validate:
+      message: |
+        EKSCluster claim is missing required labels.
+        Required: team, environment, managed-by.
+        Use the Backstage golden path template to generate compliant claims.
+      pattern:
+        metadata:
+          labels:
+            team: "?*"
+            environment: "?*"
+            managed-by: "?*"
