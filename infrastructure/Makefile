@@ -213,6 +213,10 @@ test-gitops:
 	@echo "Running GitOps flow E2E test..."
 	bash scripts/test-gitops-flow.sh
 
+.PHONY: test-kyverno
+test-kyverno:
+	@bash ../scripts/test-kyverno.sh
+
 argocd-app-list:
 	@echo "ArgoCD applications:"
 	@printf "%-28s %-12s %-12s %-10s %s\n" "NAME" "SYNC" "HEALTH" "PROJECT" "PATH"
