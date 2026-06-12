@@ -1,0 +1,231 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: decommission-eks-cluster
+  title: Decommission EKS Cluster
+  description: Safely decommission an existing EKS cluster with full audit trail
+  tags:
+    - eks
+    - decommission
+    - infrastructure
+spec:
+  owner: group:platform-team
+  type: resource
+
+  parameters:
+    - title: Decommission Settings
+      required:
+        - teamName
+        - clusterName
+        - environment
+        - confirmClusterName
+        - decommissionReason
+        - costSaving
+      properties:
+        teamName:
+          title: Team Name
+          type: string
+          description: Select the owner group for the EKS cluster.
+          enum:
+            - platform-team
+            - team-alpha
+            - team-beta
+        clusterName:
+          title: Cluster Name
+          type: string
+          description: Select the EKS cluster to decommission. Only clusters owned by the selected team are shown.
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Resource
+              spec.type: kubernetes-cluster
+              spec.owner: group:default/${{ parameters.teamName }}
+        environment:
+          title: Environment
+          type: string
+          ui:field: ClusterEnvironmentField
+        confirmClusterName:
+          title: Confirm Cluster Name
+          type: string
+          ui:help: "Type the cluster name exactly to confirm decommissioning"
+        decommissionReason:
+          title: Decommission Reason
+          type: string
+          description: Explain why the cluster is being decommissioned (minimum 10 characters).
+          minLength: 10
+        costSaving:
+          title: Estimated Monthly Cost Saving
+          type: string
+          description: Estimated cost savings (e.g., $300/month).
+          default: "$300"
+        awsRegion:
+          title: AWS Region
+          type: string
+          default: "us-east-1"
+        instanceType:
+          title: Instance Type
+          type: string
+          default: "t3.medium"
+        nodeCount:
+          title: Node Count
+          type: integer
+          default: 2
+
+    - title: Staging Acknowledgment
+      dependencies:
+        environment:
+          oneOf:
+            - properties:
+                environment:
+                  enum:
+                    - dev
+            - properties:
+                environment:
+                  enum:
+                    - staging
+                acknowledgeStaging:
+                  type: boolean
+                  title: I understand this cluster uses Orphan deletion policy and I will manually clean up AWS resources after decommissioning
+                  const: true
+              required:
+                - acknowledgeStaging
+
+  steps:
+    # Step 1: Validate Ownership & Confirmation
+    - id: validate
+      name: Validate Ownership & Confirmation
+      action: idp:cluster:decommission:validate
+      input:
+        clusterName: ${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        confirmClusterName: ${{ parameters.confirmClusterName }}
+        teamName: ${{ parameters.teamName }}
+
+    # Step 2: Render Decommission Record into Workspace
+    - id: fetch_skeleton
+      name: Generate Decommission Record
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: gitops/decommission-records/${{ parameters.teamName }}
+        values:
+          clusterName: ${{ parameters.clusterName | parseEntityRef | pick('name') }}
+          teamName: ${{ parameters.teamName }}
+          environment: ${{ parameters.environment }}
+          decommissionReason: ${{ parameters.decommissionReason }}
+          costSaving: ${{ parameters.costSaving }}
+          awsRegion: ${{ parameters.awsRegion }}
+          instanceType: ${{ parameters.instanceType }}
+          nodeCount: ${{ parameters.nodeCount }}
+          currentDate: ${{ now() }}
+
+    # Step 3: dev path (push decommission record & delete claim directly on main)
+    - id: delete_files_dev
+      name: Decommission Cluster (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: github:repo:delete-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        branch: main
+        filesToDelete:
+          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
+          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}/catalog-info.yaml
+        filesToCreate:
+          - gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        commitMessage: "chore: decommission cluster ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
+
+    # Step 3: staging path (push decommission record & delete claim on branch, raise PR)
+    - id: delete_files_staging
+      name: Decommission Cluster (Staging)
+      if: ${{ parameters.environment == 'staging' }}
+      action: github:repo:delete-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        branch: decommission/${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        prTargetBranch: main
+        filesToDelete:
+          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
+          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}/catalog-info.yaml
+        filesToCreate:
+          - gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        commitMessage: "chore: decommission cluster ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
+        prTitle: "[Decommission] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
+        prBody: |
+          ### EKS Cluster Decommission Request (Staging)
+          - **Cluster Name**: `${{ parameters.clusterName | parseEntityRef | pick('name') }}`
+          - **Team Name**: `${{ parameters.teamName }}`
+          - **Environment**: `${{ parameters.environment }}`
+          - **Decommission Reason**: `${{ parameters.decommissionReason }}`
+          - **Estimated Monthly Cost Saving**: `${{ parameters.costSaving }}`
+
+          ⚠️ **WARNING**: Staging clusters are configured with the `Orphan` deletion policy. Merging this PR will remove the claim file from GitOps but the actual AWS resources (VPC, subnets, EKS, node groups) will NOT be deleted automatically. 
+
+          Platform team must manually verify and delete the AWS resources after this PR is merged.
+
+          #### Checklist
+          - [ ] Verify EKS cluster claims and resources are deleted from GitOps
+          - [ ] Manually clean up AWS resources (EKS, VPC, Node Groups)
+          - [ ] Verify no orphan resources remain in AWS console
+        prLabels:
+          - cluster-decommission
+          - needs-review
+
+    # Step 4: Unregister entity from Backstage catalog (dev only)
+    - id: unregister_catalog
+      name: Unregister from Backstage Catalog (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: /api/catalog/entities/by-name/resource/default/${{ parameters.clusterName | parseEntityRef | pick('name') }}
+
+    # Step 5: Create decommission audit record (GitHub issue)
+    - id: create_audit_issue
+      name: Create Decommission Audit Issue
+      action: github:issues:create
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        title: "[Decommissioned] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
+        body: |
+          ## Cluster Decommission Record
+          ─────────────────────────────────────────
+          Cluster:          ${{ parameters.clusterName | parseEntityRef | pick('name') }}
+          Team:             ${{ parameters.teamName }}
+          Environment:      ${{ parameters.environment }}
+          Reason:           ${{ parameters.decommissionReason }}
+          Decommissioned by: ${{ user.entity.metadata.name }}
+          Date:             ${{ now() }}
+          ─────────────────────────────────────────
+          ## Checklist
+          - [ ] Claim file deleted from GitOps repo
+          - [ ] Catalog entity unregistered
+          - [ ] ArgoCD pruned claim from kind cluster
+          - [ ] Crossplane deleted AWS resources (dev only — auto)
+          - [ ] AWS resources manually verified clean (staging only)
+          - [ ] Cost saving confirmed in AWS billing
+          ─────────────────────────────────────────
+          ## Cost saving
+          Estimated monthly saving: ${{ parameters.costSaving }}
+
+    # Step 5b: Label Audit Issue
+    - id: label_issue
+      name: Label Audit Issue
+      action: github:issues:label
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        number: ${{ steps.create_audit_issue.output.issueNumber | int }}
+        labels:
+          - decommission-audit
+
+  output:
+    links:
+      - title: View Decommission Commit (Dev)
+        url: https://github.com/nimishmehta8779/idp-gitops/commit/${{ steps.delete_files_dev.output.commitSha }}
+        if: ${{ parameters.environment == 'dev' }}
+      - title: View ArgoCD Claims Sync (Dev)
+        url: http://localhost:8080/applications/cluster-claims
+        if: ${{ parameters.environment == 'dev' }}
+      - title: View Decommission Pull Request (Staging)
+        url: ${{ steps.delete_files_staging.output.pullRequestUrl }}
+        if: ${{ parameters.environment == 'staging' }}
+      - title: View Decommission Audit Issue
+        url: ${{ steps.create_audit_issue.output.issueUrl }}

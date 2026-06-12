@@ -6,7 +6,6 @@ metadata:
   description: EKS Cluster Provisioner Composition Component
   annotations:
     backstage.io/source-location: url:https://github.com/company/idp-platform
-    backstage.io/techdocs-ref: dir:.
 spec:
   type: service
   lifecycle: experimental
@@ -15,3 +14,5 @@ spec:
   providesApis:
     - api:default/eks-cluster-claim-api
     - api:default/crossplane-xrd-api
+  dependsOn:
+    - resource:default/kind-local-cluster

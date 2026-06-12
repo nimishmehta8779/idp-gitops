@@ -1,0 +1,9 @@
+site_name: Internal Developer Platform (IDP) Core Documentation
+nav:
+  - Overview: index.md
+  - Getting Started: getting-started.md
+  - Requesting Clusters: requesting-clusters.md
+  - Decommissioning: decommissioning.md
+  - Onboarding: onboarding.md
+plugins:
+  - techdocs-core
