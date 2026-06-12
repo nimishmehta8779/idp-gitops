@@ -43,6 +43,9 @@ spec:
                     environment:
                       type: string
                       enum: [dev, staging]
+                    costCenter:
+                      type: string
+                      default: default
                     teamName:
                       type: string
                     enableEbsCsi:

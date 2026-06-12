@@ -69,6 +69,22 @@ spec:
           enum:
             - "1.34"
             - "1.33"
+        costCenter:
+          title: Cost Center
+          type: string
+          description: Cost center identifier for billing/accounting purposes.
+          default: default
+        components:
+          title: Requesting Components
+          type: array
+          items:
+            type: string
+          description: Select components that will depend on this EKS cluster (optional)
+          ui:field: MultiEntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.owner: group:default/${{ parameters.teamName }}
 
 
   steps:
@@ -85,6 +101,8 @@ spec:
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
           kubernetesVersion: ${{ parameters.kubernetesVersion }}
+          costCenter: ${{ parameters.costCenter }}
+          components: ${{ parameters.components }}
           createdAt: ${{ now() }}
 
     # Staging Branching Strategy: Exclude GitOps folder from initial main branch push
@@ -130,6 +148,8 @@ spec:
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
           kubernetesVersion: ${{ parameters.kubernetesVersion }}
+          costCenter: ${{ parameters.costCenter }}
+          components: ${{ parameters.components }}
           createdAt: ${{ now() }}
 
     - id: clean_metadata_staging
