@@ -6,12 +6,13 @@ metadata:
   description: Frontend Portal of the Internal Developer Platform
   annotations:
     backstage.io/source-location: url:https://github.com/company/idp-platform
-    backstage.io/techdocs-ref: dir:.
 spec:
   type: website
   lifecycle: production
   owner: group:default/platform-team
   system: system:default/idp-core
+  dependsOn:
+    - component:default/idp-backend
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -21,12 +22,13 @@ metadata:
   description: Backend APIs of the Internal Developer Platform
   annotations:
     backstage.io/source-location: url:https://github.com/company/idp-platform
-    backstage.io/techdocs-ref: dir:.
 spec:
   type: service
   lifecycle: production
   owner: group:default/platform-team
   system: system:default/idp-core
+  dependsOn:
+    - resource:default/kind-local-cluster
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -36,12 +38,13 @@ metadata:
   description: Automatic EKS Cluster Provisioner Service
   annotations:
     backstage.io/source-location: url:https://github.com/company/idp-platform
-    backstage.io/techdocs-ref: dir:.
 spec:
   type: service
   lifecycle: production
   owner: group:default/platform-team
   system: system:default/eks-provisioning
+  dependsOn:
+    - component:default/crossplane-eks-composition
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -54,6 +57,9 @@ spec:
   lifecycle: experimental
   owner: group:default/platform-team
   system: system:default/idp-core
+  dependsOn:
+    - resource:default/kind-local-cluster
+    - component:default/idp-frontend
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -66,4 +72,6 @@ spec:
   lifecycle: experimental
   owner: group:default/platform-team
   system: system:default/idp-core
+  dependsOn:
+    - resource:default/kind-local-cluster
 

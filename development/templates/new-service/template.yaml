@@ -52,6 +52,31 @@ spec:
           description: The repository name under nimishmehta8779 on GitHub.
           default: ${{ parameters.serviceName }}
 
+    - title: Dependencies & APIs
+      properties:
+        dependencies:
+          title: Dependencies
+          type: array
+          items:
+            type: string
+          description: Select components or resources that this service depends on (optional)
+          ui:field: MultiEntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - Component
+                - Resource
+        consumesApis:
+          title: Consumed APIs
+          type: array
+          items:
+            type: string
+          description: Select APIs that this service consumes (optional)
+          ui:field: MultiEntityPicker
+          ui:options:
+            catalogFilter:
+              kind: API
+
   steps:
     - id: fetch-base
       name: Fetch Base Skeleton
@@ -64,6 +89,8 @@ spec:
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
           repoName: ${{ parameters.repoName }}
+          dependencies: ${{ parameters.dependencies }}
+          consumesApis: ${{ parameters.consumesApis }}
 
     - id: publish
       name: Publish to GitHub

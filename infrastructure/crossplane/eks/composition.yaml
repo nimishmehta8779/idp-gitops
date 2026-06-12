@@ -38,6 +38,12 @@ spec:
           toFieldPath: spec.forProvider.tags["environment"]
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: subnet-a
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -76,6 +82,12 @@ spec:
               fmt: '%s-vpc'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: subnet-b
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -114,6 +126,12 @@ spec:
               fmt: '%s-vpc'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: igw
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -136,6 +154,12 @@ spec:
               fmt: '%s-vpc'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: route-table
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -160,6 +184,12 @@ spec:
               fmt: '%s-vpc'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: eks-cluster
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -206,6 +236,12 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
           toFieldPath: status.oidcIssuer
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: nodegroup-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -228,6 +264,12 @@ spec:
           toFieldPath: spec.forProvider.tags["team"]
         - fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags["environment"]
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: node-group
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -283,6 +325,12 @@ spec:
               fmt: '%s-subnet-b'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: route-to-igw
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -317,6 +365,10 @@ spec:
               fmt: '%s-igw'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: rta-subnet-a
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -350,6 +402,10 @@ spec:
               fmt: '%s-subnet-a'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: rta-subnet-b
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -383,6 +439,10 @@ spec:
               fmt: '%s-subnet-b'
         - type: PatchSet
           patchSetName: regional-resource
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: cluster-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -408,6 +468,12 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags["environment"]
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: cluster-role-attachment
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -432,6 +498,10 @@ spec:
             string:
               type: Format
               fmt: '%s-cluster-role'
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: nodegroup-policy-workernode
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -456,6 +526,10 @@ spec:
             string:
               type: Format
               fmt: '%s-node-role'
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: nodegroup-policy-cni
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -480,6 +554,10 @@ spec:
             string:
               type: Format
               fmt: '%s-node-role'
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: nodegroup-policy-registry
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -505,6 +583,10 @@ spec:
             string:
               type: Format
               fmt: '%s-node-role'
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: oidc-provider
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -545,6 +627,12 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.oidcProviderArn
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: ebs-csi-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -610,6 +698,12 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.ebsRoleArn
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: ebs-csi-role-attachment
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -675,6 +769,10 @@ spec:
               fallbackValue: ''
           policy:
             fromFieldPath: Required
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: addon-vpc-cni
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -710,6 +808,12 @@ spec:
               fmt: '%s-vpc-cni'
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.clusterName
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: addon-kube-proxy
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -744,6 +848,12 @@ spec:
               fmt: '%s-kube-proxy'
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.clusterName
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: addon-coredns
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -778,6 +888,12 @@ spec:
               fmt: '%s-coredns'
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.clusterName
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       - name: addon-aws-ebs-csi-driver
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -846,9 +962,61 @@ spec:
           toFieldPath: spec.forProvider.serviceAccountRoleArn
           policy:
             fromFieldPath: Required
+        - type: PatchSet
+          patchSetName: mandatory-tags
+        - type: PatchSet
+          patchSetName: deletion-policy
+        - type: PatchSet
+          patchSetName: provider-config-ref
       patchSets:
       - name: regional-resource
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
+      - name: mandatory-tags
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags["environment"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.teamName
+          toFieldPath: spec.forProvider.tags["team"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.tags["cluster-name"]
+        - type: ToValue
+          toFieldPath: spec.forProvider.tags["managed-by"]
+          value: crossplane
+        - type: ToValue
+          toFieldPath: spec.forProvider.tags["provisioned-by"]
+          value: backstage-idp
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.costCenter
+          toFieldPath: spec.forProvider.tags["cost-center"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.kubernetesVersion
+          toFieldPath: spec.forProvider.tags["kubernetes-version"]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.tags["region"]
+      - name: deletion-policy
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.deletionPolicy
+          transforms:
+          - type: map
+            map:
+              dev: Delete
+              staging: Orphan
+      - name: provider-config-ref
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.providerConfigRef.name
+          transforms:
+          - type: map
+            map:
+              dev: aws-dev
+              staging: aws-staging

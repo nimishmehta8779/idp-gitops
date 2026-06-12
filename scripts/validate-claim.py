@@ -26,6 +26,26 @@ def validate_file(filepath):
     # Extract fields
     metadata = data.get("metadata", {}) if data else {}
     spec = data.get("spec", {}) if data else {}
+    
+    # Check if this is a Backstage catalog file (catalog-info.yaml)
+    is_catalog_info = os.path.basename(filepath) == 'catalog-info.yaml' or (data and str(data.get("apiVersion", "")).startswith("backstage.io"))
+    
+    if is_catalog_info:
+        owner = spec.get("owner") if spec else None
+        if not owner:
+            errors.append("Missing owner (spec.owner) in catalog-info.yaml.")
+        return {
+            "file": filepath,
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "cluster_name": metadata.get("name"),
+            "team_name": owner.split('/')[-1] if owner else "None",
+            "env": "N/A",
+            "node_count": "N/A",
+            "instance_type": "N/A",
+            "cost": 0.0
+        }
+
     params = spec.get("parameters", {}) if spec else {}
 
     cluster_name = params.get("clusterName") or metadata.get("name")

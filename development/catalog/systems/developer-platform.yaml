@@ -13,6 +13,8 @@ metadata:
   name: idp-core
   namespace: default
   description: Core Backstage IDP Portal
+  annotations:
+    backstage.io/techdocs-ref: dir:.
 spec:
   owner: group:default/platform-team
   domain: developer-platform

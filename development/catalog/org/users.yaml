@@ -4,6 +4,8 @@ metadata:
   name: alice
   namespace: default
   description: Platform Engineer
+  annotations:
+    github.com/user-login: nimishmehta8779
 spec:
   profile:
     displayName: Alice Smith
@@ -16,6 +18,8 @@ metadata:
   name: bob
   namespace: default
   description: Platform Engineer
+  annotations:
+    github.com/user-login: bob-github
 spec:
   profile:
     displayName: Bob Jones
@@ -28,6 +32,8 @@ metadata:
   name: charlie
   namespace: default
   description: Alpha Developer
+  annotations:
+    github.com/user-login: charlie-github
 spec:
   profile:
     displayName: Charlie Brown
@@ -40,6 +46,8 @@ metadata:
   name: david
   namespace: default
   description: Alpha Developer
+  annotations:
+    github.com/user-login: david-github
 spec:
   profile:
     displayName: David Miller
@@ -52,6 +60,8 @@ metadata:
   name: eve
   namespace: default
   description: Beta Developer
+  annotations:
+    github.com/user-login: eve-github
 spec:
   profile:
     displayName: Eve Davis
@@ -64,6 +74,8 @@ metadata:
   name: frank
   namespace: default
   description: Beta Developer
+  annotations:
+    github.com/user-login: frank-github
 spec:
   profile:
     displayName: Frank Wilson
