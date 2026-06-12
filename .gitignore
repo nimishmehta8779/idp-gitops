@@ -1,5 +1,9 @@
 infrastructure/backstage
 .env
+*.env
 .env.*
+!.env.example
 *.ini
 *.pem
+
+
