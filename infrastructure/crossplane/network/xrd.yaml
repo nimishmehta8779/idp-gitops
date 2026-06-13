@@ -1,15 +1,15 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
-  name: xeksclusters.platform.io
+  name: xnetworks.platform.io
 spec:
   group: platform.io
   names:
-    kind: XEKSCluster
-    plural: xeksclusters
+    kind: XNetwork
+    plural: xnetworks
   claimNames:
-    kind: EKSCluster
-    plural: eksclusters
+    kind: Network
+    plural: networks
   versions:
     - name: v1alpha1
       served: true
@@ -24,36 +24,22 @@ spec:
                 parameters:
                   type: object
                   properties:
-                    clusterName:
-                      type: string
-                    region:
-                      type: string
-                      default: us-east-1
-                    nodeInstanceType:
-                      type: string
-                      default: t3.medium
-                    nodeCount:
-                      type: integer
-                      default: 2
-                      minimum: 1
-                      maximum: 10
-                    kubernetesVersion:
-                      type: string
-                      default: "1.34"
                     environment:
                       type: string
                       enum: [dev, staging]
-                    costCenter:
+                    region:
                       type: string
-                      default: default
-                    teamName:
+                      default: us-east-1
+                    vpcCidr:
                       type: string
-                    enableEbsCsi:
+                    subnetACidr:
+                      type: string
+                    subnetBCidr:
+                      type: string
+                    enableNatGateway:
                       type: boolean
-                      default: true
-                    networkRef:
-                      type: string
-                  required: [clusterName, teamName, networkRef]
+                      default: false
+                  required: [environment]
                 writeConnectionSecretToRef:
                   type: object
                   properties:
@@ -62,7 +48,22 @@ spec:
                     namespace:
                       type: string
               required: [parameters]
+            status:
+              type: object
+              properties:
+                vpcId:
+                  type: string
+                subnetAId:
+                  type: string
+                subnetBId:
+                  type: string
+                routeTableId:
+                  type: string
+                internetGatewayId:
+                  type: string
   connectionSecretKeys:
-    - kubeconfig
-    - clusterEndpoint
-    - clusterArn
+    - vpcId
+    - subnetAId
+    - subnetBId
+    - routeTableId
+    - internetGatewayId

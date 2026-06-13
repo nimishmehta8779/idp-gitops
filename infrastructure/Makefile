@@ -372,3 +372,8 @@ verify-aws:
 	@chmod +x scripts/verify-aws.sh
 	@bash scripts/verify-aws.sh
 
+.PHONY: verify-network-infra
+verify-network-infra:
+	@chmod +x scripts/verify-network-infra.sh
+	@bash scripts/verify-network-infra.sh
+

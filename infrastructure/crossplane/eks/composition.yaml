@@ -17,179 +17,6 @@ spec:
       apiVersion: pt.fn.crossplane.io/v1beta1
       kind: Resources
       resources:
-      - name: vpc
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: VPC
-          spec:
-            forProvider:
-              cidrBlock: 10.0.0.0/16
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-vpc'
-        - fromFieldPath: spec.parameters.teamName
-          toFieldPath: spec.forProvider.tags["team"]
-        - fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: subnet-a
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: Subnet
-          spec:
-            forProvider:
-              cidrBlock: 10.0.1.0/24
-              availabilityZone: ''
-              mapPublicIpOnLaunch: true
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-a'
-        - fromFieldPath: spec.parameters.teamName
-          toFieldPath: spec.forProvider.tags["team"]
-        - fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags["environment"]
-        - fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.availabilityZone
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%sa'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.vpcIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-vpc'
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: subnet-b
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: Subnet
-          spec:
-            forProvider:
-              cidrBlock: 10.0.2.0/24
-              availabilityZone: ''
-              mapPublicIpOnLaunch: true
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-b'
-        - fromFieldPath: spec.parameters.teamName
-          toFieldPath: spec.forProvider.tags["team"]
-        - fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags["environment"]
-        - fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.availabilityZone
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%sb'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.vpcIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-vpc'
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: igw
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: InternetGateway
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-igw'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.vpcIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-vpc'
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: route-table
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: RouteTable
-          spec:
-            forProvider: {}
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-rt'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.vpcIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-vpc'
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
       - name: eks-cluster
         base:
           apiVersion: eks.aws.upbound.io/v1beta1
@@ -218,7 +45,7 @@ spec:
               type: Format
               fmt: '%s-cluster-role'
         - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
+          fromFieldPath: spec.parameters.networkRef
           toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[0].name
           transforms:
           - type: string
@@ -226,7 +53,7 @@ spec:
               type: Format
               fmt: '%s-subnet-a'
         - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
+          fromFieldPath: spec.parameters.networkRef
           toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[1].name
           transforms:
           - type: string
@@ -308,7 +135,7 @@ spec:
               type: Format
               fmt: '%s-node-role'
         - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
+          fromFieldPath: spec.parameters.networkRef
           toFieldPath: spec.forProvider.subnetIdRefs[0].name
           transforms:
           - type: string
@@ -316,7 +143,7 @@ spec:
               type: Format
               fmt: '%s-subnet-a'
         - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
+          fromFieldPath: spec.parameters.networkRef
           toFieldPath: spec.forProvider.subnetIdRefs[1].name
           transforms:
           - type: string
@@ -327,118 +154,6 @@ spec:
           patchSetName: regional-resource
         - type: PatchSet
           patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: route-to-igw
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: Route
-          spec:
-            forProvider:
-              destinationCidrBlock: 0.0.0.0/0
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-route-igw'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.routeTableIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-rt'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.gatewayIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-igw'
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: rta-subnet-a
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: RouteTableAssociation
-          spec:
-            forProvider: {}
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-rta-a'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.routeTableIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-rt'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.subnetIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-a'
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: rta-subnet-b
-        base:
-          apiVersion: ec2.aws.upbound.io/v1beta1
-          kind: RouteTableAssociation
-          spec:
-            forProvider: {}
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-rta-b'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.routeTableIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-rt'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.subnetIdRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-b'
-        - type: PatchSet
-          patchSetName: regional-resource
         - type: PatchSet
           patchSetName: deletion-policy
         - type: PatchSet
@@ -564,8 +279,7 @@ spec:
           kind: RolePolicyAttachment
           spec:
             forProvider:
-              policyArn: 
-                arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+              policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.clusterName
@@ -710,8 +424,7 @@ spec:
           kind: RolePolicyAttachment
           spec:
             forProvider:
-              policyArn: 
-                arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+              policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
               role: ''
         patches:
         - type: FromCompositeFieldPath
