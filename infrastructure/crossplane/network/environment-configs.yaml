@@ -1,21 +1,25 @@
 apiVersion: apiextensions.crossplane.io/v1beta1
 kind: EnvironmentConfig
 metadata:
-  name: dev-environment
+  name: idp-dev-network
   labels:
     environment: dev
 data:
-  vpcCidr: 10.0.0.0/16
-  subnetACidr: 10.0.1.0/24
-  subnetBCidr: 10.0.2.0/24
+  vpcCidr: "10.0.0.0/16"
+  subnetACidr: "10.0.1.0/24"
+  subnetBCidr: "10.0.2.0/24"
+  region: "us-east-1"
+  enableNatGateway: "false"
 ---
 apiVersion: apiextensions.crossplane.io/v1beta1
 kind: EnvironmentConfig
 metadata:
-  name: staging-environment
+  name: idp-staging-network
   labels:
     environment: staging
 data:
-  vpcCidr: 10.1.0.0/16
-  subnetACidr: 10.1.1.0/24
-  subnetBCidr: 10.1.2.0/24
+  vpcCidr: "10.1.0.0/16"
+  subnetACidr: "10.1.1.0/24"
+  subnetBCidr: "10.1.2.0/24"
+  region: "us-east-1"
+  enableNatGateway: "false"

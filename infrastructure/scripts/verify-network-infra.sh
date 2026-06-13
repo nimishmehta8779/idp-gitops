@@ -77,11 +77,11 @@ fi
 
 # 5. EnvironmentConfig exists per environment
 echo -n "Checking EnvironmentConfigs... "
-if kubectl get environmentconfig dev-environment &>/dev/null && kubectl get environmentconfig staging-environment &>/dev/null; then
+if kubectl get environmentconfig idp-dev-network &>/dev/null && kubectl get environmentconfig idp-staging-network &>/dev/null; then
   echo -e "${GREEN}PASSED${NC}"
   ENV_CONFIG_OK=true
 else
-  echo -e "${RED}FAILED${NC} (Missing dev-environment or staging-environment)"
+  echo -e "${RED}FAILED${NC} (Missing idp-dev-network or idp-staging-network)"
   ENV_CONFIG_OK=false
 fi
 
