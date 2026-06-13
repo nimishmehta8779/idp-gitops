@@ -3,7 +3,12 @@ kind: Template
 metadata:
   name: request-eks-cluster
   title: Request EKS Cluster
-  description: A template to request a new EKS cluster using Crossplane and GitOps.
+  description: |
+    A template to request a new EKS cluster using Crossplane and GitOps.
+
+    Network infrastructure (VPC, subnets) is provisioned and managed by the
+    platform team. Your cluster will be placed in the shared network for your
+    requested environment automatically.
 spec:
   owner: group:platform-team
   type: resource

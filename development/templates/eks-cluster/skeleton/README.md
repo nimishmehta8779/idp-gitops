@@ -36,3 +36,10 @@ metadata:
 ```
 to your claim file in the GitOps repo.
 
+## Centralized Network Model
+
+This cluster leverages the platform's centralized networking model. The underlying VPC and subnets are pre-provisioned and managed by the platform team. Your cluster is automatically placed inside the shared network for the target environment using dynamic subnet selectors.
+
+For details on the centralized networking model, please refer to the [Network Claims README](https://github.com/nimishmehta8779/idp-gitops/blob/main/gitops/network-claims/README.md) in the platform GitOps repository.
+
+
