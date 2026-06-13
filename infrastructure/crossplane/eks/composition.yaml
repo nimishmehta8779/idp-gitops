@@ -7,6 +7,7 @@ metadata:
   annotations:
     idp.platform.io/depends-on: "xnetworks.platform.io"
     idp.platform.io/network-must-exist: "true"
+    idp.platform.io/network-ref-field: "spec.parameters.networkRef"
 spec:
   compositeTypeRef:
     apiVersion: platform.io/v1alpha1
