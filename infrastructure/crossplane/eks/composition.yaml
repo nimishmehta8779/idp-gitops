@@ -4,12 +4,30 @@ metadata:
   name: eks-cluster
   labels:
     guide: crossplane-eks
+  annotations:
+    idp.platform.io/depends-on: "xnetworks.platform.io"
+    idp.platform.io/network-must-exist: "true"
 spec:
   compositeTypeRef:
     apiVersion: platform.io/v1alpha1
     kind: XEKSCluster
   mode: Pipeline
   pipeline:
+  - step: environment-configs
+    functionRef:
+      name: function-environment-configs
+    input:
+      apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+      kind: Input
+      spec:
+        environmentConfigs:
+          - type: Selector
+            selector:
+              mode: Single
+              matchLabels:
+                - key: environment
+                  type: FromCompositeFieldPath
+                  valueFromFieldPath: spec.parameters.environment
   - step: patch-and-transform
     functionRef:
       name: function-patch-and-transform
@@ -24,6 +42,10 @@ spec:
           spec:
             forProvider:
               version: '1.34'
+              vpcConfig:
+                - subnetIdSelector:
+                    matchLabels:
+                      managed-by: crossplane
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
@@ -45,21 +67,9 @@ spec:
               type: Format
               fmt: '%s-cluster-role'
         - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.networkRef
-          toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[0].name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-a'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.networkRef
-          toFieldPath: spec.forProvider.vpcConfig[0].subnetIdRefs[1].name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-b'
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.vpcConfig[0].subnetIdSelector.matchLabels.environment
+          # Decoupled network integration: selecting subnets by environment rather than direct networkRef name matching
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
           toFieldPath: status.oidcIssuer
@@ -109,6 +119,9 @@ spec:
                 minSize: 1
                 maxSize: 10
               amiType: AL2023_x86_64_STANDARD
+              subnetIdSelector:
+                matchLabels:
+                  managed-by: crossplane
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
@@ -135,21 +148,8 @@ spec:
               type: Format
               fmt: '%s-node-role'
         - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.networkRef
-          toFieldPath: spec.forProvider.subnetIdRefs[0].name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-a'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.networkRef
-          toFieldPath: spec.forProvider.subnetIdRefs[1].name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-subnet-b'
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.environment
         - type: PatchSet
           patchSetName: regional-resource
         - type: PatchSet

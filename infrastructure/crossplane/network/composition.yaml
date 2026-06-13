@@ -109,6 +109,12 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.id
           toFieldPath: status.subnetAId
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: metadata.labels[environment]
+        - type: ToValue
+          toFieldPath: metadata.labels[managed-by]
+          value: crossplane
         - type: PatchSet
           patchSetName: regional-resource
         - type: PatchSet
@@ -160,6 +166,12 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.id
           toFieldPath: status.subnetBId
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: metadata.labels[environment]
+        - type: ToValue
+          toFieldPath: metadata.labels[managed-by]
+          value: crossplane
         - type: PatchSet
           patchSetName: regional-resource
         - type: PatchSet
