@@ -322,7 +322,53 @@ argocd-app-list:
 	@printf "%-28s %-12s %-12s %-10s %s\n" "NAME" "SYNC" "HEALTH" "PROJECT" "PATH"
 	@printf "%-28s %-12s %-12s %-10s %s\n" "----" "----" "------" "-------" "----"
 	@kubectl get applications -n argocd -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.sync.status}{"\t"}{.status.health.status}{"\t"}{.spec.project}{"\t"}{.spec.source.path}{"\n"}{end}' 2>/dev/null | \
-	  while IFS=$$'\t' read -r name sync health project path; do \
+	  while IFS=$'\t' read -r name sync health project path; do \
 	    printf "%-28s %-12s %-12s %-10s %s\n" "$$name" "$$sync" "$$health" "$$project" "$$path"; \
 	  done
+
+.PHONY: update-providerconfigs verify-aws
+
+update-providerconfigs:
+	@echo "Updating ProviderConfigs with IAM Role ARNs..."
+	@if [ -z "$$AWS_DEV_ROLE_ARN" ] || [ -z "$$AWS_STAGING_ROLE_ARN" ]; then \
+	  echo "Error: AWS_DEV_ROLE_ARN or AWS_STAGING_ROLE_ARN is not set in environment or .env file."; \
+	  exit 1; \
+	fi
+	@echo "Writing crossplane/providers/providerconfig-aws-dev.yaml..."
+	@echo "apiVersion: aws.upbound.io/v1beta1" > crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "kind: ProviderConfig" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "metadata:" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "  name: aws-dev" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "spec:" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "  credentials:" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "    source: Secret" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "    secretRef:" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "      namespace: crossplane-system" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "      name: aws-credentials-dev" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "      key: credentials" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "  assumeRoleChain:" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "    - roleARN: $$AWS_DEV_ROLE_ARN" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "      externalID: crossplane-idp" >> crossplane/providers/providerconfig-aws-dev.yaml
+	@kubectl apply -f crossplane/providers/providerconfig-aws-dev.yaml
+	@echo "Writing crossplane/providers/providerconfig-aws-staging.yaml..."
+	@echo "apiVersion: aws.upbound.io/v1beta1" > crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "kind: ProviderConfig" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "metadata:" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "  name: aws-staging" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "spec:" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "  credentials:" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "    source: Secret" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "    secretRef:" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "      namespace: crossplane-system" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "      name: aws-credentials-staging" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "      key: credentials" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "  assumeRoleChain:" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "    - roleARN: $$AWS_STAGING_ROLE_ARN" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "      externalID: crossplane-idp" >> crossplane/providers/providerconfig-aws-staging.yaml
+	@kubectl apply -f crossplane/providers/providerconfig-aws-staging.yaml
+	@echo "ProviderConfigs updated and applied."
+
+verify-aws:
+	@chmod +x scripts/verify-aws.sh
+	@bash scripts/verify-aws.sh
 

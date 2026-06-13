@@ -116,7 +116,61 @@ echo "Generating trust policy from template..."
 sed -e "s/ACCOUNT_ID/${AWS_ACCOUNT_ID}/g" -e "s/YOUR_IAM_USER/${AWS_IAM_USER}/g" "$TRUST_POLICY_TEMPLATE" > "$TRUST_POLICY_FILE"
 
 # 5. Create dev and staging roles in AWS
-ADMIN_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
+attach_role_policies() {
+  local role_name="$1"
+
+  echo "Attaching scoped AWS policies to $role_name..."
+  # EKS policies needed by Crossplane
+  aws iam attach-role-policy \
+    --role-name "$role_name" \
+    --policy-arn "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+
+  aws iam attach-role-policy \
+    --role-name "$role_name" \
+    --policy-arn "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+
+  aws iam attach-role-policy \
+    --role-name "$role_name" \
+    --policy-arn "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+
+  aws iam attach-role-policy \
+    --role-name "$role_name" \
+    --policy-arn "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+
+  # Inline policy for EC2 and IAM operations Crossplane needs
+  echo "Putting inline crossplane-ec2-iam-access policy on $role_name..."
+  aws iam put-role-policy \
+    --role-name "$role_name" \
+    --policy-name "crossplane-ec2-iam-access" \
+    --policy-document '{
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:*",
+            "iam:CreateRole",
+            "iam:DeleteRole",
+            "iam:AttachRolePolicy",
+            "iam:DetachRolePolicy",
+            "iam:PutRolePolicy",
+            "iam:DeleteRolePolicy",
+            "iam:GetRole",
+            "iam:ListRoles",
+            "iam:PassRole",
+            "iam:CreateOpenIDConnectProvider",
+            "iam:DeleteOpenIDConnectProvider",
+            "iam:GetOpenIDConnectProvider",
+            "iam:TagRole",
+            "iam:UntagRole",
+            "sts:GetCallerIdentity",
+            "sts:AssumeRole"
+          ],
+          "Resource": "*"
+        }
+      ]
+    }'
+}
 
 create_iam_role() {
   local role_name="$1"
@@ -135,9 +189,16 @@ create_iam_role() {
       --permissions-boundary "$boundary_arn" &>/dev/null
   fi
 
-  # Attach AdministratorAccess
-  aws iam attach-role-policy --role-name "$role_name" --policy-arn "$ADMIN_POLICY_ARN"
-  echo -e "${GREEN}✓ IAM Role $role_name configured with boundary and policies.${NC}"
+  # Detach AdministratorAccess if attached to prevent bypass of boundaries/privileges
+  if aws iam list-attached-role-policies --role-name "$role_name" --query "AttachedPolicies[?PolicyArn=='arn:aws:iam::aws:policy/AdministratorAccess'].PolicyArn" --output text 2>/dev/null | grep -q "AdministratorAccess"; then
+    echo "Detaching legacy AdministratorAccess policy from $role_name..."
+    aws iam detach-role-policy --role-name "$role_name" --policy-arn "arn:aws:iam::aws:policy/AdministratorAccess" || true
+  fi
+
+  # Attach scoped policies
+  attach_role_policies "$role_name"
+
+  echo -e "${GREEN}✓ IAM Role $role_name configured with boundary and scoped policies.${NC}"
 }
 
 DEV_BOUNDARY_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:policy/idp-dev-boundary"

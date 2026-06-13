@@ -52,5 +52,9 @@ pre-provision:
 aws-creds:
 	$(MAKE) -C infrastructure aws-creds
 
+.PHONY: update-providerconfigs verify-aws
+update-providerconfigs:
+	$(MAKE) -C infrastructure update-providerconfigs
 
-
+verify-aws:
+	$(MAKE) -C infrastructure verify-aws

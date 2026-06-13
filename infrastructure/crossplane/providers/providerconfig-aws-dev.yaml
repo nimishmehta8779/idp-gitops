@@ -1,0 +1,14 @@
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-dev
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-credentials-dev
+      key: credentials
+  assumeRoleChain:
+    - roleARN: arn:aws:iam::415703161648:role/idp-dev-role
+      externalID: crossplane-idp

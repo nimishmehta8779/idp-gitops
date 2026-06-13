@@ -1,0 +1,14 @@
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-staging
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-credentials-staging
+      key: credentials
+  assumeRoleChain:
+    - roleARN: arn:aws:iam::415703161648:role/idp-staging-role
+      externalID: crossplane-idp
