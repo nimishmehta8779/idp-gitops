@@ -10,8 +10,9 @@ Crossplane assumes these roles via the environment-specific `ProviderConfig` con
 
 ## 1. Directory Structure
 
-- **[dev-boundary.json](dev-boundary.json)**: Boundary policy JSON for the development environment.
-- **[staging-boundary.json](staging-boundary.json)**: Boundary policy JSON for the staging environment.
+- **[dev-boundary.json](boundaries/dev-boundary.json)**: Boundary policy JSON for the development environment.
+- **[staging-boundary.json](boundaries/staging-boundary.json)**: Boundary policy JSON for the staging environment.
+- **[crossplane-trust.json](trust-policies/crossplane-trust.json)**: Trust policy document template restricting role assumption to a specific IAM user and requiring an external ID.
 - **[create-iam-roles.sh](../../scripts/create-iam-roles.sh)**: Automation script to deploy boundaries and roles to your AWS Account.
 
 ---
@@ -61,7 +62,13 @@ aws iam create-policy \
 ```
 
 #### Step 2: Create a Trust Relationship Policy File
-Create a local file `trust-policy.json` allowing your AWS Account account to assume the roles:
+
+Use the template defined at **[crossplane-trust.json](trust-policies/crossplane-trust.json)**. 
+
+> [!IMPORTANT]
+> **Configuration Prerequisite**: Before running the automation setup script or deploying manually, you must open `infrastructure/iam/trust-policies/crossplane-trust.json` and ensure the placeholders (specifically the `ACCOUNT_ID` and the IAM user name `nimish`) are replaced with your real AWS Account ID and IAM user name.
+
+If you are configuring manually, prepare the policy document (e.g. `trust-policy.json`):
 ```json
 {
   "Version": "2012-10-17",
@@ -69,9 +76,14 @@ Create a local file `trust-policy.json` allowing your AWS Account account to ass
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<YOUR_ACCOUNT_ID>:root"
+        "AWS": "arn:aws:iam::<YOUR_ACCOUNT_ID>:user/<YOUR_IAM_USER>"
       },
-      "Action": "sts:AssumeRole"
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "crossplane-idp"
+        }
+      }
     }
   ]
 }

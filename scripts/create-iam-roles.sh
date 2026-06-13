@@ -13,6 +13,8 @@ NC='\033[0m'
 BOLD='\033[1m'
 
 echo -e "${BOLD}Simulating Multi-Account Isolation: Creating IAM Boundaries and Roles...${NC}"
+echo -e "NOTE: Before running this script, ensure you have replaced the placeholders (ACCOUNT_ID and YOUR_IAM_USER) in the trust policy template file: infrastructure/iam/trust-policies/crossplane-trust.json with your actual AWS values."
+echo ""
 
 # Check for AWS CLI
 if ! command -v aws &>/dev/null; then
@@ -20,11 +22,15 @@ if ! command -v aws &>/dev/null; then
   exit 1
 fi
 
-# Load parent .env if it exists
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
-elif [ -f ../.env ]; then
-  export $(grep -v '^#' ../.env | xargs)
+# Load parent .env only if we do not already have working AWS credentials
+if aws sts get-caller-identity &>/dev/null; then
+  echo "Using existing active AWS credentials..."
+else
+  if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+  elif [ -f ../.env ]; then
+    export $(grep -v '^#' ../.env | xargs)
+  fi
 fi
 
 # Fetch AWS Account ID
@@ -70,22 +76,23 @@ else
 fi
 echo -e "${GREEN}✓ Staging boundary policy configured: $STAGING_POLICY_ARN${NC}"
 
-# 2. Create trust policy allowing current account to assume roles
+# 2. Create trust policy from template
+TRUST_POLICY_TEMPLATE="infrastructure/iam/trust-policies/crossplane-trust.json"
 TRUST_POLICY_FILE="/tmp/idp-trust-policy.json"
-cat <<EOF > "$TRUST_POLICY_FILE"
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::${ACCOUNT_ID}:root"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
+
+if [ ! -f "$TRUST_POLICY_TEMPLATE" ]; then
+  echo -e "${RED}Error: Trust policy template not found at $TRUST_POLICY_TEMPLATE${NC}"
+  exit 1
+fi
+
+# Ensure placeholders are replaced
+if grep -q "YOUR_IAM_USER" "$TRUST_POLICY_TEMPLATE"; then
+  echo -e "${RED}Error: Before running this script, you must replace the placeholders (ACCOUNT_ID and YOUR_IAM_USER) in $TRUST_POLICY_TEMPLATE with real values.${NC}"
+  exit 1
+fi
+
+echo "Generating trust policy from template..."
+sed "s/ACCOUNT_ID/${ACCOUNT_ID}/g" "$TRUST_POLICY_TEMPLATE" > "$TRUST_POLICY_FILE"
 
 # 3. Create dev and staging roles
 ADMIN_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
