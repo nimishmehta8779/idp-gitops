@@ -81,3 +81,23 @@ This budget tracks all AWS services account-wide to catch any forgotten resource
   > Alert: Stray resource detected outside Crossplane management, or budget exceeded. Check AWS Console immediately for untagged active resources.
 
 6. Click **Next**, review the budget details, and click **Create budget**.
+
+---
+
+## Emergency Cleanup Mechanism
+
+If a budget alert is triggered, or if you need to perform an immediate teardown of all cloud resources to prevent billing, run:
+
+```bash
+make emergency-cleanup
+```
+
+This target runs the automated emergency teardown script (`scripts/emergency-cleanup.sh`), which:
+1. **Deletes EKSCluster Claims**: Deletes all active claims across all namespaces.
+2. **Overrides Deletion Policies**: Dynamically patches every active Crossplane managed resource (e.g., VPC, Subnets, NodeGroups, IAM Roles) to set `spec.deletionPolicy` to `Delete`. This overrides the `Orphan` policy used in the staging environment to ensure that *nothing* is left running in AWS.
+3. **Deletes Managed Resources**: Deletes all Crossplane managed resources to initiate immediate cloud teardown.
+
+Monitor progress via:
+```bash
+kubectl get managed
+```

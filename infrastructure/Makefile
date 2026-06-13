@@ -213,9 +213,12 @@ test-gitops:
 	@echo "Running GitOps flow E2E test..."
 	bash scripts/test-gitops-flow.sh
 
-.PHONY: test-kyverno
+.PHONY: test-kyverno emergency-cleanup
 test-kyverno:
 	@bash ../scripts/test-kyverno.sh
+
+emergency-cleanup:
+	@bash ../scripts/emergency-cleanup.sh
 
 argocd-app-list:
 	@echo "ArgoCD applications:"

@@ -21,9 +21,12 @@ catalog-hygiene:
 install-kyverno-policies:
 	$(MAKE) -C infrastructure install-kyverno-policies
 
-.PHONY: test-kyverno
+.PHONY: test-kyverno emergency-cleanup
 test-kyverno:
 	$(MAKE) -C infrastructure test-kyverno
+
+emergency-cleanup:
+	$(MAKE) -C infrastructure emergency-cleanup
 
 
 
