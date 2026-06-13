@@ -28,3 +28,32 @@ spec:
   type: kubernetes-cluster
   owner: group:default/platform-team
   system: system:default/eks-provisioning
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: idp-dev-network
+  namespace: default
+  description: Central shared VPC and subnets for the development environment.
+  annotations:
+    aws-region: us-east-1
+    environment: dev
+spec:
+  type: cloud-network
+  owner: group:default/platform-team
+  system: system:default/idp-core
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: idp-staging-network
+  namespace: default
+  description: Central shared VPC and subnets for the staging environment.
+  annotations:
+    aws-region: us-east-1
+    environment: staging
+spec:
+  type: cloud-network
+  owner: group:default/platform-team
+  system: system:default/idp-core
+
