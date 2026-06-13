@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: idp-platform-infra
+  namespace: argocd
+spec:
+  description: IDP platform infrastructure project — manages network resources and platform-wide configurations via GitOps
+  sourceRepos:
+    - https://github.com/nimishmehta8779/idp-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

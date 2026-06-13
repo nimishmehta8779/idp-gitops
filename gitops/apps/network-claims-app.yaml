@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: network-claims
+  namespace: argocd
+spec:
+  project: idp-platform-infra
+  source:
+    repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+    targetRevision: main
+    path: gitops/network-claims
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform-network
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
