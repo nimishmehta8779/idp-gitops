@@ -13,7 +13,7 @@ Crossplane assumes these roles via the environment-specific `ProviderConfig` con
 - **[dev-boundary.json](boundaries/dev-boundary.json)**: Boundary policy JSON for the development environment.
 - **[staging-boundary.json](boundaries/staging-boundary.json)**: Boundary policy JSON for the staging environment.
 - **[crossplane-trust.json](trust-policies/crossplane-trust.json)**: Trust policy document template restricting role assumption to a specific IAM user and requiring an external ID.
-- **[create-iam-roles.sh](../../scripts/create-iam-roles.sh)**: Automation script to deploy boundaries and roles to your AWS Account.
+- **[setup-iam-roles.sh](../scripts/setup-iam-roles.sh)**: Automation script to deploy boundaries and roles to your AWS Account.
 
 ---
 
@@ -41,7 +41,7 @@ An automated setup script is provided in the repository. Make sure your local AW
 
 ```bash
 # Run the setup script from the root of the repository
-./scripts/create-iam-roles.sh
+./infrastructure/scripts/setup-iam-roles.sh
 ```
 
 ### Manual CLI Setup
