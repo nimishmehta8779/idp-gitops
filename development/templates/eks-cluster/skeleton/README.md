@@ -26,3 +26,13 @@ This repository contains the Crossplane EKSCluster claim manifest for provisioni
    kubectl get EKSCluster ${{ values.clusterName }}
    ```
 
+## Daily Auto-Pause Policy
+
+To keep this cluster running beyond 8 PM daily auto-pause, add:
+```yaml
+metadata:
+  annotations:
+    idp.platform.io/long-running: "true"
+```
+to your claim file in the GitOps repo.
+

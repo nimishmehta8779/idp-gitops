@@ -24,7 +24,7 @@ catalog-hygiene:
 install-kyverno-policies:
 	$(MAKE) -C infrastructure install-kyverno-policies
 
-.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check
+.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check install-safety
 test-kyverno:
 	$(MAKE) -C infrastructure test-kyverno
 
@@ -42,6 +42,9 @@ watch-cleanup:
 
 daily-cost-check:
 	$(MAKE) -C infrastructure daily-cost-check
+
+install-safety:
+	$(MAKE) -C infrastructure install-safety
 
 
 

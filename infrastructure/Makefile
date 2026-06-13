@@ -220,7 +220,7 @@ test-gitops:
 	@echo "Running GitOps flow E2E test..."
 	bash scripts/test-gitops-flow.sh
 
-.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check
+.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check install-safety
 test-kyverno:
 	@bash ../scripts/test-kyverno.sh
 
@@ -302,6 +302,17 @@ daily-cost-check: check-aws-resources estimate-cost
 	@echo "Daily check complete."
 	@echo "If anything unexpected is running: make emergency-cleanup"
 	@echo "AWS Budget alerts configured? See: infrastructure/docs/aws-budget-setup.md"
+
+install-safety:
+	@echo "Ensuring namespaces clusters-dev and clusters-staging exist..."
+	@kubectl create namespace clusters-dev --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl create namespace clusters-staging --dry-run=client -o yaml | kubectl apply -f -
+	@echo "Creating auto-pause-env secret from ALERT_WEBHOOK_URL..."
+	@kubectl create secret generic auto-pause-env -n clusters-dev \
+		--from-literal=ALERT_WEBHOOK_URL="$(ALERT_WEBHOOK_URL)" \
+		--dry-run=client -o yaml | kubectl apply -f -
+	@echo "Applying auto-pause CronJob..."
+	@kubectl apply -f crossplane/safety/auto-pause-cronjob.yaml
 
 argocd-app-list:
 	@echo "ArgoCD applications:"

@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auto-pause-sa
+  namespace: clusters-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: auto-pause-role
+  namespace: clusters-dev
+rules:
+  - apiGroups: ["platform.io"]
+    resources: ["eksclusters"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auto-pause-rolebinding
+  namespace: clusters-dev
+subjects:
+  - kind: ServiceAccount
+    name: auto-pause-sa
+    namespace: clusters-dev
+roleRef:
+  kind: Role
+  name: auto-pause-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auto-pause-script
+  namespace: clusters-dev
+data:
+  auto-pause.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    NAMESPACE="clusters-dev"
+    echo "Starting daily auto-pause check for namespace ${NAMESPACE}..."
+
+    # Fetch all EKSCluster claims in clusters-dev that DO NOT have idp.platform.io/long-running: "true"
+    CLAIMS=$(kubectl get eksclusters.platform.io -n "${NAMESPACE}" -o json | jq -r '.items[] | select((.metadata.annotations // {})["idp.platform.io/long-running"] != "true") | .metadata.name' 2>/dev/null || true)
+
+    if [ -z "${CLAIMS}" ] || [ "${CLAIMS}" = "null" ]; then
+      echo "No clusters found matching auto-pause criteria."
+      exit 0
+    fi
+
+    for claim in ${CLAIMS}; do
+      echo "Pausing EKSCluster claim: ${claim}..."
+      # Annotate with crossplane.io/paused: "true"
+      kubectl annotate eksclusters.platform.io -n "${NAMESPACE}" "${claim}" crossplane.io/paused="true" --overwrite
+      echo "Paused cluster: ${claim}"
+
+      # Post alert webhook if ALERT_WEBHOOK_URL is set
+      if [ -n "${ALERT_WEBHOOK_URL:-}" ]; then
+        echo "Sending alert to webhook..."
+        PAYLOAD=$(jq -n --arg name "$claim" --arg ns "$NAMESPACE" '{text: "⚠️ EKS Cluster auto-paused:\nCluster `\($name)` in namespace `\($ns)` has been daily auto-paused because it does not have the `idp.platform.io/long-running: \"true\"` annotation."}')
+        curl -s -X POST -H "Content-Type: application/json" -d "${PAYLOAD}" "${ALERT_WEBHOOK_URL}" || echo "Warning: Failed to send webhook alert."
+      fi
+    done
+
+    echo "Daily auto-pause check complete."
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: auto-pause-cronjob
+  namespace: clusters-dev
+spec:
+  schedule: "0 20 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: auto-pause-sa
+          containers:
+            - name: auto-pause
+              image: alpine/k8s:1.30.2
+              command: ["/bin/bash", "/scripts/auto-pause.sh"]
+              env:
+                - name: ALERT_WEBHOOK_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: auto-pause-env
+                      key: ALERT_WEBHOOK_URL
+                      optional: true
+              volumeMounts:
+                - name: script-vol
+                  mountPath: /scripts
+          volumes:
+            - name: script-vol
+              configMap:
+                name: auto-pause-script
+                defaultMode: 0755
+          restartPolicy: OnFailure
