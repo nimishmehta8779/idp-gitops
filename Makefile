@@ -59,6 +59,13 @@ update-providerconfigs:
 verify-aws:
 	$(MAKE) -C infrastructure verify-aws
 
-.PHONY: verify-network-infra
+.PHONY: verify-network-infra provision-platform-network network-status
 verify-network-infra:
 	$(MAKE) -C infrastructure verify-network-infra
+
+provision-platform-network:
+	$(MAKE) -C infrastructure provision-platform-network
+
+network-status:
+	$(MAKE) -C infrastructure network-status
+

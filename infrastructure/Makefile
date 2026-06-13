@@ -377,3 +377,49 @@ verify-network-infra:
 	@chmod +x scripts/verify-network-infra.sh
 	@bash scripts/verify-network-infra.sh
 
+install-network-xrd:
+	kubectl apply -f infrastructure/crossplane/network/xrd.yaml
+	kubectl wait xrd/xnetworks.platform.io \
+		--for=condition=Established \
+		--timeout=60s
+	kubectl apply -f infrastructure/crossplane/network/composition.yaml
+	kubectl apply -f infrastructure/crossplane/network/environment-configs.yaml
+	kubectl apply -f infrastructure/crossplane/network/namespace.yaml
+	@echo "Network XRD installed ✅"
+
+provision-platform-network:
+	@echo "Provisioning platform-owned network infrastructure..."
+	@echo "This creates real AWS VPCs — cost: ~$$0.50/month per VPC"
+	@read -p "Proceed? (y/n): " confirm; \
+	if [ "$$confirm" != "y" ]; then echo "Aborted."; exit 1; fi
+	kubectl apply -f infrastructure/crossplane/network/network-claim-dev.yaml
+	@echo "Dev network provisioning started"
+	@echo "Monitor: kubectl get networks -n platform-network"
+
+verify-network-infra-inline:
+	@echo "Verifying network infrastructure setup..."
+	@kubectl get xrd xnetworks.platform.io \
+		--no-headers 2>/dev/null | grep -q "True" \
+		&& echo "XNetwork XRD: Established ✅" \
+		|| echo "XNetwork XRD: NOT established ❌"
+	@kubectl get composition network-composition \
+		--no-headers 2>/dev/null \
+		&& echo "Network Composition: Present ✅" \
+		|| echo "Network Composition: Missing ❌"
+	@kubectl get xrd xeksclusters.platform.io \
+		--no-headers 2>/dev/null | grep -q "True" \
+		&& echo "XEKSCluster XRD: Still Established ✅" \
+		|| echo "XEKSCluster XRD: BROKEN ❌"
+	@kubectl get environmentconfigs \
+		--no-headers 2>/dev/null | grep -q "idp-dev-network" \
+		&& echo "EnvironmentConfigs: Present ✅" \
+		|| echo "EnvironmentConfigs: Missing ❌"
+	@kubectl get composition eks-cluster -o yaml \
+		2>/dev/null | grep -q "subnetIdSelector" \
+		&& echo "EKS references network via selector ✅" \
+		|| echo "EKS still creating own VPC ❌"
+
+network-status:
+	@kubectl get networks -n platform-network 2>/dev/null || echo "No network claims found"
+	@kubectl get xnetworks 2>/dev/null || echo "No composite networks found"
+	@kubectl get managed | grep -i "vpc\|subnet\|igw\|route" 2>/dev/null || echo "No network managed resources"
