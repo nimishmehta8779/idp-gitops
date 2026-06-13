@@ -220,7 +220,7 @@ test-gitops:
 	@echo "Running GitOps flow E2E test..."
 	bash scripts/test-gitops-flow.sh
 
-.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check install-safety
+.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check install-safety pre-provision
 test-kyverno:
 	@bash ../scripts/test-kyverno.sh
 
@@ -313,6 +313,9 @@ install-safety:
 		--dry-run=client -o yaml | kubectl apply -f -
 	@echo "Applying auto-pause CronJob..."
 	@kubectl apply -f crossplane/safety/auto-pause-cronjob.yaml
+
+pre-provision:
+	@bash ../scripts/pre-provision-checklist.sh
 
 argocd-app-list:
 	@echo "ArgoCD applications:"
