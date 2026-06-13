@@ -1,3 +1,10 @@
+ifneq (,$(wildcard ../.env))
+    include ../.env
+    export
+endif
+
+AWS_DEFAULT_REGION ?= us-east-1
+
 .PHONY: check-prereqs cluster-up cluster-down install-crossplane install-argocd install-backstage backstage-dev backstage-stop backstage-restart
 
 check-prereqs:
@@ -213,12 +220,88 @@ test-gitops:
 	@echo "Running GitOps flow E2E test..."
 	bash scripts/test-gitops-flow.sh
 
-.PHONY: test-kyverno emergency-cleanup
+.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check
 test-kyverno:
 	@bash ../scripts/test-kyverno.sh
 
+check-aws-resources:
+	@echo "Checking for running Crossplane-managed AWS resources..."
+	@echo ""
+	@echo "=== EKS Clusters ==="
+	@aws eks list-clusters \
+		--region $(AWS_DEFAULT_REGION) \
+		--query 'clusters' \
+		--output table 2>/dev/null || echo "None found"
+	@echo ""
+	@echo "=== VPCs ==="
+	@aws ec2 describe-vpcs \
+		--filters "Name=tag:managed-by,Values=crossplane" \
+		--query 'Vpcs[*].{VpcId:VpcId,Environment:Tags[?Key==`environment`]|[0].Value,Team:Tags[?Key==`team`]|[0].Value}' \
+		--region $(AWS_DEFAULT_REGION) \
+		--output table 2>/dev/null || echo "None found"
+	@echo ""
+	@echo "=== EC2 Instances (Node Groups) ==="
+	@aws ec2 describe-instances \
+		--filters "Name=tag:managed-by,Values=crossplane" \
+		          "Name=instance-state-name,Values=running,pending" \
+		--query 'Reservations[*].Instances[*].{Id:InstanceId,Type:InstanceType,Environment:Tags[?Key==`environment`]|[0].Value,Team:Tags[?Key==`team`]|[0].Value}' \
+		--region $(AWS_DEFAULT_REGION) \
+		--output table 2>/dev/null || echo "None found"
+	@echo ""
+	@echo "=== IAM Roles (Crossplane-managed) ==="
+	@aws iam list-roles \
+		--query 'Roles[?contains(RoleName, `idp-`) || contains(RoleName, `crossplane-`)].{Name:RoleName,Created:CreateDate}' \
+		--output table 2>/dev/null || echo "None found"
+	@echo ""
+	@echo "If resources shown above are unexpected run: make emergency-cleanup"
+
+estimate-cost:
+	@echo "Estimating cost of currently provisioned clusters..."
+	@echo ""
+	@kubectl get eksclusters -A \
+		-o custom-columns=\
+	'NAME:.metadata.name,\
+	NAMESPACE:.metadata.namespace,\
+	ENV:.spec.parameters.environment,\
+	INSTANCE:.spec.parameters.nodeInstanceType,\
+	NODES:.spec.parameters.nodeCount,\
+	READY:.status.conditions[0].status' \
+		2>/dev/null || echo "No clusters found"
+	@echo ""
+	@echo "Cost reference:"
+	@echo "  EKS control plane:  \$$0.10/hr (\$$72/month) per cluster"
+	@echo "  t3.medium per node: \$$0.0416/hr (\$$30/month)"
+	@echo "  t3.large per node:  \$$0.0832/hr (\$$60/month)"
+	@echo "  m5.large per node:  \$$0.096/hr (\$$70/month)"
+
 emergency-cleanup:
-	@bash ../scripts/emergency-cleanup.sh
+	@echo "⚠️  EMERGENCY CLEANUP — deleting all Crossplane claims"
+	@echo "This will delete ALL clusters in ALL namespaces"
+	@echo "AWS resources will be deprovisioned by Crossplane"
+	@echo ""
+	@read -p "Type CONFIRM to proceed: " confirm; \
+	if [ "$$confirm" != "CONFIRM" ]; then \
+		echo "Aborted."; \
+		exit 1; \
+	fi
+	@echo "Deleting all EKSCluster claims..."
+	@kubectl delete eksclusters --all -n clusters-dev 2>/dev/null || true
+	@kubectl delete eksclusters --all -n clusters-staging 2>/dev/null || true
+	@echo ""
+	@echo "Claims deleted. Crossplane is now deprovisioning AWS resources."
+	@echo "Monitor cleanup with: make check-aws-resources"
+	@echo "Full cleanup takes approximately 15-20 minutes."
+
+watch-cleanup:
+	@echo "Watching Crossplane managed resource cleanup..."
+	@echo "Press Ctrl+C to stop watching"
+	@watch -n 30 'kubectl get managed 2>/dev/null | grep -v "True.*True" || echo "All managed resources cleaned up ✅"'
+
+daily-cost-check: check-aws-resources estimate-cost
+	@echo ""
+	@echo "Daily check complete."
+	@echo "If anything unexpected is running: make emergency-cleanup"
+	@echo "AWS Budget alerts configured? See: infrastructure/docs/aws-budget-setup.md"
 
 argocd-app-list:
 	@echo "ArgoCD applications:"

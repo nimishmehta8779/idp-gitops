@@ -1,3 +1,10 @@
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+AWS_DEFAULT_REGION ?= us-east-1
+
 .PHONY: backstage-dev backstage-stop backstage-restart
 
 backstage-dev:
@@ -21,12 +28,24 @@ catalog-hygiene:
 install-kyverno-policies:
 	$(MAKE) -C infrastructure install-kyverno-policies
 
-.PHONY: test-kyverno emergency-cleanup
+.PHONY: test-kyverno check-aws-resources estimate-cost emergency-cleanup watch-cleanup daily-cost-check
 test-kyverno:
 	$(MAKE) -C infrastructure test-kyverno
 
+check-aws-resources:
+	$(MAKE) -C infrastructure check-aws-resources
+
+estimate-cost:
+	$(MAKE) -C infrastructure estimate-cost
+
 emergency-cleanup:
 	$(MAKE) -C infrastructure emergency-cleanup
+
+watch-cleanup:
+	$(MAKE) -C infrastructure watch-cleanup
+
+daily-cost-check:
+	$(MAKE) -C infrastructure daily-cost-check
 
 
 
