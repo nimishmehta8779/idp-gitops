@@ -35,11 +35,11 @@ fi
 
 # 2. Network Composition exists
 echo -n "Checking Network Composition... "
-if kubectl get composition network-infra &>/dev/null; then
+if kubectl get composition network-composition &>/dev/null; then
   echo -e "${GREEN}PASSED${NC}"
   NET_COMP_OK=true
 else
-  echo -e "${RED}FAILED${NC} (network-infra not found)"
+  echo -e "${RED}FAILED${NC} (network-composition not found)"
   NET_COMP_OK=false
 fi
 

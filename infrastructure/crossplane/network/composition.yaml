@@ -1,7 +1,7 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: network-infra
+  name: network-composition
   labels:
     guide: crossplane-network
 spec:
@@ -384,3 +384,54 @@ spec:
             map:
               dev: aws-dev
               staging: aws-staging
+  - step: go-templating
+    functionRef:
+      name: function-go-templating
+    input:
+      apiVersion: gotemplating.fn.crossplane.io/v1beta1
+      kind: GoTemplate
+      source: Inline
+      inline:
+        template: |
+          {{ if .observed.composite.resource.spec.parameters.enableNatGateway }}
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: EIP
+          metadata:
+            name: {{ .observed.composite.resource.metadata.name }}-nat-eip
+            annotations:
+              gotemplating.fn.crossplane.io/composition-resource-name: nat-eip
+          spec:
+            providerConfigRef:
+              name: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}aws-dev{{ else }}aws-staging{{ end }}
+            deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}Delete{{ else }}Orphan{{ end }}
+            forProvider:
+              domain: vpc
+              region: {{ .observed.composite.resource.spec.parameters.region }}
+              tags:
+                environment: {{ .observed.composite.resource.spec.parameters.environment }}
+                managed-by: crossplane
+                provisioned-by: backstage-idp
+                region: {{ .observed.composite.resource.spec.parameters.region }}
+          ---
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: NATGateway
+          metadata:
+            name: {{ .observed.composite.resource.metadata.name }}-nat-gw
+            annotations:
+              gotemplating.fn.crossplane.io/composition-resource-name: nat-gw
+          spec:
+            providerConfigRef:
+              name: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}aws-dev{{ else }}aws-staging{{ end }}
+            deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}Delete{{ else }}Orphan{{ end }}
+            forProvider:
+              allocationIdRef:
+                name: {{ .observed.composite.resource.metadata.name }}-nat-eip
+              subnetIdRef:
+                name: {{ .observed.composite.resource.metadata.name }}-subnet-a
+              region: {{ .observed.composite.resource.spec.parameters.region }}
+              tags:
+                environment: {{ .observed.composite.resource.spec.parameters.environment }}
+                managed-by: crossplane
+                provisioned-by: backstage-idp
+                region: {{ .observed.composite.resource.spec.parameters.region }}
+          {{ end }}
