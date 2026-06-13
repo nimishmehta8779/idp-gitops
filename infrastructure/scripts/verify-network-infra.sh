@@ -15,6 +15,13 @@ BOLD='\033[1m'
 echo -e "${BOLD}Starting Separated Network Infrastructure Verification...${NC}"
 echo "----------------------------------------------------------------------"
 
+# Resolve absolute paths relative to script location
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
+
+NETWORK_CLAIM_FILE="$PROJECT_ROOT/infrastructure/crossplane/network/claim-example.yaml"
+EKS_CLAIM_FILE="$PROJECT_ROOT/infrastructure/crossplane/eks/claim-example.yaml"
+
 # 1. XNetwork XRD is Established
 echo -n "Checking XNetwork XRD Established... "
 STATUS_NET_XRD=$(kubectl get xrd xnetworks.platform.io -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' 2>/dev/null || echo "False")
@@ -48,7 +55,7 @@ else
 fi
 
 # 4. EKS Composition references network not creates VPC
-echo -n "Checking EKS Composition decupled VPC... "
+echo -n "Checking EKS Composition decoupled VPC... "
 EKS_COMP_YAML=$(kubectl get composition eks-cluster -o yaml 2>/dev/null || echo "")
 if [ -n "$EKS_COMP_YAML" ]; then
   # Should not create VPC
@@ -80,19 +87,23 @@ fi
 
 # 6. Example Network claim applies without error
 echo -n "Validating Example Network claim... "
-if kubectl apply -f infrastructure/crossplane/network/claim-example.yaml --dry-run=server &>/dev/null; then
-  # Actually apply it to ensure no validation error
-  kubectl apply -f infrastructure/crossplane/network/claim-example.yaml &>/dev/null
-  echo -e "${GREEN}PASSED${NC}"
-  NET_CLAIM_OK=true
+if [ -f "$NETWORK_CLAIM_FILE" ]; then
+  if kubectl apply -f "$NETWORK_CLAIM_FILE" --dry-run=server &>/dev/null; then
+    # Actually apply it to ensure no validation error
+    kubectl apply -f "$NETWORK_CLAIM_FILE" &>/dev/null
+    echo -e "${GREEN}PASSED${NC}"
+    NET_CLAIM_OK=true
+  else
+    echo -e "${RED}FAILED${NC} (Failed dry-run apply)"
+    NET_CLAIM_OK=false
+  fi
 else
-  echo -e "${RED}FAILED${NC} (Failed dry-run apply)"
+  echo -e "${RED}FAILED${NC} (claim-example.yaml not found at $NETWORK_CLAIM_FILE)"
   NET_CLAIM_OK=false
 fi
 
 # 7. Example EKS claim references network correctly
 echo -n "Validating Example EKS claim references network... "
-EKS_CLAIM_FILE="infrastructure/crossplane/eks/claim-example.yaml"
 if [ -f "$EKS_CLAIM_FILE" ]; then
   NET_REF=$(grep "networkRef:" "$EKS_CLAIM_FILE" | awk '{print $2}' | xargs || echo "")
   if [ "$NET_REF" = "dev-network" ]; then
@@ -109,14 +120,14 @@ if [ -f "$EKS_CLAIM_FILE" ]; then
     EKS_CLAIM_OK=false
   fi
 else
-  echo -e "${RED}FAILED${NC} (claim-example.yaml not found)"
+  echo -e "${RED}FAILED${NC} (claim-example.yaml not found at $EKS_CLAIM_FILE)"
   EKS_CLAIM_OK=false
 fi
 
 # 8. All Kyverno policies still pass
 echo -n "Testing Kyverno Policies... "
 # Run existing kyverno test suite
-if make -C infrastructure test-kyverno &>/dev/null; then
+if make -C "$PROJECT_ROOT" test-kyverno &>/dev/null; then
   echo -e "${GREEN}PASSED${NC}"
   KYVERNO_OK=true
 else
@@ -125,7 +136,7 @@ else
 fi
 
 # Cleanup applied claim-example if needed
-kubectl delete -f infrastructure/crossplane/network/claim-example.yaml --ignore-not-found &>/dev/null
+kubectl delete -f "$NETWORK_CLAIM_FILE" --ignore-not-found &>/dev/null
 
 echo "----------------------------------------------------------------------"
 echo -e "${BOLD}Verification Summary:${NC}"

@@ -21,4 +21,3 @@ spec:
     networkRef: dev-network
   writeConnectionSecretToRef:
     name: alpha-test-kubeconfig
-    namespace: clusters-dev

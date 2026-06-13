@@ -8,16 +8,17 @@ metadata:
     environment: dev
     managed-by: backstage-idp
   annotations:
-    idp.platform.io/cost-acknowledged: "true"
+    idp.platform.io/cost-acknowledged: 'true'
 spec:
   parameters:
     clusterName: test-invalid-region
     region: eu-west-1
     nodeInstanceType: t3.medium
     nodeCount: 2
-    kubernetesVersion: "1.34"
+    kubernetesVersion: '1.34'
     environment: dev
     teamName: team-alpha
     costCenter: default
+    networkRef: dev-network
   writeConnectionSecretToRef:
     name: test-invalid-region-kubeconfig
