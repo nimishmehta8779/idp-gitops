@@ -39,6 +39,9 @@ spec:
           spec:
             forProvider:
               cidrBlock: 10.0.0.0/16
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: metadata.name
           toFieldPath: metadata.name
@@ -70,11 +73,17 @@ spec:
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
           kind: Subnet
+          metadata:
+            labels:
+              managed-by: crossplane
           spec:
             forProvider:
               cidrBlock: 10.0.1.0/24
               availabilityZone: ''
               mapPublicIpOnLaunch: true
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: metadata.name
           toFieldPath: metadata.name
@@ -112,9 +121,6 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.environment
           toFieldPath: metadata.labels[environment]
-        - type: ToValue
-          toFieldPath: metadata.labels[managed-by]
-          value: crossplane
         - type: PatchSet
           patchSetName: regional-resource
         - type: PatchSet
@@ -127,11 +133,17 @@ spec:
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
           kind: Subnet
+          metadata:
+            labels:
+              managed-by: crossplane
           spec:
             forProvider:
               cidrBlock: 10.0.2.0/24
               availabilityZone: ''
               mapPublicIpOnLaunch: true
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: metadata.name
           toFieldPath: metadata.name
@@ -169,9 +181,6 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.environment
           toFieldPath: metadata.labels[environment]
-        - type: ToValue
-          toFieldPath: metadata.labels[managed-by]
-          value: crossplane
         - type: PatchSet
           patchSetName: regional-resource
         - type: PatchSet
@@ -184,6 +193,11 @@ spec:
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
           kind: InternetGateway
+          spec:
+            forProvider:
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: metadata.name
           toFieldPath: metadata.name
@@ -216,7 +230,10 @@ spec:
           apiVersion: ec2.aws.upbound.io/v1beta1
           kind: RouteTable
           spec:
-            forProvider: {}
+            forProvider:
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: metadata.name
           toFieldPath: metadata.name
@@ -367,12 +384,6 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags["environment"]
-        - type: ToValue
-          toFieldPath: spec.forProvider.tags["managed-by"]
-          toValue: crossplane
-        - type: ToValue
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-          toValue: backstage-idp
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.tags["region"]

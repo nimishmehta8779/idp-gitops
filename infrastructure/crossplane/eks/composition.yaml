@@ -47,6 +47,9 @@ spec:
                 - subnetIdSelector:
                     matchLabels:
                       managed-by: crossplane
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
@@ -90,6 +93,9 @@ spec:
                 : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
                 : \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
                 }\n"
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
@@ -123,6 +129,9 @@ spec:
               subnetIdSelector:
                 matchLabels:
                   managed-by: crossplane
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - fromFieldPath: spec.parameters.clusterName
           toFieldPath: metadata.name
@@ -169,6 +178,9 @@ spec:
                 : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
                 : \"eks.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
                 }\n"
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.clusterName
@@ -311,6 +323,9 @@ spec:
               clientIdList:
               - sts.amazonaws.com
               url: ''
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -355,6 +370,9 @@ spec:
           spec:
             forProvider:
               assumeRolePolicyDocument: ''
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -497,6 +515,9 @@ spec:
               clusterName: ''
               resolveConflictsOnCreate: OVERWRITE
               resolveConflictsOnUpdate: OVERWRITE
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -537,6 +558,9 @@ spec:
               addonName: kube-proxy
               clusterName: ''
               resolveConflictsOnUpdate: OVERWRITE
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -577,6 +601,9 @@ spec:
               addonName: coredns
               clusterName: ''
               resolveConflictsOnUpdate: OVERWRITE
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -617,6 +644,9 @@ spec:
               addonName: aws-ebs-csi-driver
               clusterName: ''
               resolveConflictsOnUpdate: OVERWRITE
+              tags:
+                managed-by: crossplane
+                provisioned-by: backstage-idp
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -699,12 +729,6 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.clusterName
           toFieldPath: spec.forProvider.tags["cluster-name"]
-        - type: ToValue
-          toFieldPath: spec.forProvider.tags["managed-by"]
-          toValue: crossplane
-        - type: ToValue
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-          toValue: backstage-idp
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.costCenter
           toFieldPath: spec.forProvider.tags["cost-center"]
