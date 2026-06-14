@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: team-eks-clusters
+  name: team-eks-clusters-staging
   namespace: argocd
 spec:
   generators:
@@ -16,27 +16,27 @@ spec:
 
   template:
     metadata:
-      name: '{{team}}-eks-clusters'
+      name: '{{team}}-eks-clusters-staging'
       labels:
         team: '{{team}}'
         managed-by: argocd-applicationset
     spec:
-      project: idp-platform-dev
+      project: idp-platform-staging
       source:
         repoURL: 'https://github.com/nimishmehta8779/{{repo}}'
         targetRevision: main
         path: eks
         directory:
           recurse: true
-          include: '*.yaml'
+          include: '*-staging-*.yaml'
           exclude: '.gitkeep'
       destination:
         server: https://kubernetes.default.svc
-        namespace: clusters-dev
+        namespace: clusters-staging
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
+          selfHeal: false
         syncOptions:
           - CreateNamespace=true
           - ApplyOutOfSyncOnly=true

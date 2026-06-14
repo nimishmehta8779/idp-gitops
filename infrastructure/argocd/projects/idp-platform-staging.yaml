@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: idp-platform-staging
+  namespace: argocd
+spec:
+  description: IDP platform — staging environment EKS cluster provisioning via team infra repos
+  sourceRepos:
+    - https://github.com/nimishmehta8779/*-infra
+    - https://github.com/nimishmehta8779/*-infra.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: clusters-staging
+    - server: https://kubernetes.default.svc
+      namespace: clusters
+  clusterResourceWhitelist:
+    - group: 'platform.io'
+      kind: 'XEKSCluster'
+    - group: 'platform.idp.io'
+      kind: 'EKSCluster'
+    - group: '*'
+      kind: 'Namespace'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
