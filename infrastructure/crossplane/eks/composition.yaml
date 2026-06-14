@@ -701,10 +701,10 @@ spec:
           toFieldPath: spec.forProvider.tags["cluster-name"]
         - type: ToValue
           toFieldPath: spec.forProvider.tags["managed-by"]
-          value: crossplane
+          toValue: crossplane
         - type: ToValue
           toFieldPath: spec.forProvider.tags["provisioned-by"]
-          value: backstage-idp
+          toValue: backstage-idp
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.costCenter
           toFieldPath: spec.forProvider.tags["cost-center"]

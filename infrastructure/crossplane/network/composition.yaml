@@ -369,10 +369,10 @@ spec:
           toFieldPath: spec.forProvider.tags["environment"]
         - type: ToValue
           toFieldPath: spec.forProvider.tags["managed-by"]
-          value: crossplane
+          toValue: crossplane
         - type: ToValue
           toFieldPath: spec.forProvider.tags["provisioned-by"]
-          value: backstage-idp
+          toValue: backstage-idp
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.tags["region"]
