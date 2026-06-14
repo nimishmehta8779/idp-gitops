@@ -98,6 +98,7 @@ spec:
       action: fetch:template
       input:
         url: ./skeleton
+        targetPath: ./eks/${{ parameters.clusterName }}
         values:
           teamName: ${{ parameters.teamName }}
           clusterName: ${{ parameters.clusterName }}
@@ -110,73 +111,40 @@ spec:
           components: ${{ parameters.components }}
           createdAt: ${{ now() }}
 
-    # Staging Branching Strategy: Exclude GitOps folder from initial main branch push
-    - id: delete_gitops_staging
-      name: Exclude GitOps Claim from Main
-      if: ${{ parameters.environment == 'staging' }}
-      action: fs:delete
-      input:
-        files:
-          - gitops
-
-    # Publish Dev: Push everything to main directly
+    # Publish Dev: Commit directly to main of the team infra repo
     - id: publish_dev
-      name: Publish directly to GitHub (Dev)
+      name: Commit Cluster Claim (Dev)
       if: ${{ parameters.environment == 'dev' }}
-      action: publish:github
+      action: github:repo:delete-file
       input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
-        defaultBranch: main
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        filesToCreate:
+          - "eks/${{ parameters.clusterName }}/claim.yaml"
+          - "eks/${{ parameters.clusterName }}/catalog-info.yaml"
+          - "eks/${{ parameters.clusterName }}/mkdocs.yml"
+          - "eks/${{ parameters.clusterName }}/docs/index.md"
+          - "eks/${{ parameters.clusterName }}/README.md"
+        commitMessage: "infra: add EKS cluster ${{ parameters.clusterName }} claim and metadata (dev)"
+        branch: main
 
-    # Publish Staging: Create Repo on main with only metadata (README and catalog-info)
+    # Publish Staging: Commit to a branch and open a PR
     - id: publish_staging
-      name: Publish Repository Structure (Staging)
+      name: Create Staging Pull Request
       if: ${{ parameters.environment == 'staging' }}
-      action: publish:github
+      action: github:repo:delete-file
       input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
-        defaultBranch: main
-        protectDefaultBranch: true
-
-    # Staging PR flow: Fetch skeleton again to get the claim file, then clean metadata
-    - id: fetch_claim_staging
-      name: Fetch GitOps Claim (Staging)
-      if: ${{ parameters.environment == 'staging' }}
-      action: fetch:template
-      input:
-        url: ./skeleton
-        values:
-          teamName: ${{ parameters.teamName }}
-          clusterName: ${{ parameters.clusterName }}
-          environment: ${{ parameters.environment }}
-          awsRegion: ${{ parameters.awsRegion }}
-          nodeCount: ${{ parameters.nodeCount }}
-          instanceType: ${{ parameters.instanceType }}
-          kubernetesVersion: ${{ parameters.kubernetesVersion }}
-          costCenter: ${{ parameters.costCenter }}
-          components: ${{ parameters.components }}
-          createdAt: ${{ now() }}
-
-    - id: clean_metadata_staging
-      name: Clean Workspace Metadata for PR
-      if: ${{ parameters.environment == 'staging' }}
-      action: fs:delete
-      input:
-        files:
-          - README.md
-          - catalog-info.yaml
-
-    # Publish Pull Request (Staging only)
-    - id: pr_staging
-      name: Create Pull Request for Cluster Claim
-      if: ${{ parameters.environment == 'staging' }}
-      action: publish:github:pull-request
-      input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
-        branchName: cluster-request/${{ parameters.clusterName }}
-        targetBranchName: main
-        title: "[Cluster Request] ${{ parameters.clusterName }} - ${{ parameters.teamName }}"
-        description: |
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        filesToCreate:
+          - "eks/${{ parameters.clusterName }}/claim.yaml"
+          - "eks/${{ parameters.clusterName }}/catalog-info.yaml"
+          - "eks/${{ parameters.clusterName }}/mkdocs.yml"
+          - "eks/${{ parameters.clusterName }}/docs/index.md"
+          - "eks/${{ parameters.clusterName }}/README.md"
+        commitMessage: "infra: request EKS cluster ${{ parameters.clusterName }} (staging)"
+        branch: cluster-request/${{ parameters.clusterName }}
+        prTargetBranch: main
+        prTitle: "[Cluster Request] ${{ parameters.clusterName }} - ${{ parameters.teamName }}"
+        prBody: |
           ### EKS Cluster Request Details
           - **Cluster Name**: `${{ parameters.clusterName }}`
           - **Team Name**: `${{ parameters.teamName }}`
@@ -186,48 +154,34 @@ spec:
           - **Instance Type**: `${{ parameters.instanceType }}`
           
           Please review the Crossplane EKSCluster claim details before merging.
-
-    # Label PR (Staging only)
-    - id: label_pr_staging
-      name: Label Staging Pull Request
-      if: ${{ parameters.environment == 'staging' }}
-      action: github:issues:label
-      input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=eks-cluster-${{ parameters.clusterName }}
-        number: ${{ steps.pr_staging.output.pullRequestNumber | int }}
-        labels:
+        prLabels:
           - cluster-request
           - needs-review
 
     # Wait for GitHub to index files
     - id: wait_for_github
       name: Wait for GitHub Indexing
+      if: ${{ parameters.environment == 'dev' }}
       action: debug:wait
       input:
-        seconds: 10
+        seconds: 5
 
-    # Register in Backstage Catalog
+    # Register in Backstage Catalog (Dev only)
     - id: register_dev
       name: Register in Catalog (Dev)
       if: ${{ parameters.environment == 'dev' }}
-      action: catalog:register
+      action: idp:catalog:register
       input:
-        catalogInfoUrl: ${{ steps.publish_dev.output.repoContentsUrl }}/catalog-info.yaml
-
-    - id: register_staging
-      name: Register in Catalog (Staging)
-      if: ${{ parameters.environment == 'staging' }}
-      action: catalog:register
-      input:
-        catalogInfoUrl: ${{ steps.publish_staging.output.repoContentsUrl }}/catalog-info.yaml
+        catalogInfoUrl: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/eks/${{ parameters.clusterName }}/catalog-info.yaml
 
   output:
     links:
-      - title: Repository
-        url: ${{ steps.publish_dev.output.remoteUrl or steps.publish_staging.output.remoteUrl }}
+      - title: Team Infrastructure Repository
+        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra
       - title: Pull Request
-        url: ${{ steps.pr_staging.output.remoteUrl }}
+        url: ${{ steps.publish_staging.output.pullRequestUrl }}
         if: ${{ parameters.environment == 'staging' }}
       - title: Open in Catalog
         icon: catalog
-        entityRef: ${{ steps.register_dev.output.entityRef or steps.register_staging.output.entityRef }}
+        entityRef: ${{ steps.register_dev.output.entityRef }}
+        if: ${{ parameters.environment == 'dev' }}

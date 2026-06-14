@@ -8,6 +8,7 @@ spec:
 
   sourceRepos:
     - https://github.com/nimishmehta8779/idp-gitops.git
+    - https://github.com/nimishmehta8779/*-infra.git
 
   destinations:
     - server: https://kubernetes.default.svc
