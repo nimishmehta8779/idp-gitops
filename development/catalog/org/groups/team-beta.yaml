@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-beta
+  title: Beta Team
+  annotations:
+    backstage.io/source-location: url:https://github.com/nimishmehta8779/team-beta-infra
+    idp.platform.io/cost-center: "CC-1234"
+    idp.platform.io/primary-region: "us-east-1"
+    idp.platform.io/onboarded-at: "${{ now() }}"
+spec:
+  type: team
+  profile:
+    displayName: Beta Team
+    email: alpha@example.com
+  parent: engineering
+  members:
+    - {{ member | trim }}
