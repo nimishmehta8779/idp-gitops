@@ -378,13 +378,13 @@ verify-network-infra:
 	@bash scripts/verify-network-infra.sh
 
 install-network-xrd:
-	kubectl apply -f infrastructure/crossplane/network/xrd.yaml
+	kubectl apply -f crossplane/network/xrd.yaml
 	kubectl wait xrd/xnetworks.platform.io \
 		--for=condition=Established \
 		--timeout=60s
-	kubectl apply -f infrastructure/crossplane/network/composition.yaml
-	kubectl apply -f infrastructure/crossplane/network/environment-configs.yaml
-	kubectl apply -f infrastructure/crossplane/network/namespace.yaml
+	kubectl apply -f crossplane/network/composition.yaml
+	kubectl apply -f crossplane/network/environment-configs.yaml
+	kubectl apply -f crossplane/network/namespace.yaml
 	@echo "Network XRD installed ✅"
 
 provision-platform-network:
@@ -392,7 +392,7 @@ provision-platform-network:
 	@echo "This creates real AWS VPCs — cost: ~$$0.50/month per VPC"
 	@read -p "Proceed? (y/n): " confirm; \
 	if [ "$$confirm" != "y" ]; then echo "Aborted."; exit 1; fi
-	kubectl apply -f infrastructure/crossplane/network/network-claim-dev.yaml
+	kubectl apply -f crossplane/network/network-claim-dev.yaml
 	@echo "Dev network provisioning started"
 	@echo "Monitor: kubectl get networks -n platform-network"
 
