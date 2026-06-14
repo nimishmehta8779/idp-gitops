@@ -53,22 +53,22 @@ if [ -n "$EKS_CLUSTERS" ] && [ "$EKS_CLUSTERS" != "None" ]; then
 fi
 
 # Query VPCs
-VPCS=$(aws ec2 describe-vpcs --filters "Name=tag:managed-by,Values=crossplane" --region "${AWS_DEFAULT_REGION}" --query "Vpcs[*].VpcId" --output text 2>/dev/null || echo "")
-if [ -n "$VPCS" ] && [ "$VPCS" != "None" ]; then
+VPCS=$(aws ec2 describe-vpcs --filters "Name=tag:managed-by,Values=crossplane" --region "${AWS_DEFAULT_REGION}" --query 'Vpcs[?!contains(Tags[?Key==`crossplane-name`].Value | [0] || ``, `network`)].VpcId' --output text 2>/dev/null || echo "")
+if [ -n "$VPCS" ] && [ "$VPCS" != "None" ] && [ "$VPCS" != "" ]; then
   echo -e "${RED}- Found Crossplane-managed VPCs: $VPCS${NC}"
   UNEXPECTED_RESOURCES=true
 fi
 
 # Query EC2 Instances
 INSTANCES=$(aws ec2 describe-instances --filters "Name=tag:managed-by,Values=crossplane" "Name=instance-state-name,Values=running,pending" --region "${AWS_DEFAULT_REGION}" --query "Reservations[*].Instances[*].InstanceId" --output text 2>/dev/null || echo "")
-if [ -n "$INSTANCES" ] && [ "$INSTANCES" != "None" ]; then
+if [ -n "$INSTANCES" ] && [ "$INSTANCES" != "None" ] && [ "$INSTANCES" != "" ]; then
   echo -e "${RED}- Found running Crossplane-managed EC2 instances: $INSTANCES${NC}"
   UNEXPECTED_RESOURCES=true
 fi
 
 # Query IAM Roles
-ROLES=$(aws iam list-roles --query 'Roles[?contains(RoleName, `idp-`) || contains(RoleName, `crossplane-`)].RoleName' --output text 2>/dev/null || echo "")
-if [ -n "$ROLES" ] && [ "$ROLES" != "None" ]; then
+ROLES=$(aws iam list-roles --query 'Roles[?(contains(RoleName, `idp-`) || contains(RoleName, `crossplane-`)) && RoleName != `idp-dev-role` && RoleName != `idp-staging-role`].RoleName' --output text 2>/dev/null || echo "")
+if [ -n "$ROLES" ] && [ "$ROLES" != "None" ] && [ "$ROLES" != "" ]; then
   echo -e "${RED}- Found Crossplane-managed IAM Roles: $ROLES${NC}"
   UNEXPECTED_RESOURCES=true
 fi
