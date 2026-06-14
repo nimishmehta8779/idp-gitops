@@ -14,747 +14,603 @@ spec:
     kind: XEKSCluster
   mode: Pipeline
   pipeline:
-  - step: environment-configs
-    functionRef:
-      name: function-environment-configs
-    input:
-      apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
-      kind: Input
-      spec:
-        environmentConfigs:
-          - type: Selector
-            selector:
-              mode: Single
-              matchLabels:
-                - key: environment
-                  type: FromCompositeFieldPath
-                  valueFromFieldPath: spec.parameters.environment
-  - step: patch-and-transform
-    functionRef:
-      name: function-patch-and-transform
-    input:
-      apiVersion: pt.fn.crossplane.io/v1beta1
-      kind: Resources
-      resources:
-      - name: eks-cluster
-        base:
-          apiVersion: eks.aws.upbound.io/v1beta1
-          kind: Cluster
-          spec:
-            forProvider:
-              version: '1.34'
-              vpcConfig:
-                - subnetIdSelector:
+    - step: environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Selector
+              selector:
+                mode: Single
+                matchLabels:
+                  - key: environment
+                    type: FromCompositeFieldPath
+                    valueFromFieldPath: spec.parameters.environment
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: eks-cluster
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Cluster
+              spec:
+                forProvider:
+                  version: '1.34'
+                  vpcConfig:
+                    - subnetIdSelector:
+                        matchLabels:
+                          managed-by: crossplane
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s'
+              - fromFieldPath: spec.parameters.kubernetesVersion
+                toFieldPath: spec.forProvider.version
+              - fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.roleArnRef.name
+                type: FromCompositeFieldPath
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-cluster-role'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: 
+                  spec.forProvider.vpcConfig[0].subnetIdSelector.matchLabels.environment
+          # Decoupled network integration: selecting subnets by environment rather than direct networkRef name matching
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
+                toFieldPath: status.oidcIssuer
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: nodegroup-role
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: Role
+              spec:
+                forProvider:
+                  assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
+                    : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
+                    : \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n\
+                    \  }]\n}\n"
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-role'
+              - fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags["team"]
+              - fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: node-group
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: NodeGroup
+              spec:
+                forProvider:
+                  instanceTypes: []
+                  scalingConfig:
+                    - desiredSize: 2
+                      minSize: 1
+                      maxSize: 10
+                  amiType: AL2023_x86_64_STANDARD
+                  subnetIdSelector:
                     matchLabels:
                       managed-by: crossplane
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s'
-        - fromFieldPath: spec.parameters.kubernetesVersion
-          toFieldPath: spec.forProvider.version
-        - fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.region
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.roleArnRef.name
-          type: FromCompositeFieldPath
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-cluster-role'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.vpcConfig[0].subnetIdSelector.matchLabels.environment
-          # Decoupled network integration: selecting subnets by environment rather than direct networkRef name matching
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
-          toFieldPath: status.oidcIssuer
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: nodegroup-role
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: Role
-          spec:
-            forProvider:
-              assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
-                : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
-                : \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
-                }\n"
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-role'
-        - fromFieldPath: spec.parameters.teamName
-          toFieldPath: spec.forProvider.tags["team"]
-        - fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: node-group
-        base:
-          apiVersion: eks.aws.upbound.io/v1beta1
-          kind: NodeGroup
-          spec:
-            forProvider:
-              instanceTypes: []
-              scalingConfig:
-              - desiredSize: 2
-                minSize: 1
-                maxSize: 10
-              amiType: AL2023_x86_64_STANDARD
-              subnetIdSelector:
-                matchLabels:
-                  managed-by: crossplane
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-group'
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.clusterName
-        - fromFieldPath: spec.parameters.nodeInstanceType
-          toFieldPath: spec.forProvider.instanceTypes[0]
-        - fromFieldPath: spec.parameters.nodeCount
-          toFieldPath: spec.forProvider.scalingConfig[0].desiredSize
-        - fromFieldPath: spec.parameters.nodeCount
-          toFieldPath: spec.forProvider.scalingConfig[0].minSize
-        - fromFieldPath: spec.parameters.nodeCount
-          toFieldPath: spec.forProvider.scalingConfig[0].maxSize
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.nodeRoleArnRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-role'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.environment
-        - type: PatchSet
-          patchSetName: regional-resource
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: cluster-role
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: Role
-          spec:
-            forProvider:
-              assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
-                : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
-                : \"eks.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n\
-                }\n"
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-cluster-role'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.teamName
-          toFieldPath: spec.forProvider.tags["team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: cluster-role-attachment
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: RolePolicyAttachment
-          spec:
-            forProvider:
-              policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-cluster-role-attachment'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.roleRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-cluster-role'
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: nodegroup-policy-workernode
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: RolePolicyAttachment
-          spec:
-            forProvider:
-              policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-policy-workernode'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.roleRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-role'
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: nodegroup-policy-cni
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: RolePolicyAttachment
-          spec:
-            forProvider:
-              policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-policy-cni'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.roleRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-role'
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: nodegroup-policy-registry
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: RolePolicyAttachment
-          spec:
-            forProvider:
-              policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-policy-registry'
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.roleRef.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-node-role'
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: oidc-provider
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: OpenIDConnectProvider
-          spec:
-            forProvider:
-              clientIdList:
-              - sts.amazonaws.com
-              url: ''
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/owned"]
-          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/team"]
-          toFieldPath: spec.forProvider.tags["backstage.io/team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["environment"]
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["managed-by"]
-          toFieldPath: spec.forProvider.tags["managed-by"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["provisioned-by"]
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-oidc'
-        - type: FromCompositeFieldPath
-          fromFieldPath: status.oidcIssuer
-          toFieldPath: spec.forProvider.url
-          policy:
-            fromFieldPath: Required
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.arn
-          toFieldPath: status.oidcProviderArn
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: ebs-csi-role
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: Role
-          spec:
-            forProvider:
-              assumeRolePolicyDocument: ''
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/owned"]
-          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/team"]
-          toFieldPath: spec.forProvider.tags["backstage.io/team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["environment"]
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["managed-by"]
-          toFieldPath: spec.forProvider.tags["managed-by"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["provisioned-by"]
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-        - type: CombineFromComposite
-          combine:
-            variables:
-            - fromFieldPath: spec.parameters.clusterName
-            - fromFieldPath: spec.parameters.enableEbsCsi
-            strategy: string
-            string:
-              fmt: '%s|%v'
-          toFieldPath: metadata.name
-          transforms:
-          - type: match
-            match:
-              patterns:
-              - type: regexp
-                regexp: ^(.*)\|true$
-                result: $1-ebs-role
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: CombineFromComposite
-          combine:
-            variables:
-            - fromFieldPath: status.oidcProviderArn
-            - fromFieldPath: status.oidcIssuer
-            - fromFieldPath: spec.parameters.enableEbsCsi
-            strategy: string
-            string:
-              fmt: '%s|%s|%v'
-          toFieldPath: spec.forProvider.assumeRolePolicyDocument
-          transforms:
-          - type: match
-            match:
-              patterns:
-              - type: regexp
-                regexp: ^(.*)\|https://(.*)\|true$
-                result: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"$1"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"$2:sub":"system:serviceaccount:kube-system:ebs-csi-controller-sa","$2:aud":"sts.amazonaws.com"}}}]}'
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.arn
-          toFieldPath: status.ebsRoleArn
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: ebs-csi-role-attachment
-        base:
-          apiVersion: iam.aws.upbound.io/v1beta1
-          kind: RolePolicyAttachment
-          spec:
-            forProvider:
-              policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
-              role: ''
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.enableEbsCsi
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%v'
-          - type: match
-            match:
-              patterns:
-              - type: literal
-                literal: 'true'
-                result: 'true'
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: CombineFromComposite
-          combine:
-            variables:
-            - fromFieldPath: spec.parameters.clusterName
-            - fromFieldPath: spec.parameters.enableEbsCsi
-            strategy: string
-            string:
-              fmt: '%s|%v'
-          toFieldPath: metadata.name
-          transforms:
-          - type: match
-            match:
-              patterns:
-              - type: regexp
-                regexp: ^(.*)\|true$
-                result: $1-ebs-attach
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: CombineFromComposite
-          combine:
-            variables:
-            - fromFieldPath: spec.parameters.clusterName
-            - fromFieldPath: spec.parameters.enableEbsCsi
-            strategy: string
-            string:
-              fmt: '%s|%v'
-          toFieldPath: spec.forProvider.role
-          transforms:
-          - type: match
-            match:
-              patterns:
-              - type: regexp
-                regexp: ^(.*)\|true$
-                result: $1-ebs-role
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: addon-vpc-cni
-        base:
-          apiVersion: eks.aws.upbound.io/v1beta1
-          kind: Addon
-          spec:
-            forProvider:
-              addonName: vpc-cni
-              clusterName: ''
-              resolveConflictsOnCreate: OVERWRITE
-              resolveConflictsOnUpdate: OVERWRITE
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/owned"]
-          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/team"]
-          toFieldPath: spec.forProvider.tags["backstage.io/team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["environment"]
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["managed-by"]
-          toFieldPath: spec.forProvider.tags["managed-by"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["provisioned-by"]
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-vpc-cni'
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.clusterName
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: addon-kube-proxy
-        base:
-          apiVersion: eks.aws.upbound.io/v1beta1
-          kind: Addon
-          spec:
-            forProvider:
-              addonName: kube-proxy
-              clusterName: ''
-              resolveConflictsOnUpdate: OVERWRITE
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/owned"]
-          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/team"]
-          toFieldPath: spec.forProvider.tags["backstage.io/team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["environment"]
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["managed-by"]
-          toFieldPath: spec.forProvider.tags["managed-by"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["provisioned-by"]
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-kube-proxy'
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.clusterName
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: addon-coredns
-        base:
-          apiVersion: eks.aws.upbound.io/v1beta1
-          kind: Addon
-          spec:
-            forProvider:
-              addonName: coredns
-              clusterName: ''
-              resolveConflictsOnUpdate: OVERWRITE
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/owned"]
-          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/team"]
-          toFieldPath: spec.forProvider.tags["backstage.io/team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["environment"]
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["managed-by"]
-          toFieldPath: spec.forProvider.tags["managed-by"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["provisioned-by"]
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: metadata.name
-          transforms:
-          - type: string
-            string:
-              type: Format
-              fmt: '%s-coredns'
-        - fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.clusterName
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      - name: addon-aws-ebs-csi-driver
-        base:
-          apiVersion: eks.aws.upbound.io/v1beta1
-          kind: Addon
-          spec:
-            forProvider:
-              addonName: aws-ebs-csi-driver
-              clusterName: ''
-              resolveConflictsOnUpdate: OVERWRITE
-              tags:
-                managed-by: crossplane
-                provisioned-by: backstage-idp
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/owned"]
-          toFieldPath: spec.forProvider.tags["backstage.io/owned"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["backstage.io/team"]
-          toFieldPath: spec.forProvider.tags["backstage.io/team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["environment"]
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["managed-by"]
-          toFieldPath: spec.forProvider.tags["managed-by"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: metadata.labels["provisioned-by"]
-          toFieldPath: spec.forProvider.tags["provisioned-by"]
-        - type: CombineFromComposite
-          combine:
-            variables:
-            - fromFieldPath: spec.parameters.clusterName
-            - fromFieldPath: spec.parameters.enableEbsCsi
-            strategy: string
-            string:
-              fmt: '%s|%v'
-          toFieldPath: metadata.name
-          transforms:
-          - type: match
-            match:
-              patterns:
-              - type: regexp
-                regexp: ^(.*)\|true$
-                result: $1-ebs-csi
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: CombineFromComposite
-          combine:
-            variables:
-            - fromFieldPath: spec.parameters.clusterName
-            - fromFieldPath: spec.parameters.enableEbsCsi
-            strategy: string
-            string:
-              fmt: '%s|%v'
-          toFieldPath: spec.forProvider.clusterName
-          transforms:
-          - type: match
-            match:
-              patterns:
-              - type: regexp
-                regexp: ^(.*)\|true$
-                result: $1
-              fallbackValue: ''
-          policy:
-            fromFieldPath: Required
-        - type: FromCompositeFieldPath
-          fromFieldPath: status.ebsRoleArn
-          toFieldPath: spec.forProvider.serviceAccountRoleArn
-          policy:
-            fromFieldPath: Required
-        - type: PatchSet
-          patchSetName: mandatory-tags
-        - type: PatchSet
-          patchSetName: deletion-policy
-        - type: PatchSet
-          patchSetName: provider-config-ref
-      patchSets:
-      - name: regional-resource
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.region
-      - name: mandatory-tags
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.forProvider.tags["environment"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.teamName
-          toFieldPath: spec.forProvider.tags["team"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.clusterName
-          toFieldPath: spec.forProvider.tags["cluster-name"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.costCenter
-          toFieldPath: spec.forProvider.tags["cost-center"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.kubernetesVersion
-          toFieldPath: spec.forProvider.tags["kubernetes-version"]
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.tags["region"]
-      - name: deletion-policy
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.deletionPolicy
-          transforms:
-          - type: map
-            map:
-              dev: Delete
-              staging: Orphan
-      - name: provider-config-ref
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.environment
-          toFieldPath: spec.providerConfigRef.name
-          transforms:
-          - type: map
-            map:
-              dev: aws-dev
-              staging: aws-staging
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-group'
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.clusterName
+              - fromFieldPath: spec.parameters.nodeInstanceType
+                toFieldPath: spec.forProvider.instanceTypes[0]
+              - fromFieldPath: spec.parameters.nodeCount
+                toFieldPath: spec.forProvider.scalingConfig[0].desiredSize
+              - fromFieldPath: spec.parameters.nodeCount
+                toFieldPath: spec.forProvider.scalingConfig[0].minSize
+              - fromFieldPath: spec.parameters.nodeCount
+                toFieldPath: spec.forProvider.scalingConfig[0].maxSize
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.nodeRoleArnRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-role'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: 
+                  spec.forProvider.subnetIdSelector.matchLabels.environment
+              - type: PatchSet
+                patchSetName: regional-resource
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: cluster-role
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: Role
+              spec:
+                forProvider:
+                  assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
+                    : [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\"\
+                    : \"eks.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n\
+                    \  }]\n}\n"
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-cluster-role'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags["team"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: cluster-role-attachment
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-cluster-role-attachment'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.roleRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-cluster-role'
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: nodegroup-policy-workernode
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-policy-workernode'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.roleRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-role'
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: nodegroup-policy-cni
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-policy-cni'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.roleRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-role'
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: nodegroup-policy-registry
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: 
+                    arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-policy-registry'
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.roleRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-node-role'
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: oidc-provider
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: OpenIDConnectProvider
+              spec:
+                forProvider:
+                  clientIdList:
+                    - sts.amazonaws.com
+                  url: ''
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/owned"]
+                toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/team"]
+                toFieldPath: spec.forProvider.tags["backstage.io/team"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["environment"]
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["managed-by"]
+                toFieldPath: spec.forProvider.tags["managed-by"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["provisioned-by"]
+                toFieldPath: spec.forProvider.tags["provisioned-by"]
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-oidc'
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.oidcIssuer
+                toFieldPath: spec.forProvider.url
+                policy:
+                  fromFieldPath: Required
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.oidcProviderArn
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: addon-vpc-cni
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              spec:
+                forProvider:
+                  addonName: vpc-cni
+                  clusterName: ''
+                  resolveConflictsOnCreate: OVERWRITE
+                  resolveConflictsOnUpdate: OVERWRITE
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/owned"]
+                toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/team"]
+                toFieldPath: spec.forProvider.tags["backstage.io/team"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["environment"]
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["managed-by"]
+                toFieldPath: spec.forProvider.tags["managed-by"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["provisioned-by"]
+                toFieldPath: spec.forProvider.tags["provisioned-by"]
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-vpc-cni'
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.clusterName
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: addon-kube-proxy
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              spec:
+                forProvider:
+                  addonName: kube-proxy
+                  clusterName: ''
+                  resolveConflictsOnUpdate: OVERWRITE
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/owned"]
+                toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/team"]
+                toFieldPath: spec.forProvider.tags["backstage.io/team"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["environment"]
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["managed-by"]
+                toFieldPath: spec.forProvider.tags["managed-by"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["provisioned-by"]
+                toFieldPath: spec.forProvider.tags["provisioned-by"]
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-kube-proxy'
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.clusterName
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+          - name: addon-coredns
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              spec:
+                forProvider:
+                  addonName: coredns
+                  clusterName: ''
+                  resolveConflictsOnUpdate: OVERWRITE
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/owned"]
+                toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["backstage.io/team"]
+                toFieldPath: spec.forProvider.tags["backstage.io/team"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["environment"]
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["managed-by"]
+                toFieldPath: spec.forProvider.tags["managed-by"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.labels["provisioned-by"]
+                toFieldPath: spec.forProvider.tags["provisioned-by"]
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-coredns'
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.clusterName
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+        patchSets:
+          - name: regional-resource
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+          - name: mandatory-tags
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags["environment"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags["team"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.tags["cluster-name"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags["cost-center"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.kubernetesVersion
+                toFieldPath: spec.forProvider.tags["kubernetes-version"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.tags["region"]
+          - name: deletion-policy
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.deletionPolicy
+                transforms:
+                  - type: map
+                    map:
+                      dev: Delete
+                      staging: Orphan
+          - name: provider-config-ref
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.providerConfigRef.name
+                transforms:
+                  - type: map
+                    map:
+                      dev: aws-dev
+                      staging: aws-staging
+    - step: go-templating
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: "{{- if and .observed.composite.resource.spec.parameters.enableEbsCsi
+            (index .observed.composite.resource \"status\") (index .observed.composite.resource.status
+            \"oidcProviderArn\") (index .observed.composite.resource.status \"oidcIssuer\"\
+            ) }}\n{{- $issuer := replace \"https://\" \"\" .observed.composite.resource.status.oidcIssuer
+            }}\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name:
+            {{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
+            \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
+            ebs-csi-role\nspec:\n  providerConfigRef:\n    name: aws-{{ .observed.composite.resource.spec.parameters.environment
+            }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment
+            \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicyDocument:
+            |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\"\
+            : [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\"\
+            : {\n              \"Federated\": \"{{ .observed.composite.resource.status.oidcProviderArn
+            }}\"\n            },\n            \"Action\": \"sts:AssumeRoleWithWebIdentity\"\
+            ,\n            \"Condition\": {\n              \"StringEquals\": {\n \
+            \               \"{{ $issuer }}:sub\": \"system:serviceaccount:kube-system:ebs-csi-controller-sa\"\
+            ,\n                \"{{ $issuer }}:aud\": \"sts.amazonaws.com\"\n    \
+            \          }\n            }\n          }\n        ]\n      }\n    tags:\n\
+            \      managed-by: crossplane\n      provisioned-by: backstage-idp\n \
+            \     environment: {{ .observed.composite.resource.spec.parameters.environment
+            }}\n      team: {{ .observed.composite.resource.spec.parameters.teamName
+            }}\n      cluster-name: {{ .observed.composite.resource.spec.parameters.clusterName
+            }}\n      cost-center: {{ .observed.composite.resource.spec.parameters.costCenter
+            }}\n      kubernetes-version: \"{{ .observed.composite.resource.spec.parameters.kubernetesVersion
+            }}\"\n      region: {{ .observed.composite.resource.spec.parameters.region
+            }}\n      {{- if hasKey .observed.composite.resource.metadata \"labels\"\
+            \ }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
+            \"backstage.io/owned\" }}\n      backstage.io/owned: \"{{ index .observed.composite.resource.metadata.labels
+            \"backstage.io/owned\" }}\"\n      {{- end }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
+            \"backstage.io/team\" }}\n      backstage.io/team: \"{{ index .observed.composite.resource.metadata.labels
+            \"backstage.io/team\" }}\"\n      {{- end }}\n      {{- end }}\n---\n\
+            apiVersion: iam.aws.upbound.io/v1beta1\nkind: RolePolicyAttachment\nmetadata:\n\
+            \  name: {{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-attach\n\
+            \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
+            ebs-csi-role-attachment\nspec:\n  providerConfigRef:\n    name: aws-{{
+            .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
+            {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
+            \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n\
+            \    roleRef:\n      name: {{ .observed.composite.resource.spec.parameters.clusterName
+            }}-ebs-role\n---\napiVersion: eks.aws.upbound.io/v1beta1\nkind: Addon\n\
+            metadata:\n  name: {{ .observed.composite.resource.spec.parameters.clusterName
+            }}-ebs-csi\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
+            addon-aws-ebs-csi-driver\nspec:\n  providerConfigRef:\n    name: aws-{{
+            .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
+            {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
+            \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    addonName: aws-ebs-csi-driver\n\
+            \    clusterName: {{ .observed.composite.resource.spec.parameters.clusterName
+            }}\n    resolveConflictsOnUpdate: OVERWRITE\n    serviceAccountRoleArnRef:\n\
+            \      name: {{ .observed.composite.resource.spec.parameters.clusterName
+            }}-ebs-role\n    region: {{ .observed.composite.resource.spec.parameters.region
+            }}\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n\
+            \      environment: {{ .observed.composite.resource.spec.parameters.environment
+            }}\n      team: {{ .observed.composite.resource.spec.parameters.teamName
+            }}\n      cluster-name: {{ .observed.composite.resource.spec.parameters.clusterName
+            }}\n      cost-center: {{ .observed.composite.resource.spec.parameters.costCenter
+            }}\n      kubernetes-version: \"{{ .observed.composite.resource.spec.parameters.kubernetesVersion
+            }}\"\n      region: {{ .observed.composite.resource.spec.parameters.region
+            }}\n      {{- if hasKey .observed.composite.resource.metadata \"labels\"\
+            \ }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
+            \"backstage.io/owned\" }}\n      backstage.io/owned: \"{{ index .observed.composite.resource.metadata.labels
+            \"backstage.io/owned\" }}\"\n      {{- end }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
+            \"backstage.io/team\" }}\n      backstage.io/team: \"{{ index .observed.composite.resource.metadata.labels
+            \"backstage.io/team\" }}\"\n      {{- end }}\n      {{- end }}\n{{- end
+            }}\n"
