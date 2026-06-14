@@ -163,6 +163,9 @@ attach_role_policies() {
             "iam:GetOpenIDConnectProvider",
             "iam:TagRole",
             "iam:UntagRole",
+            "iam:ListAttachedRolePolicies",
+            "iam:ListRolePolicies",
+            "iam:GetRolePolicy",
             "sts:GetCallerIdentity",
             "sts:AssumeRole"
           ],

@@ -419,6 +419,8 @@ spec:
                 patchSetName: deletion-policy
               - type: PatchSet
                 patchSetName: provider-config-ref
+              - type: PatchSet
+                patchSetName: regional-resource
           - name: addon-kube-proxy
             base:
               apiVersion: eks.aws.upbound.io/v1beta1
@@ -462,6 +464,8 @@ spec:
                 patchSetName: deletion-policy
               - type: PatchSet
                 patchSetName: provider-config-ref
+              - type: PatchSet
+                patchSetName: regional-resource
           - name: addon-coredns
             base:
               apiVersion: eks.aws.upbound.io/v1beta1
@@ -505,6 +509,8 @@ spec:
                 patchSetName: deletion-policy
               - type: PatchSet
                 patchSetName: provider-config-ref
+              - type: PatchSet
+                patchSetName: regional-resource
         patchSets:
           - name: regional-resource
             patches:
