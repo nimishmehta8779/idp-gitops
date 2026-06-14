@@ -1,0 +1,156 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: onboard-team
+  title: Onboard Team
+  description: Onboards a new development team by provisioning their dedicated infrastructure GitOps repository, setting up branch protections, registering them with ArgoCD, and importing their Group catalog entity.
+  tags:
+    - platform
+    - gitops
+    - onboard
+spec:
+  owner: group:default/platform-team
+  type: service
+
+  parameters:
+    - title: Team Information
+      required:
+        - teamName
+        - displayName
+        - teamEmail
+        - costCenter
+        - primaryRegion
+      properties:
+        teamName:
+          title: Team Name
+          type: string
+          description: Lowercase identifier, e.g. team-alpha (must match pattern ^team-[a-z]+$)
+          pattern: '^team-[a-z]+$'
+        displayName:
+          title: Display Name
+          type: string
+          description: Full human-readable name of the team, e.g. Alpha Platform Team
+        teamEmail:
+          title: Team Email
+          type: string
+          format: email
+          description: Contact email address for the team
+        costCenter:
+          title: Cost Center
+          type: string
+          description: Billing code for cost allocation
+        members:
+          title: Team Members
+          type: string
+          description: Comma-separated list of GitHub usernames, e.g. alice, bob, nimishmehta8779
+        primaryRegion:
+          title: Primary AWS Region
+          type: string
+          default: us-east-1
+          enum:
+            - us-east-1
+            - ap-south-1
+          enumNames:
+            - N. Virginia (us-east-1)
+            - Mumbai (ap-south-1)
+
+  steps:
+    # 1. Fetch template skeleton
+    - id: fetch
+      name: Fetch Base Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          teamName: ${{ parameters.teamName }}
+          displayName: ${{ parameters.displayName }}
+          teamEmail: ${{ parameters.teamEmail }}
+          costCenter: ${{ parameters.costCenter }}
+          members: ${{ parameters.members }}
+          primaryRegion: ${{ parameters.primaryRegion }}
+          currentDate: ${{ now() }}
+
+    # 2. Upload Group catalog entity to idp-gitops repository
+    - id: upload_group_entity
+      name: Upload Group Catalog Entity to GitOps Repository
+      action: github:repo:delete-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        commitMessage: "catalog: onboard team ${{ parameters.teamName }} Group entity"
+        filesToCreate:
+          - "development/catalog/org/groups/${{ parameters.teamName }}.yaml"
+
+    # 3. Clean temporary files from workspace
+    - id: clean_development_metadata
+      name: Clean Workspace Development Metadata
+      action: fs:delete
+      input:
+        files:
+          - "development"
+
+    # 4. Create and publish the new team infra repository
+    - id: publish_team_repo
+      name: Publish Team Infrastructure Repository
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        defaultBranch: main
+        repoVisibility: private
+        description: "Infrastructure claims for ${{ parameters.displayName }}"
+
+    # 5. Protect main branch
+    - id: protect_main_branch
+      name: Apply Branch Protection to Main Branch
+      action: github:branch-protection:create
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        branch: main
+        enforceAdmins: false
+        requiredApprovingReviewCount: 1
+        requireCodeOwnerReviews: true
+        requiredStatusCheckContexts:
+          - validate-claims
+
+    # 6. Register team repository in central ArgoCD ApplicationSet
+    - id: register_appset
+      name: Register in central ArgoCD ApplicationSet
+      action: idp:gitops:register-team-appset
+      input:
+        teamName: ${{ parameters.teamName }}
+        repoUrl: "https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra.git"
+
+    # 7. Register Group catalog-info.yaml in Backstage
+    - id: register_catalog
+      name: Register in Backstage Catalog
+      action: idp:catalog:register
+      input:
+        catalogInfoUrl: "https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/catalog-info.yaml"
+
+    # 8. Create GitHub audit issue
+    - id: create_audit_issue
+      name: Create Onboarding Audit Issue
+      action: github:issues:create
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        title: "[Onboarded] ${{ parameters.teamName }}"
+        body: |
+          ### Onboarded Team: ${{ parameters.teamName }}
+
+          The following resources and configurations have been successfully provisioned:
+          - [x] Private infra repository: `nimishmehta8779/${{ parameters.teamName }}-infra`
+          - [x] Branch protection on `main` branch with CODEOWNERS and validate-claims check
+          - [x] Group catalog entity committed to `idp-gitops`
+          - [x] ArgoCD ApplicationSet entry added to `team-infra-appset.yaml`
+          - [x] Registered Group in Backstage catalog
+
+          **Cost Center**: ${{ parameters.costCenter }}
+          **Primary Region**: ${{ parameters.primaryRegion }}
+          **Onboarded At**: ${{ now() }}
+
+  output:
+    links:
+      - title: Team Infrastructure Repository
+        url: ${{ steps.publish_team_repo.output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register_catalog.output.entityRef }}

@@ -1,0 +1,114 @@
+name: Register Catalog Entities
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/catalog-info.yaml'
+      - '**/catalog-info.yml'
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Register with Backstage Catalog
+        uses: actions/github-script@v6
+        env:
+          BACKSTAGE_URL: 'http://localhost:7007'
+          BACKSTAGE_TOKEN: ${{ secrets.BACKSTAGE_TOKEN }}
+        with:
+          script: |
+            const execSync = require('child_process').execSync;
+            const beforeSha = context.payload.before;
+            const afterSha = context.payload.after;
+            
+            let diff = [];
+            try {
+              // Try git diff between before and after commits
+              diff = execSync(`git diff --name-only ${beforeSha} ${afterSha}`).toString().trim().split('\n');
+            } catch (e) {
+              try {
+                // Fallback to diff of last commit
+                diff = execSync(`git diff --name-only HEAD~1 HEAD`).toString().trim().split('\n');
+              } catch (err) {
+                console.log('Could not determine git diff. Registering root catalog-info.yaml.');
+                diff = ['catalog-info.yaml'];
+              }
+            }
+            
+            const catalogFiles = diff.filter(file => file.endsWith('catalog-info.yaml') || file.endsWith('catalog-info.yml'));
+            console.log(`Found changed catalog-info files: ${catalogFiles.join(', ')}`);
+            
+            const registeredUrls = [];
+            const backstageUrl = process.env.BACKSTAGE_URL || 'http://localhost:7007';
+            const backstageToken = process.env.BACKSTAGE_TOKEN || '';
+            
+            const headers = {
+              'Content-Type': 'application/json',
+            };
+            if (backstageToken) {
+              headers['Authorization'] = `Bearer ${backstageToken}`;
+            }
+            
+            for (const file of catalogFiles) {
+              const targetUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/${file}`;
+              console.log(`Registering location: ${targetUrl}`);
+              
+              try {
+                const res = await fetch(`${backstageUrl}/api/catalog/locations`, {
+                  method: 'POST',
+                  headers: headers,
+                  body: JSON.stringify({
+                    type: 'url',
+                    target: targetUrl
+                  })
+                });
+                
+                if (res.ok) {
+                  console.log(`Successfully registered: ${targetUrl}`);
+                  registeredUrls.push(targetUrl);
+                } else if (res.status === 409) {
+                  console.log(`Location is already registered: ${targetUrl}`);
+                  registeredUrls.push(targetUrl);
+                } else {
+                  const text = await res.text();
+                  console.error(`Failed to register location ${targetUrl}: ${res.status} ${res.statusText} - ${text}`);
+                }
+              } catch (err) {
+                console.error(`Network error registering location ${targetUrl}: ${err.message}`);
+              }
+            }
+            
+            // Post confirmation comment on the associated Pull Request if found
+            try {
+              const { data: pullRequests } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+              });
+              
+              const pr = pullRequests[0];
+              if (pr && registeredUrls.length > 0) {
+                let commentBody = '### 🚀 Catalog Registration Confirmed\n\n';
+                commentBody += 'The following catalog entities have been registered with the Backstage catalog API:\n';
+                registeredUrls.forEach(url => {
+                  commentBody += `- [catalog-info.yaml](${url})\n`;
+                });
+                
+                await github.rest.issues.createComment({
+                  issue_number: pr.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: commentBody
+                });
+                console.log(`Successfully posted PR comment on PR #${pr.number}`);
+              }
+            } catch (err) {
+              console.log(`Failed to post PR comment: ${err.message}`);
+            }

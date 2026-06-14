@@ -1,0 +1,5 @@
+# Team owns their entire infra repo
+*    @nimishmehta8779/${{ values.teamName }}
+
+# Platform team co-owns for governance
+*    @nimishmehta8779/platform-team

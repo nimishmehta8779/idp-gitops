@@ -56,5 +56,15 @@ spec:
   type: file
   target: ../templates/decommission-cluster/template.yaml
 
+---
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: onboard-team-template-location
+  namespace: default
+spec:
+  type: file
+  target: ../templates/onboard-team/template.yaml
+
 
 

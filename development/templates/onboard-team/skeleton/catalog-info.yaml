@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: ${{ values.teamName }}
+  title: ${{ values.displayName }}
+  annotations:
+    backstage.io/source-location: url:https://github.com/nimishmehta8779/${{ values.teamName }}-infra
+    idp.platform.io/cost-center: "${{ values.costCenter }}"
+    idp.platform.io/primary-region: "${{ values.primaryRegion }}"
+    idp.platform.io/onboarded-at: "${{ values.currentDate }}"
+spec:
+  type: team
+  profile:
+    displayName: ${{ values.displayName }}
+    email: ${{ values.teamEmail }}
+  parent: engineering
+  members:
+    {%- if values.members %}
+    {%- for member in values.members.split(',') %}
+    - ${{ member | trim }}
+    {%- endfor %}
+    {%- else %}
+    []
+    {%- endif %}
