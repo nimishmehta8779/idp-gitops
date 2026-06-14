@@ -374,8 +374,7 @@ spec:
                 forProvider:
                   addonName: vpc-cni
                   clusterName: ''
-                  resolveConflictsOnCreate: OVERWRITE
-                  resolveConflictsOnUpdate: OVERWRITE
+                  resolveConflicts: OVERWRITE
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
@@ -418,7 +417,7 @@ spec:
                 forProvider:
                   addonName: kube-proxy
                   clusterName: ''
-                  resolveConflictsOnUpdate: OVERWRITE
+                  resolveConflicts: OVERWRITE
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
@@ -461,7 +460,7 @@ spec:
                 forProvider:
                   addonName: coredns
                   clusterName: ''
-                  resolveConflictsOnUpdate: OVERWRITE
+                  resolveConflicts: OVERWRITE
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
@@ -597,7 +596,7 @@ spec:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
             \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    addonName: aws-ebs-csi-driver\n\
             \    clusterName: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}\n    resolveConflictsOnUpdate: OVERWRITE\n    serviceAccountRoleArnRef:\n\
+            }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n\
             \      name: {{ .observed.composite.resource.spec.parameters.clusterName
             }}-ebs-role\n    region: {{ .observed.composite.resource.spec.parameters.region
             }}\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n\
