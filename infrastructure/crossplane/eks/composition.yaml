@@ -62,14 +62,15 @@ spec:
                 toFieldPath: spec.forProvider.version
               - fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              - fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-cluster-role
                 toFieldPath: spec.forProvider.roleArnRef.name
-                type: FromCompositeFieldPath
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-cluster-role'
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.environment
                 toFieldPath: 
@@ -98,13 +99,15 @@ spec:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
             patches:
-              - fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-node-role
                 toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-node-role'
               - fromFieldPath: spec.parameters.teamName
                 toFieldPath: spec.forProvider.tags["team"]
               - fromFieldPath: spec.parameters.environment
@@ -151,13 +154,15 @@ spec:
                 toFieldPath: spec.forProvider.scalingConfig[0].minSize
               - fromFieldPath: spec.parameters.nodeCount
                 toFieldPath: spec.forProvider.scalingConfig[0].maxSize
-              - fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-node-role
                 toFieldPath: spec.forProvider.nodeRoleArnRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-node-role'
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.environment
                 toFieldPath: 
@@ -184,14 +189,15 @@ spec:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
             patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-cluster-role
                 toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-cluster-role'
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.teamName
                 toFieldPath: spec.forProvider.tags["team"]
@@ -220,14 +226,15 @@ spec:
                     string:
                       type: Format
                       fmt: '%s-cluster-role-attachment'
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-cluster-role
                 toFieldPath: spec.forProvider.roleRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-cluster-role'
               - type: PatchSet
                 patchSetName: deletion-policy
               - type: PatchSet
@@ -248,14 +255,15 @@ spec:
                     string:
                       type: Format
                       fmt: '%s-node-policy-workernode'
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-node-role
                 toFieldPath: spec.forProvider.roleRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-node-role'
               - type: PatchSet
                 patchSetName: deletion-policy
               - type: PatchSet
@@ -276,14 +284,15 @@ spec:
                     string:
                       type: Format
                       fmt: '%s-node-policy-cni'
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-node-role
                 toFieldPath: spec.forProvider.roleRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-node-role'
               - type: PatchSet
                 patchSetName: deletion-policy
               - type: PatchSet
@@ -305,14 +314,15 @@ spec:
                     string:
                       type: Format
                       fmt: '%s-node-policy-registry'
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.clusterName
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.environment
+                    - fromFieldPath: spec.parameters.clusterName
+                  strategy: string
+                  string:
+                    fmt: idp-%s-%s-node-role
                 toFieldPath: spec.forProvider.roleRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: '%s-node-role'
               - type: PatchSet
                 patchSetName: deletion-policy
               - type: PatchSet
@@ -554,7 +564,8 @@ spec:
             \"oidcProviderArn\") (index .observed.composite.resource.status \"oidcIssuer\"\
             ) }}\n{{- $issuer := replace \"https://\" \"\" .observed.composite.resource.status.oidcIssuer
             }}\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name:
-            {{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
+            idp-{{ .observed.composite.resource.spec.parameters.environment }}-{{
+            .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
             \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
             ebs-csi-role\nspec:\n  providerConfigRef:\n    name: aws-{{ .observed.composite.resource.spec.parameters.environment
             }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment
@@ -587,19 +598,21 @@ spec:
             .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
             \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n\
-            \    roleRef:\n      name: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}-ebs-role\n---\napiVersion: eks.aws.upbound.io/v1beta1\nkind: Addon\n\
-            metadata:\n  name: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}-ebs-csi\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
+            \    roleRef:\n      name: idp-{{ .observed.composite.resource.spec.parameters.environment
+            }}-{{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
+            ---\napiVersion: eks.aws.upbound.io/v1beta1\nkind: Addon\nmetadata:\n\
+            \  name: {{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-csi\n\
+            \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
             addon-aws-ebs-csi-driver\nspec:\n  providerConfigRef:\n    name: aws-{{
             .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
             \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    addonName: aws-ebs-csi-driver\n\
             \    clusterName: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n\
-            \      name: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}-ebs-role\n    region: {{ .observed.composite.resource.spec.parameters.region
-            }}\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n\
+            }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n \
+            \     name: idp-{{ .observed.composite.resource.spec.parameters.environment
+            }}-{{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
+            \    region: {{ .observed.composite.resource.spec.parameters.region }}\n\
+            \    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n\
             \      environment: {{ .observed.composite.resource.spec.parameters.environment
             }}\n      team: {{ .observed.composite.resource.spec.parameters.teamName
             }}\n      cluster-name: {{ .observed.composite.resource.spec.parameters.clusterName
