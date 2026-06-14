@@ -404,7 +404,7 @@ spec:
               patterns:
               - type: regexp
                 regexp: ^(.*)\|true$
-                result: \1-ebs-role
+                result: $1-ebs-role
               fallbackValue: ''
           policy:
             fromFieldPath: Required
@@ -424,7 +424,7 @@ spec:
               patterns:
               - type: regexp
                 regexp: ^(.*)\|https://(.*)\|true$
-                result: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"\1"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"\2:sub":"system:serviceaccount:kube-system:ebs-csi-controller-sa","\2:aud":"sts.amazonaws.com"}}}]}'
+                result: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"$1"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"$2:sub":"system:serviceaccount:kube-system:ebs-csi-controller-sa","$2:aud":"sts.amazonaws.com"}}}]}'
               fallbackValue: ''
           policy:
             fromFieldPath: Required
@@ -478,7 +478,7 @@ spec:
               patterns:
               - type: regexp
                 regexp: ^(.*)\|true$
-                result: \1-ebs-attach
+                result: $1-ebs-attach
               fallbackValue: ''
           policy:
             fromFieldPath: Required
@@ -497,7 +497,7 @@ spec:
               patterns:
               - type: regexp
                 regexp: ^(.*)\|true$
-                result: \1-ebs-role
+                result: $1-ebs-role
               fallbackValue: ''
           policy:
             fromFieldPath: Required
@@ -678,7 +678,7 @@ spec:
               patterns:
               - type: regexp
                 regexp: ^(.*)\|true$
-                result: \1-ebs-csi
+                result: $1-ebs-csi
               fallbackValue: ''
           policy:
             fromFieldPath: Required
@@ -697,7 +697,7 @@ spec:
               patterns:
               - type: regexp
                 regexp: ^(.*)\|true$
-                result: \1
+                result: $1
               fallbackValue: ''
           policy:
             fromFieldPath: Required
