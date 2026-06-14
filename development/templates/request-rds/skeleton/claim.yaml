@@ -1,0 +1,26 @@
+apiVersion: platform.idp.io/v1alpha1
+kind: RDSInstance
+metadata:
+  name: ${{ values.instanceName }}
+  namespace: clusters
+  labels:
+    team: ${{ values.teamName }}
+    environment: ${{ values.environment }}
+    managed-by: crossplane
+  annotations:
+    idp.platform.io/cost-acknowledged: "true"
+    idp.platform.io/requested-by: ${{ values.teamName }}
+    idp.platform.io/created-at: ${{ values.createdAt }}
+spec:
+  parameters:
+    engine: ${{ values.engine }}
+    engineVersion: "${{ values.engineVersion }}"
+    instanceClass: ${{ values.instanceClass }}
+    storageGb: ${{ values.storageGb }}
+    multiAz: ${{ values.multiAz }}
+    region: ${{ values.awsRegion }}
+    dbName: ${{ values.instanceName | replace("-", "_") }}
+    backupRetentionDays: 7
+  writeConnectionSecretToRef:
+    name: ${{ values.instanceName }}-db-creds
+    namespace: ${{ values.teamName }}

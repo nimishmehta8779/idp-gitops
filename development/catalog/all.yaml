@@ -66,5 +66,14 @@ spec:
   type: file
   target: ../templates/onboard-team/template.yaml
 
+---
 
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: request-rds-instance-template-location
+  namespace: default
+spec:
+  type: file
+  target: ../templates/request-rds/template.yaml
 

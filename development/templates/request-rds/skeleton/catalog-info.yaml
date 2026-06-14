@@ -1,0 +1,27 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.instanceName }}
+  description: RDS ${{ values.engine }} database instance requested by ${{ values.teamName }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    db-engine: ${{ values.engine }}
+    db-engine-version: "${{ values.engineVersion }}"
+    instance-class: ${{ values.instanceClass }}
+    storage-gb: "${{ values.storageGb }}"
+    multi-az: "${{ values.multiAz }}"
+    aws-region: ${{ values.awsRegion }}
+    environment: ${{ values.environment }}
+    created-by: ${{ values.teamName }}
+    created-at: ${{ values.createdAt }}
+    db-status: provisioning
+spec:
+  type: database
+  owner: group:default/${{ values.teamName }}
+  system: system:default/data-platform
+  {%- if values.components and values.components.length > 0 %}
+  dependencyOf:
+    {%- for component in values.components %}
+    - ${{ component }}
+    {%- endfor %}
+  {%- endif %}

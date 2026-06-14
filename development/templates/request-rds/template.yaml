@@ -1,0 +1,195 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: request-rds-instance
+  title: Request RDS Database Instance
+  description: |
+    A template to request a new AWS RDS database instance using Crossplane and GitOps.
+
+    The claim is committed directly into your team's infra repository under
+    `rds/<instanceName>/` where ArgoCD will detect and drive provisioning.
+spec:
+  owner: group:platform-team
+  type: resource
+
+  parameters:
+    - title: Database Instance Specifications
+      required:
+        - teamName
+        - instanceName
+        - engine
+        - instanceClass
+        - storageGb
+        - environment
+        - awsRegion
+      properties:
+        teamName:
+          title: Team Name
+          type: string
+          description: Select the owner group for the RDS instance.
+          enum:
+            - platform-team
+            - team-alpha
+            - team-beta
+        instanceName:
+          title: Instance Name
+          type: string
+          description: Unique name for the RDS instance.
+          pattern: '^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[0-9]+$'
+          ui:help: 'Required format: <team>-<env>-<purpose>-<index> (e.g., beta-dev-postgres-01)'
+        engine:
+          title: Database Engine
+          type: string
+          description: Database engine type.
+          enum:
+            - postgres
+            - mysql
+            - aurora-postgresql
+          default: postgres
+        engineVersion:
+          title: Engine Version
+          type: string
+          description: Database engine version.
+          default: "16.3"
+        instanceClass:
+          title: Instance Class
+          type: string
+          description: RDS instance class controlling compute/memory.
+          enum:
+            - db.t3.micro
+            - db.t3.small
+            - db.t3.medium
+            - db.m5.large
+          default: db.t3.micro
+        storageGb:
+          title: Storage (GB)
+          type: integer
+          description: Allocated storage in gigabytes (20–1000).
+          default: 20
+          minimum: 20
+          maximum: 1000
+        multiAz:
+          title: Multi-AZ
+
+          type: boolean
+          description: Enable Multi-AZ deployment for high availability.
+          default: false
+        environment:
+          title: Environment
+          type: string
+          description: Target environment for the database.
+          enum:
+            - dev
+            - staging
+        awsRegion:
+          title: AWS Region
+          type: string
+          description: AWS region to provision the database in.
+          default: us-east-1
+        costCenter:
+          title: Cost Center
+          type: string
+          description: Cost center identifier for billing purposes.
+          default: default
+        components:
+          title: Requesting Components
+          type: array
+          items:
+            type: string
+          description: Select components that will use this database (optional).
+          ui:field: MultiEntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.owner: group:default/${{ parameters.teamName }}
+
+  steps:
+    - id: fetch_base
+      name: Fetch RDS Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: ./rds/${{ parameters.instanceName }}
+        values:
+          teamName: ${{ parameters.teamName }}
+          instanceName: ${{ parameters.instanceName }}
+          engine: ${{ parameters.engine }}
+          engineVersion: ${{ parameters.engineVersion }}
+          instanceClass: ${{ parameters.instanceClass }}
+          storageGb: ${{ parameters.storageGb }}
+          multiAz: ${{ parameters.multiAz }}
+          environment: ${{ parameters.environment }}
+          awsRegion: ${{ parameters.awsRegion }}
+          costCenter: ${{ parameters.costCenter }}
+          components: ${{ parameters.components }}
+          createdAt: ${{ now() }}
+
+    # Publish Dev: Commit directly to main of the team infra repo
+    - id: publish_dev
+      name: Commit RDS Claim (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: github:repo:delete-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        filesToCreate:
+          - "rds/${{ parameters.instanceName }}/claim.yaml"
+          - "rds/${{ parameters.instanceName }}/catalog-info.yaml"
+          - "rds/${{ parameters.instanceName }}/README.md"
+        commitMessage: "infra: add RDS instance ${{ parameters.instanceName }} claim and metadata (dev)"
+        branch: main
+
+    # Publish Staging: Commit to a branch and open a PR
+    - id: publish_staging
+      name: Create Staging Pull Request
+      if: ${{ parameters.environment == 'staging' }}
+      action: github:repo:delete-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        filesToCreate:
+          - "rds/${{ parameters.instanceName }}/claim.yaml"
+          - "rds/${{ parameters.instanceName }}/catalog-info.yaml"
+          - "rds/${{ parameters.instanceName }}/README.md"
+        commitMessage: "infra: request RDS instance ${{ parameters.instanceName }} (staging)"
+        branch: rds-request/${{ parameters.instanceName }}
+        prTargetBranch: main
+        prTitle: "[RDS Request] ${{ parameters.instanceName }} - ${{ parameters.teamName }}"
+        prBody: |
+          ### RDS Instance Request Details
+          - **Instance Name**: `${{ parameters.instanceName }}`
+          - **Team**: `${{ parameters.teamName }}`
+          - **Environment**: `${{ parameters.environment }}`
+          - **Engine**: `${{ parameters.engine }} ${{ parameters.engineVersion }}`
+          - **Instance Class**: `${{ parameters.instanceClass }}`
+          - **Storage**: `${{ parameters.storageGb }} GB`
+          - **Multi-AZ**: `${{ parameters.multiAz }}`
+
+          Please review the Crossplane RDSInstance claim details before merging.
+        prLabels:
+          - rds-request
+          - needs-review
+
+    - id: wait_for_github
+      name: Wait for GitHub Indexing
+      if: ${{ parameters.environment == 'dev' }}
+      action: debug:wait
+      input:
+        seconds: 5
+
+    - id: register_dev
+      name: Register in Catalog (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: idp:catalog:register
+      input:
+        catalogInfoUrl: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/rds/${{ parameters.instanceName }}/catalog-info.yaml
+
+  output:
+    links:
+      - title: Team Infrastructure Repository
+        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra
+      - title: Pull Request
+        url: ${{ steps.publish_staging.output.pullRequestUrl }}
+        if: ${{ parameters.environment == 'staging' }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps.register_dev.output.entityRef }}
+        if: ${{ parameters.environment == 'dev' }}
