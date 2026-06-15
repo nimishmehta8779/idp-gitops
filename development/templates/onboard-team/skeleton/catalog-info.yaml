@@ -14,6 +14,7 @@ spec:
     displayName: ${{ values.displayName }}
     email: ${{ values.teamEmail }}
   parent: engineering
+  children: []
   members:
     {%- if values.members %}
     {%- for member in values.members.split(',') %}
