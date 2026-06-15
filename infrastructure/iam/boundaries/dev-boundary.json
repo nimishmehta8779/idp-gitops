@@ -5,12 +5,7 @@
       "Sid": "AllowEKSOperations",
       "Effect": "Allow",
       "Action": ["eks:*"],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "aws:ResourceTag/environment": "dev"
-        }
-      }
+      "Resource": "*"
     },
     {
       "Sid": "AllowEC2Operations",
