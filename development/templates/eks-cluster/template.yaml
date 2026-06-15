@@ -4,11 +4,11 @@ metadata:
   name: request-eks-cluster
   title: Request EKS Cluster
   description: |
-    A template to request a new EKS cluster using Crossplane and GitOps.
+    Request a new EKS cluster via GitOps. The claim file is committed directly
+    into your team's infra repo under eks/ where ArgoCD picks it up automatically.
 
-    Network infrastructure (VPC, subnets) is provisioned and managed by the
-    platform team. Your cluster will be placed in the shared network for your
-    requested environment automatically.
+    Dev clusters are provisioned immediately. Staging clusters require platform
+    team approval via Pull Request before provisioning begins.
 spec:
   owner: group:platform-team
   type: resource
@@ -32,13 +32,13 @@ spec:
             - platform-team
             - team-alpha
             - team-beta
+            - team-gamma
         clusterName:
           title: Cluster Name
           type: string
           description: Name of the EKS cluster.
           pattern: '^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[0-9]+$'
           ui:help: 'Required format: <team>-<env>-<purpose>-<index> (e.g., alpha-dev-general-01)'
-          ui:validation: 'Must match the format <team>-<env>-<purpose>-<index> (e.g., alpha-dev-general-01).'
         environment:
           title: Environment
           type: string
@@ -79,109 +79,130 @@ spec:
           type: string
           description: Cost center identifier for billing/accounting purposes.
           default: default
-        components:
-          title: Requesting Components
-          type: array
-          items:
-            type: string
-          description: Select components that will depend on this EKS cluster (optional)
-          ui:field: MultiEntityPicker
-          ui:options:
-            catalogFilter:
-              kind: Component
-              spec.owner: group:default/${{ parameters.teamName }}
-
 
   steps:
-    - id: fetch_base
-      name: Fetch Base Skeleton
+    # Step 1: Render skeleton
+    - id: fetch
+      name: Render cluster claim
       action: fetch:template
       input:
         url: ./skeleton
-        targetPath: ./eks/${{ parameters.clusterName }}
+        targetPath: ./eks
         values:
           teamName: ${{ parameters.teamName }}
           clusterName: ${{ parameters.clusterName }}
           environment: ${{ parameters.environment }}
           awsRegion: ${{ parameters.awsRegion }}
+          kubernetesVersion: ${{ parameters.kubernetesVersion }}
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
-          kubernetesVersion: ${{ parameters.kubernetesVersion }}
           costCenter: ${{ parameters.costCenter }}
-          components: ${{ parameters.components }}
-          createdAt: ${{ now() }}
+          namespace: ${{ parameters.environment === 'dev' ? 'clusters-dev' : 'clusters-staging' }}
 
-    # Publish Dev: Commit directly to main of the team infra repo
-    - id: publish_dev
-      name: Commit Cluster Claim (Dev)
-      if: ${{ parameters.environment == 'dev' }}
-      action: github:repo:delete-file
+    # Step 2a: Dev — push claim file directly to team infra repo main branch
+    - id: push-claim-dev
+      name: Push claim to team infra repo (dev)
+      if: ${{ parameters.environment === 'dev' }}
+      action: github:repo:create-or-update-file
       input:
         repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
-        filesToCreate:
-          - "eks/${{ parameters.clusterName }}/claim.yaml"
-          - "eks/${{ parameters.clusterName }}/catalog-info.yaml"
-          - "eks/${{ parameters.clusterName }}/mkdocs.yml"
-          - "eks/${{ parameters.clusterName }}/docs/index.md"
-          - "eks/${{ parameters.clusterName }}/README.md"
-        commitMessage: "infra: add EKS cluster ${{ parameters.clusterName }} claim and metadata (dev)"
+        path: eks/${{ parameters.clusterName }}.yaml
+        sourcePath: eks/claim.yaml
+        message: |
+          feat(eks): add ${{ parameters.clusterName }} cluster claim
+
+          Team: ${{ parameters.teamName }}
+          Environment: dev
+          Instance: ${{ parameters.instanceType }} x${{ parameters.nodeCount }}
         branch: main
+        committerName: Backstage IDP
+        committerEmail: idp@platform.io
 
-    # Publish Staging: Commit to a branch and open a PR
-    - id: publish_staging
-      name: Create Staging Pull Request
-      if: ${{ parameters.environment == 'staging' }}
-      action: github:repo:delete-file
+    # Step 2b: Push catalog file to team infra repo (dev)
+    - id: push-catalog-dev
+      name: Push catalog entity to team infra repo (dev)
+      if: ${{ parameters.environment === 'dev' }}
+      action: github:repo:create-or-update-file
       input:
         repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
-        filesToCreate:
-          - "eks/${{ parameters.clusterName }}/claim.yaml"
-          - "eks/${{ parameters.clusterName }}/catalog-info.yaml"
-          - "eks/${{ parameters.clusterName }}/mkdocs.yml"
-          - "eks/${{ parameters.clusterName }}/docs/index.md"
-          - "eks/${{ parameters.clusterName }}/README.md"
-        commitMessage: "infra: request EKS cluster ${{ parameters.clusterName }} (staging)"
+        path: eks/${{ parameters.clusterName }}-catalog.yaml
+        sourcePath: eks/catalog.yaml
+        message: "feat(eks): add ${{ parameters.clusterName }} catalog entity"
+        branch: main
+        committerName: Backstage IDP
+        committerEmail: idp@platform.io
+
+    # Step 2c: Staging — open PR in team infra repo
+    - id: push-claim-staging
+      name: Open PR in team infra repo (staging)
+      if: ${{ parameters.environment === 'staging' }}
+      action: github:repo:create-or-update-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
+        path: eks/${{ parameters.clusterName }}.yaml
+        sourcePath: eks/claim.yaml
+        message: "feat(eks): add ${{ parameters.clusterName }} cluster claim (staging)"
         branch: cluster-request/${{ parameters.clusterName }}
+        committerName: Backstage IDP
+        committerEmail: idp@platform.io
         prTargetBranch: main
-        prTitle: "[Cluster Request] ${{ parameters.clusterName }} - ${{ parameters.teamName }}"
+        prTitle: "[Cluster Request] ${{ parameters.clusterName }} (${{ parameters.teamName }})"
         prBody: |
-          ### EKS Cluster Request Details
-          - **Cluster Name**: `${{ parameters.clusterName }}`
-          - **Team Name**: `${{ parameters.teamName }}`
-          - **Environment**: `${{ parameters.environment }}`
-          - **AWS Region**: `${{ parameters.awsRegion }}`
-          - **Node Count**: `${{ parameters.nodeCount }}`
-          - **Instance Type**: `${{ parameters.instanceType }}`
-          
-          Please review the Crossplane EKSCluster claim details before merging.
+          ## EKS Cluster Request
+          ─────────────────────────────────────────
+          | Field | Value |
+          |---|---|
+          | Cluster | `${{ parameters.clusterName }}` |
+          | Team | `${{ parameters.teamName }}` |
+          | Environment | staging |
+          | Region | `${{ parameters.awsRegion }}` |
+          | Kubernetes version | `${{ parameters.kubernetesVersion }}` |
+          | Node count | `${{ parameters.nodeCount }}` |
+          | Instance type | `${{ parameters.instanceType }}` |
+          ─────────────────────────────────────────
+          ## Checklist for platform team
+          - [ ] Node count appropriate for staging workload
+          - [ ] Instance type approved
+          - [ ] Cost acknowledged by team lead
+          - [ ] No existing staging cluster for this team that could be reused
         prLabels:
           - cluster-request
           - needs-review
 
-    # Wait for GitHub to index files
-    - id: wait_for_github
-      name: Wait for GitHub Indexing
-      if: ${{ parameters.environment == 'dev' }}
+    # Step 3: Wait for GitHub indexing (dev only)
+    - id: wait-for-github
+      name: Wait for GitHub indexing
+      if: ${{ parameters.environment === 'dev' }}
       action: debug:wait
       input:
         seconds: 5
 
-    # Register in Backstage Catalog (Dev only)
-    - id: register_dev
-      name: Register in Catalog (Dev)
-      if: ${{ parameters.environment == 'dev' }}
+    # Step 4: Register catalog entity (dev only — staging registers after PR merge)
+    - id: register
+      name: Register in Backstage catalog
+      if: ${{ parameters.environment === 'dev' }}
       action: idp:catalog:register
       input:
-        catalogInfoUrl: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/eks/${{ parameters.clusterName }}/catalog-info.yaml
+        catalogInfoUrl: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/eks/${{ parameters.clusterName }}-catalog.yaml
+
+    # Step 5: Post instructions for staging
+    - id: staging-instructions
+      name: Staging PR instructions
+      if: ${{ parameters.environment === 'staging' }}
+      action: debug:wait
+      input:
+        seconds: 1
 
   output:
     links:
-      - title: Team Infrastructure Repository
+      - title: Team infra repo
         url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra
-      - title: Pull Request
-        url: ${{ steps.publish_staging.output.pullRequestUrl }}
-        if: ${{ parameters.environment == 'staging' }}
+      - title: ArgoCD sync status
+        url: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
+      - title: Pull Request (staging only)
+        url: ${{ steps['push-claim-staging'].output.remoteUrl }}
+        if: ${{ parameters.environment === 'staging' }}
       - title: Open in Catalog
         icon: catalog
-        entityRef: ${{ steps.register_dev.output.entityRef }}
-        if: ${{ parameters.environment == 'dev' }}
+        entityRef: ${{ steps.register.output.entityRef }}
+        if: ${{ parameters.environment === 'dev' }}
