@@ -1,0 +1,11 @@
+# Platform team owns everything in idp-gitops
+*                              @nimishmehta8779
+
+# Network claims — platform team only
+/gitops/network-claims/        @nimishmehta8779
+
+# ArgoCD app definitions — platform team only
+/gitops/apps/                  @nimishmehta8779
+
+# Decommission records — platform team reviews
+/gitops/decommission-records/  @nimishmehta8779
