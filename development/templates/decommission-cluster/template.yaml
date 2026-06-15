@@ -118,35 +118,43 @@ spec:
           nodeCount: ${{ parameters.nodeCount }}
           currentDate: ${{ now() }}
 
-    # Step 3: dev path (push decommission record & delete claim directly on main)
+    # Step 3a: Delete claims from team infra repo (Dev)
     - id: delete_files_dev
       name: Decommission Cluster (Dev)
       if: ${{ parameters.environment == 'dev' }}
       action: github:repo:delete-file
       input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
         branch: main
-        filesToDelete:
-          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
-          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}/catalog-info.yaml
-        filesToCreate:
-          - gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        files:
+          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
+          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}-catalog.yaml
         commitMessage: "chore: decommission cluster ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
 
-    # Step 3: staging path (push decommission record & delete claim on branch, raise PR)
+    # Step 3b: Push decommission record to central GitOps repo (Dev)
+    - id: create_audit_record_dev
+      name: Commit Decommission Audit Record (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: github:repo:create-or-update-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        path: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        sourcePath: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        message: "chore: audit record for decommission of ${{ parameters.clusterName | parseEntityRef | pick('name') }}"
+        branch: main
+
+    # Step 3c: Delete claims from team infra repo (Staging)
     - id: delete_files_staging
       name: Decommission Cluster (Staging)
       if: ${{ parameters.environment == 'staging' }}
       action: github:repo:delete-file
       input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
         branch: decommission/${{ parameters.clusterName | parseEntityRef | pick('name') }}
         prTargetBranch: main
-        filesToDelete:
-          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
-          - gitops/cluster-claims/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}/catalog-info.yaml
-        filesToCreate:
-          - gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        files:
+          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
+          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}-catalog.yaml
         commitMessage: "chore: decommission cluster ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
         prTitle: "[Decommission] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
         prBody: |
@@ -167,6 +175,26 @@ spec:
           - [ ] Verify no orphan resources remain in AWS console
         prLabels:
           - cluster-decommission
+          - needs-review
+
+    # Step 3d: Push decommission record to central GitOps repo (Staging)
+    - id: create_audit_record_staging
+      name: Commit Decommission Audit Record (Staging)
+      if: ${{ parameters.environment == 'staging' }}
+      action: github:repo:create-or-update-file
+      input:
+        repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
+        path: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        sourcePath: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
+        message: "chore: decommission audit record for ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
+        branch: decommission/${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        prTargetBranch: main
+        prTitle: "[Decommission Audit] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
+        prBody: |
+          ### EKS Cluster Decommission Audit Record (Staging)
+          Audit record for the decommission request of `${{ parameters.clusterName | parseEntityRef | pick('name') }}`.
+        prLabels:
+          - decommission-audit
           - needs-review
 
     # Step 4: Unregister entity from Backstage catalog (dev only)
@@ -219,13 +247,16 @@ spec:
   output:
     links:
       - title: View Decommission Commit (Dev)
-        url: https://github.com/nimishmehta8779/idp-gitops/commit/${{ steps.delete_files_dev.output.commitSha }}
+        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/commit/${{ steps.delete_files_dev.output.commitSha }}
         if: ${{ parameters.environment == 'dev' }}
       - title: View ArgoCD Claims Sync (Dev)
-        url: http://localhost:8080/applications/cluster-claims
+        url: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
         if: ${{ parameters.environment == 'dev' }}
       - title: View Decommission Pull Request (Staging)
         url: ${{ steps.delete_files_staging.output.pullRequestUrl }}
+        if: ${{ parameters.environment == 'staging' }}
+      - title: View Decommission Audit PR (Staging)
+        url: ${{ steps.create_audit_record_staging.output.pullRequestUrl }}
         if: ${{ parameters.environment == 'staging' }}
       - title: View Decommission Audit Issue
         url: ${{ steps.create_audit_issue.output.issueUrl }}
