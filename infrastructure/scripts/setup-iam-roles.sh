@@ -149,6 +149,7 @@ attach_role_policies() {
           "Effect": "Allow",
           "Action": [
             "ec2:*",
+            "eks:*",
             "iam:CreateRole",
             "iam:DeleteRole",
             "iam:AttachRolePolicy",
