@@ -69,3 +69,6 @@ provision-platform-network:
 network-status:
 	$(MAKE) -C infrastructure network-status
 
+.PHONY: test-enterprise-flow
+test-enterprise-flow:
+	@./infrastructure/scripts/test-enterprise-flow.sh
