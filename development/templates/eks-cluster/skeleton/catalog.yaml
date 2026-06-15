@@ -24,7 +24,7 @@ metadata:
     idp.platform.io/environment: ${{ values.environment }}
     idp.platform.io/created-by: ${{ values.teamName }}
     backstage.io/kubernetes-id: ${{ values.clusterName }}
-    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+    backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}
 spec:
   type: kubernetes-cluster
   lifecycle: experimental

@@ -2,7 +2,7 @@ apiVersion: platform.io/v1alpha1
 kind: EKSCluster
 metadata:
   name: ${{ values.clusterName }}
-  namespace: ${{ values.namespace }}
+  namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}
   labels:
     team: ${{ values.teamName }}
     environment: ${{ values.environment }}
@@ -19,7 +19,7 @@ metadata:
     idp.platform.io/environment: ${{ values.environment }}
     idp.platform.io/created-by: ${{ values.teamName }}
     backstage.io/kubernetes-id: ${{ values.clusterName }}
-    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+    backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}
 spec:
   parameters:
     clusterName: ${{ values.clusterName }}
@@ -34,4 +34,4 @@ spec:
     name: eks-cluster
   writeConnectionSecretToRef:
     name: ${{ values.clusterName }}-kubeconfig
-    namespace: ${{ values.namespace }}
+    namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}

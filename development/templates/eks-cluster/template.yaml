@@ -97,7 +97,6 @@ spec:
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
           costCenter: ${{ parameters.costCenter }}
-          namespace: "${{ parameters.environment === 'dev' ? 'clusters-dev' : 'clusters-staging' }}"
 
     # Step 2a: Dev — push claim file directly to team infra repo main branch
     - id: push-claim-dev
