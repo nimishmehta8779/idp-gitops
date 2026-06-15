@@ -101,7 +101,7 @@ spec:
 
     - id: register
       name: Register in Catalog
-      action: catalog:register
+      action: idp:catalog:register
       input:
         catalogInfoUrl: ${{ steps.publish.output.repoContentsUrl }}/catalog-info.yaml
 

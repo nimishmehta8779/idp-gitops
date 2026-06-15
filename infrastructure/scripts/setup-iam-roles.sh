@@ -166,6 +166,8 @@ attach_role_policies() {
             "iam:ListAttachedRolePolicies",
             "iam:ListRolePolicies",
             "iam:GetRolePolicy",
+            "iam:ListInstanceProfilesForRole",
+            "iam:RemoveRoleFromInstanceProfile",
             "sts:GetCallerIdentity",
             "sts:AssumeRole"
           ],

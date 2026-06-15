@@ -30,6 +30,7 @@ spec:
     environment: ${{ values.environment }}
     teamName: ${{ values.teamName }}
     costCenter: ${{ values.costCenter }}
+    networkRef: {% if values.environment == 'dev' %}dev-network{% else %}staging-network{% endif %}
   compositionRef:
     name: eks-cluster
   writeConnectionSecretToRef:
