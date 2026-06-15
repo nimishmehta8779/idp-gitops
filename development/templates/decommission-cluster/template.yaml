@@ -43,7 +43,10 @@ spec:
         environment:
           title: Environment
           type: string
-          ui:field: ClusterEnvironmentField
+          description: Target environment for the EKS cluster.
+          enum:
+            - dev
+            - staging
         confirmClusterName:
           title: Confirm Cluster Name
           type: string
