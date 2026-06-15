@@ -99,7 +99,7 @@ spec:
       name: Validate Ownership & Confirmation
       action: idp:cluster:decommission:validate
       input:
-        clusterName: ${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        clusterName: ${{ parameters.clusterName.split('/').pop() }}
         confirmClusterName: ${{ parameters.confirmClusterName }}
         teamName: ${{ parameters.teamName }}
 
@@ -111,7 +111,7 @@ spec:
         url: ./skeleton
         targetPath: gitops/decommission-records/${{ parameters.teamName }}
         values:
-          clusterName: ${{ parameters.clusterName | parseEntityRef | pick('name') }}
+          clusterName: ${{ parameters.clusterName.split('/').pop() }}
           teamName: ${{ parameters.teamName }}
           environment: ${{ parameters.environment }}
           decommissionReason: ${{ parameters.decommissionReason }}
@@ -130,9 +130,9 @@ spec:
         repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
         branch: main
         files:
-          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
-          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}-catalog.yaml
-        commitMessage: "chore: decommission cluster ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
+          - eks/${{ parameters.clusterName.split('/').pop() }}.yaml
+          - eks/${{ parameters.clusterName.split('/').pop() }}-catalog.yaml
+        commitMessage: "chore: decommission cluster ${{ parameters.clusterName.split('/').pop() }} - ${{ parameters.decommissionReason }}"
 
     # Step 3b: Push decommission record to central GitOps repo (Dev)
     - id: create_audit_record_dev
@@ -141,9 +141,9 @@ spec:
       action: github:repo:create-or-update-file
       input:
         repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
-        path: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
-        sourcePath: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
-        message: "chore: audit record for decommission of ${{ parameters.clusterName | parseEntityRef | pick('name') }}"
+        path: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName.split('/').pop() }}.md
+        sourcePath: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName.split('/').pop() }}.md
+        message: "chore: audit record for decommission of ${{ parameters.clusterName.split('/').pop() }}"
         branch: main
 
     # Step 3c: Delete claims from team infra repo (Staging)
@@ -153,16 +153,16 @@ spec:
       action: github:repo:delete-file
       input:
         repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
-        branch: decommission/${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        branch: decommission/${{ parameters.clusterName.split('/').pop() }}
         prTargetBranch: main
         files:
-          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}.yaml
-          - eks/${{ parameters.clusterName | parseEntityRef | pick('name') }}-catalog.yaml
-        commitMessage: "chore: decommission cluster ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
-        prTitle: "[Decommission] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
+          - eks/${{ parameters.clusterName.split('/').pop() }}.yaml
+          - eks/${{ parameters.clusterName.split('/').pop() }}-catalog.yaml
+        commitMessage: "chore: decommission cluster ${{ parameters.clusterName.split('/').pop() }} - ${{ parameters.decommissionReason }}"
+        prTitle: "[Decommission] ${{ parameters.clusterName.split('/').pop() }} - ${{ parameters.teamName }}"
         prBody: |
           ### EKS Cluster Decommission Request (Staging)
-          - **Cluster Name**: `${{ parameters.clusterName | parseEntityRef | pick('name') }}`
+          - **Cluster Name**: `${{ parameters.clusterName.split('/').pop() }}`
           - **Team Name**: `${{ parameters.teamName }}`
           - **Environment**: `${{ parameters.environment }}`
           - **Decommission Reason**: `${{ parameters.decommissionReason }}`
@@ -187,15 +187,15 @@ spec:
       action: github:repo:create-or-update-file
       input:
         repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
-        path: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
-        sourcePath: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName | parseEntityRef | pick('name') }}.md
-        message: "chore: decommission audit record for ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.decommissionReason }}"
-        branch: decommission/${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        path: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName.split('/').pop() }}.md
+        sourcePath: gitops/decommission-records/${{ parameters.teamName }}/${{ parameters.clusterName.split('/').pop() }}.md
+        message: "chore: decommission audit record for ${{ parameters.clusterName.split('/').pop() }} - ${{ parameters.decommissionReason }}"
+        branch: decommission/${{ parameters.clusterName.split('/').pop() }}
         prTargetBranch: main
-        prTitle: "[Decommission Audit] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
+        prTitle: "[Decommission Audit] ${{ parameters.clusterName.split('/').pop() }} - ${{ parameters.teamName }}"
         prBody: |
           ### EKS Cluster Decommission Audit Record (Staging)
-          Audit record for the decommission request of `${{ parameters.clusterName | parseEntityRef | pick('name') }}`.
+          Audit record for the decommission request of `${{ parameters.clusterName.split('/').pop() }}`.
         prLabels:
           - decommission-audit
           - needs-review
@@ -207,7 +207,7 @@ spec:
       action: http:backstage:request
       input:
         method: DELETE
-        path: /api/catalog/entities/by-name/resource/default/${{ parameters.clusterName | parseEntityRef | pick('name') }}
+        path: /api/catalog/entities/by-name/resource/default/${{ parameters.clusterName.split('/').pop() }}
 
     # Step 5: Create decommission audit record (GitHub issue)
     - id: create_audit_issue
@@ -215,11 +215,11 @@ spec:
       action: github:issues:create
       input:
         repoUrl: github.com?owner=nimishmehta8779&repo=idp-gitops
-        title: "[Decommissioned] ${{ parameters.clusterName | parseEntityRef | pick('name') }} - ${{ parameters.teamName }}"
+        title: "[Decommissioned] ${{ parameters.clusterName.split('/').pop() }} - ${{ parameters.teamName }}"
         body: |
           ## Cluster Decommission Record
           ─────────────────────────────────────────
-          Cluster:          ${{ parameters.clusterName | parseEntityRef | pick('name') }}
+          Cluster:          ${{ parameters.clusterName.split('/').pop() }}
           Team:             ${{ parameters.teamName }}
           Environment:      ${{ parameters.environment }}
           Reason:           ${{ parameters.decommissionReason }}
