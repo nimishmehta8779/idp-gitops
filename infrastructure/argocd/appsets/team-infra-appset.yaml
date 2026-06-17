@@ -7,6 +7,8 @@ spec:
   generators:
     - list:
         elements:
+          - team: team-yamma
+            repo: https://github.com/nimishmehta8779/team-yamma-infra.git
           - team: team-alpha
             repo: team-alpha-infra
           - team: team-beta
