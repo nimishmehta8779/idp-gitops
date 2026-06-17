@@ -149,8 +149,12 @@ spec:
 
   output:
     links:
-      - title: Team Infrastructure Repository
-        url: ${{ steps.publish_team_repo.output.remoteUrl }}
-      - title: Open in Catalog
+      - title: "Open Team in Catalog"
+        url: http://localhost:3000/catalog/default/group/${{ parameters.teamName }}
+        icon: group
+      - title: "Team infra repo"
+        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra
+        icon: github
+      - title: "Platform onboarding issue"
+        url: ${{ steps.create_audit_issue.output.issueUrl }}
         icon: catalog
-        entityRef: ${{ steps.register_catalog.output.entityRef }}

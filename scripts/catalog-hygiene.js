@@ -195,19 +195,32 @@ async function main() {
       if (parsedOwner && parsedOwner.kind === 'group') {
         ownerGroupName = parsedOwner.name;
       }
-      
+
       const claimPath1 = path.join('gitops', 'cluster-claims', ownerGroupName, `${name}.yaml`);
       const claimPath2 = path.join('gitops', 'cluster-claims', ownerGroupName, name, 'catalog-info.yaml');
-      
+
       const exists1 = fs.existsSync(claimPath1);
       const exists2 = fs.existsSync(claimPath2);
-      
+
       if (!exists1 && !exists2) {
         findings.push({
           ref: entityRef,
           kind: entity.kind,
           problem: 'Ghost cluster entry: corresponding claim file no longer exists in GitOps checkout',
           fix: 'Decommission this resource or recreate the GitOps claim file',
+        });
+      }
+    }
+
+    // Check 4: Component missing score.yaml specification
+    if (kind === 'component') {
+      const annotations = entity.metadata.annotations || {};
+      if (!annotations['score.dev/workload-spec']) {
+        findings.push({
+          ref: entityRef,
+          kind: entity.kind,
+          problem: 'Missing score.yaml specification (score.dev/workload-spec annotation)',
+          fix: 'Add score.yaml file to repository and add score.dev/workload-spec annotation to catalog-info.yaml',
         });
       }
     }

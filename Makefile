@@ -72,3 +72,23 @@ network-status:
 .PHONY: test-enterprise-flow
 test-enterprise-flow:
 	@./infrastructure/scripts/test-enterprise-flow.sh
+
+.PHONY: caipe-up caipe-down caipe-logs caipe-token caipe-kubeconfig setup-caipe-argocd
+
+setup-caipe-argocd:
+	$(MAKE) -C infrastructure setup-caipe-argocd
+
+caipe-token:
+	$(MAKE) -C infrastructure caipe-token
+
+caipe-kubeconfig:
+	$(MAKE) -C infrastructure caipe-kubeconfig
+
+caipe-up:
+	$(MAKE) -C infrastructure caipe-up
+
+caipe-down:
+	$(MAKE) -C infrastructure caipe-down
+
+caipe-logs:
+	$(MAKE) -C infrastructure caipe-logs

@@ -106,14 +106,14 @@ backstage-restart: backstage-stop
 
 install-crossplane-providers:
 	@echo "Applying Crossplane provider manifests..."
-	kubectl apply -f infrastructure/crossplane/providers/provider-aws-eks.yaml
-	kubectl apply -f infrastructure/crossplane/providers/provider-aws-ec2.yaml
-	kubectl apply -f infrastructure/crossplane/providers/provider-aws-iam.yaml
+	kubectl apply -f crossplane/providers/provider-aws-eks.yaml
+	kubectl apply -f crossplane/providers/provider-aws-ec2.yaml
+	kubectl apply -f crossplane/providers/provider-aws-iam.yaml
 	@echo "Waiting for providers to become healthy..."
 	# Wait loop for each provider
 	for prov in provider-aws-eks provider-aws-ec2 provider-aws-iam; do \
 	  echo "Checking $$prov..."; \
-	  kubectl wait --namespace crossplane-system --for=condition=Ready provider $$prov --timeout=300s || echo "Warning: $$prov not healthy after timeout"; \
+	  kubectl wait --namespace crossplane-system --for=condition=Healthy provider $$prov --timeout=300s || echo "Warning: $$prov not healthy after timeout"; \
 	done
 
 aws-creds:
@@ -127,20 +127,20 @@ check-crossplane:
 
 install-xrd:
 	@echo "Applying XRD manifest..."
-	kubectl apply -f infrastructure/crossplane/eks/xrd.yaml
+	kubectl apply -f crossplane/eks/xrd.yaml
 	@echo "Waiting for XRD to become Established..."
 	kubectl wait --for=condition=Established crd xeksclusters.platform.io --timeout=180s
 
 install-composition:
 	@echo "Applying Composition manifest..."
-	kubectl apply -f infrastructure/crossplane/eks/composition.yaml
+	kubectl apply -f crossplane/eks/composition.yaml
 
 install-eks-infra: install-xrd install-composition
 	@echo "XRD and Composition installed."
 
 test-claim:
 	@echo "Applying claim example..."
-	kubectl apply -f infrastructure/crossplane/eks/claim-example.yaml
+	kubectl apply -f crossplane/eks/claim-example.yaml
 	@echo "Watching Composite resource status (timeout 25m)..."
 	END=$$(($(date +%s) + 1500))
 	while [ $$(date +%s) -lt $$END ]; do \
@@ -153,10 +153,10 @@ test-claim:
 
 delete-claim:
 	@echo "Deleting claim..."
-	kubectl delete -f infrastructure/crossplane/eks/claim-example.yaml --wait
+	kubectl delete -f crossplane/eks/claim-example.yaml --wait
 	@echo "Ensuring all composed resources are removed..."
-	kubectl delete -f infrastructure/crossplane/eks/composition.yaml --ignore-not-found
-	kubectl delete -f infrastructure/crossplane/eks/xrd.yaml --ignore-not-found
+	kubectl delete -f crossplane/eks/composition.yaml --ignore-not-found
+	kubectl delete -f crossplane/eks/xrd.yaml --ignore-not-found
 
 .PHONY: argocd-login argocd-bootstrap argocd-status argocd-ui
 
@@ -172,7 +172,7 @@ argocd-bootstrap:
 	bash scripts/setup-argocd-github.sh
 	@echo ""
 	@echo "=== Step 2/3: Applying ArgoCD AppProject ==="
-	kubectl apply -f argocd/projects/idp-platform.yaml
+	kubectl apply -f argocd/projects/
 	@echo ""
 	@echo "=== Step 3/3: Applying ArgoCD root Application ==="
 	kubectl apply -f argocd/apps/root-app.yaml
@@ -423,3 +423,56 @@ network-status:
 	@kubectl get networks -n platform-network 2>/dev/null || echo "No network claims found"
 	@kubectl get xnetworks 2>/dev/null || echo "No composite networks found"
 	@kubectl get managed | grep -i "vpc\|subnet\|igw\|route" 2>/dev/null || echo "No network managed resources"
+
+.PHONY: caipe-up caipe-down caipe-logs caipe-token caipe-kubeconfig
+
+.PHONY: setup-caipe-argocd
+setup-caipe-argocd:
+	@chmod +x scripts/setup-caipe-argocd.sh
+	@./scripts/setup-caipe-argocd.sh
+
+caipe-token:
+	@echo "Enabling apiKey capability for admin account..."
+	@kubectl patch configmap argocd-cm -n argocd --type merge -p '{"data":{"accounts.admin":"apiKey, login"}}'
+	@echo "Retrieving admin password..."
+	@ARGOCD_PWD=$$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d) && \
+	echo "Logging into ArgoCD..." && \
+	argocd login localhost:8080 --username admin --password "$$ARGOCD_PWD" --insecure && \
+	echo "Generating token..." && \
+	argocd account generate-token
+
+caipe-kubeconfig:
+	@cat backstage/secrets/kubeconfig.yaml | base64 | tr -d '\n'
+
+caipe-up:
+	@echo "Starting CAIPE service..."
+	docker compose up -d caipe
+
+caipe-down:
+	@echo "Stopping CAIPE service..."
+	docker compose stop caipe && docker compose rm -f caipe
+
+caipe-logs:
+	docker compose logs -f caipe
+
+.PHONY: caipe-health caipe-test
+caipe-health:
+	curl -sf http://localhost:8082/health
+
+caipe-test: caipe-health
+	@echo "Testing ArgoCD agent..."
+	@curl -sf -X POST http://localhost:8082/ \
+	  -H "Content-Type: application/json" \
+	  -d '{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"message_id":"msg-1","role":"user","parts":[{"kind":"text","text":"List applications"}]}}}' \
+	  | grep -q "result\|error"
+	@echo "Testing GitHub agent..."
+	@curl -sf -X POST http://localhost:8082/ \
+	  -H "Content-Type: application/json" \
+	  -d '{"jsonrpc":"2.0","id":"2","method":"message/send","params":{"message":{"message_id":"msg-2","role":"user","parts":[{"kind":"text","text":"List repositories for nimishmehta8779"}]}}}' \
+	  | grep -q "result\|error"
+	@echo "Testing Kubernetes agent..."
+	@curl -sf -X POST http://localhost:8082/ \
+	  -H "Content-Type: application/json" \
+	  -d '{"jsonrpc":"2.0","id":"3","method":"message/send","params":{"message":{"message_id":"msg-3","role":"user","parts":[{"kind":"text","text":"List all namespaces"}]}}}' \
+	  | grep -q "result\|error"
+	@echo "All agent verify tests passed!"

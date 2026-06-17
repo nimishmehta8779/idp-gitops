@@ -26,7 +26,7 @@ jobs:
       - name: Run validation script
         id: run_validation
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_REF: {% raw %}${{ github.base_ref }}{% endraw %}
         run: |
           git fetch origin $BASE_REF
           export CHANGED_FILES=$(git diff --name-only origin/$BASE_REF...HEAD)

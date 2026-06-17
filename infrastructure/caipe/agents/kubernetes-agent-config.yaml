@@ -1,0 +1,27 @@
+agent:
+  name: kubernetes-agent
+  enabled: true
+  description: "Kubernetes integration agent"
+  clusters:
+    - name: kind-local
+      context: kind-backstage-dev
+  watched_namespaces:
+    - clusters-dev
+    - clusters-staging
+    - crossplane-system
+    - argocd
+    - kyverno
+    - platform-network
+  capabilities:
+    - list-pods
+    - get-pod-logs
+    - list-namespaces
+    - get-resource-status
+    - list-eksclusters
+    - describe-resource
+    - get-events
+    - list-managed-resources
+  restricted:
+    - delete-namespace
+    - apply-manifests
+    - exec-into-pod

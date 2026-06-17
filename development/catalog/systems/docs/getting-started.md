@@ -50,3 +50,46 @@ make backstage-dev
 ```
 
 Backstage will be accessible at [http://localhost:3000](http://localhost:3000).
+
+## Score Workload Specification
+
+Every service created via the IDP includes a `score.yaml` file that defines its workload requirements in a platform-agnostic way.
+
+### What is Score?
+
+[Score](https://score.dev) is an open-source specification for describing workload requirements (resources, health checks, environment variables) that translates into platform-specific manifests (Docker Compose, Kubernetes, Helm).
+
+### Score in the IDP
+
+- **Every new service repository** includes a `score.yaml` file
+- **CI validates** score.yaml syntax on every pull request
+- **Platform translates** score.yaml to deployment manifests automatically
+- **Environment overrides** allow local dev vs. staging/prod differences
+
+### Key Files
+
+- `score.yaml` - Primary workload specification (required)
+- `score-overrides.dev.yaml` - Local development overrides
+- `.score/README.md` - Documentation and examples
+
+### Generating Manifests Locally
+
+```bash
+# Docker Compose for local development
+score-compose generate score.yaml
+docker-compose up
+
+# Kubernetes for staging/production
+score-k8s init
+score-k8s generate score.yaml --image myregistry/myservice:latest
+kubectl apply -f manifests/
+```
+
+### Catalog Annotations
+
+Every service is tagged with score metadata for discovery:
+- `score.dev/workload-spec: score.yaml` - Specifies the score file location
+- `score.dev/spec-version: v1b1` - Score specification version
+- `idp.platform.io/score-validated: "true"` - CI validation passed
+
+See the [Score documentation](https://score.dev/docs) for the complete specification.

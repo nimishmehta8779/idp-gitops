@@ -1,0 +1,11 @@
+agent:
+  name: argocd-agent
+  enabled: true
+  description: "ArgoCD integration agent"
+  capabilities:
+    - list-applications
+    - get-application-status
+    - sync-application
+  restricted:
+    - delete-application
+    - create-application

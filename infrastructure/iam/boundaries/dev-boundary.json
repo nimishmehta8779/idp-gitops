@@ -34,7 +34,19 @@
         "ec2:DescribeRouteTables",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeAvailabilityZones",
-        "ec2:DescribeAccountAttributes"
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DetachNetworkInterface",
+        "ec2:DescribeVpcClassicLink",
+        "ec2:DescribeVpcClassicLinkDnsSupport",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DeleteVpc",
+        "ec2:DeleteSubnet",
+        "ec2:DeleteRouteTable",
+        "ec2:DeleteInternetGateway",
+        "ec2:DetachInternetGateway",
+        "ec2:DeleteSecurityGroup"
       ],
       "Resource": "*"
     },

@@ -17,25 +17,25 @@ jobs:
         uses: actions/create-github-app-token@v1
         id: app-token
         with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: {% raw %}${{ secrets.APP_ID }}{% endraw %}
+          private-key: {% raw %}${{ secrets.APP_PRIVATE_KEY }}{% endraw %}
 
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: {% raw %}${{ steps.app-token.outputs.token }}{% endraw %}
           persist-credentials: false
           fetch-depth: 0
 
       - name: Add approval annotation
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: {% raw %}${{ steps.app-token.outputs.token }}{% endraw %}
         run: |
           # Get PR merger (approver)
           APPROVER=""
           
           # Check if there is an associated merged PR for this commit
-          APPROVER=$(gh pr list --state merged --limit 1 --json number,mergeCommit --jq ".[] | select(.mergeCommit.oid == \"${{ github.sha }}\") | .mergedBy.login" 2>/dev/null || true)
+          APPROVER=$(gh pr list --state merged --limit 1 --json number,mergeCommit --jq ".[] | select(.mergeCommit.oid == \"{% raw %}${{ github.sha }}{% endraw %}\") | .mergedBy.login" 2>/dev/null || true)
           
           if [ -z "$APPROVER" ]; then
             echo "No PR approver/merger found. Skipping approval annotation update."
@@ -86,7 +86,7 @@ jobs:
         uses: actions/github-script@v6
         env:
           BACKSTAGE_URL: 'http://localhost:7007'
-          BACKSTAGE_TOKEN: ${{ secrets.BACKSTAGE_TOKEN }}
+          BACKSTAGE_TOKEN: {% raw %}${{ secrets.BACKSTAGE_TOKEN }}{% endraw %}
         with:
           script: |
             const execSync = require('child_process').execSync;

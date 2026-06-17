@@ -194,14 +194,15 @@ spec:
 
   output:
     links:
-      - title: Team infra repo
-        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra
-      - title: ArgoCD sync status
-        url: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
-      - title: Pull Request (staging only)
-        url: ${{ steps['push-claim-staging'].output.remoteUrl }}
-        if: ${{ parameters.environment === 'staging' }}
-      - title: Open in Catalog
+      - title: "Open in Catalog"
+        url: http://localhost:3000/catalog/default/resource/${{ parameters.clusterName }}
         icon: catalog
-        entityRef: ${{ steps.register.output.entityRef }}
-        if: ${{ parameters.environment === 'dev' }}
+      - title: "ArgoCD sync status"
+        url: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
+        icon: dashboard
+      - title: "GitOps claim"
+        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/eks/${{ parameters.clusterName }}.yaml
+        icon: github
+      - title: "Track provisioning"
+        url: http://localhost:3000/catalog/default/resource/${{ parameters.clusterName }}
+        icon: clock

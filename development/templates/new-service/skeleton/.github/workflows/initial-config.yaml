@@ -1,0 +1,51 @@
+name: Initial Configuration
+on:
+  workflow_run:
+    workflows: ["Initial Repository Setup"]
+    types: [completed]
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    if: {% raw %}\${{ github.event.workflow_run.conclusion == 'success' }}{% endraw %}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate score.yaml exists
+        run: |
+          test -f score.yaml || {
+            echo "❌ score.yaml missing — workload spec required"
+            exit 1
+          }
+          echo "✅ score.yaml present"
+
+      - name: Validate catalog-info.yaml
+        run: |
+          test -f catalog-info.yaml || {
+            echo "❌ catalog-info.yaml missing"
+            exit 1
+          }
+          # Check required fields
+          grep -q "spec.owner" catalog-info.yaml || \
+          grep -q "owner:" catalog-info.yaml || {
+            echo "❌ catalog-info.yaml missing owner field"
+            exit 1
+          }
+          echo "✅ catalog-info.yaml valid"
+
+      - name: Post configuration summary
+        env:
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+        run: |
+          gh issue comment 1 \
+            --body "## ✅ Initial configuration complete
+
+            | Check | Status |
+            |---|---|
+            | Branch protection | ✅ Configured |
+            | Standard labels | ✅ Created |
+            | score.yaml | ✅ Present |
+            | catalog-info.yaml | ✅ Valid |
+
+            Repository is ready for development!"

@@ -1,0 +1,30 @@
+workflows:
+  - id: cluster-health-check
+    name: "Cluster Health Check"
+    description: "Verify Kubernetes cluster status, ArgoCD sync, and GitHub repo status"
+    agents:
+      - github-agent
+      - argocd-agent
+      - kubernetes-agent
+
+  - id: deployment-status
+    name: "Deployment Status"
+    description: "Check ArgoCD application sync status and corresponding Kubernetes pods"
+    agents:
+      - argocd-agent
+      - kubernetes-agent
+
+  - id: pr-review-assist
+    name: "PR Review Assist"
+    description: "Analyze pull requests on GitHub and verify Kubernetes configs/manifests"
+    agents:
+      - github-agent
+      - kubernetes-agent
+
+  - id: incident-response
+    name: "Incident Response"
+    description: "Diagnose production incidents using Kubernetes logs, ArgoCD sync state, and GitHub repo history"
+    agents:
+      - kubernetes-agent
+      - argocd-agent
+      - github-agent

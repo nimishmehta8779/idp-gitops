@@ -1,0 +1,105 @@
+name: Team Infra Repository Setup
+on:
+  push:
+    branches: [main]
+
+jobs:
+  init-team-repo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          [ -f .github/.initialized ] && echo "skip=true" >> $GITHUB_OUTPUT \
+            || echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Setup branch protection for team infra repo
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+        run: |
+          # Require PR + validate-claims check before merge
+          # Allow Backstage GitHub App to bypass (for dev direct pushes)
+          gh api repos/{% raw %}${{ github.repository }}{% endraw %}/branches/main/protection \
+            --method PUT \
+            --field required_status_checks='{"strict":true,"contexts":["validate-claims"]}' \
+            --field enforce_admins=false \
+            --field required_pull_request_reviews='{"required_approving_review_count":1}' \
+            --field restrictions=null
+
+      - name: Create infra request labels
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+        run: |
+          gh label create "cluster-request" --color "#0075ca" --force || true
+          gh label create "cluster-decommission" --color "#d73a4a" --force || true
+          gh label create "needs-review" --color "#e4e669" --force || true
+          gh label create "approved" --color "#0e8a16" --force || true
+          gh label create "policy-violation" --color "#e11d48" --force || true
+          gh label create "cost-review" --color "#fbca04" --force || true
+
+      - name: Verify directory structure
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          dirs=(eks rds s3 ec2 opensearch elasticache)
+          for dir in "${dirs[@]}"; do
+            mkdir -p "$dir"
+            touch "$dir/.gitkeep"
+          done
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git diff --staged --quiet || \
+            git commit -m "chore: ensure directory structure [skip ci]"
+          git push || true
+
+      - name: Create team onboarding issue
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+        run: |
+          gh issue create \
+            --title "🏁 Team infrastructure repo ready" \
+            --body "## Infrastructure repo configured for {% raw %}${{ github.repository_owner }}{% endraw %}
+
+            ## Available resource types
+            | Directory | Resource type | How to request |
+            |---|---|---|
+            | \`eks/\` | EKS clusters | Backstage → Request EKS Cluster |
+            | \`rds/\` | RDS databases | Coming soon |
+            | \`s3/\` | S3 buckets | Coming soon |
+            | \`ec2/\` | EC2 instances | Coming soon |
+            | \`opensearch/\` | OpenSearch | Coming soon |
+            | \`elasticache/\` | ElastiCache | Coming soon |
+
+            ## How provisioning works
+            1. Submit request via [Backstage](http://localhost:3000/create)
+            2. Backstage pushes claim file to this repo
+            3. ArgoCD detects change and applies to kind cluster
+            4. Crossplane provisions on AWS
+            5. Resource appears in [Backstage Catalog](http://localhost:3000/catalog)
+
+            ## Naming convention
+            All resources must follow: \`<team>-<env>-<purpose>-<index>\`
+            Example: \`alpha-dev-general-01\`
+            " \
+            --label "enhancement"
+
+      - name: Mark initialized
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          echo "Initialized at $(date -u)" > .github/.initialized
+          git add .github/.initialized
+          git diff --staged --quiet || \
+            git commit -m "chore: repository initialized [skip ci]"
+          git push || true

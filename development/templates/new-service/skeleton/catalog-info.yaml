@@ -6,6 +6,9 @@ metadata:
   annotations:
     backstage.io/source-location: url:https://github.com/nimishmehta8779/${{ values.repoName }}
     backstage.io/techdocs-ref: dir:.
+    score.dev/workload-spec: score.yaml
+    score.dev/spec-version: v1b1
+    idp.platform.io/score-validated: "true"
 spec:
   type: service
   lifecycle: experimental

@@ -1,0 +1,7 @@
+# Development environment overrides
+# Used with: score-compose generate score.yaml --override-files score-overrides.dev.yaml
+containers:
+  main:
+    variables:
+      LOG_LEVEL: debug
+      NODE_ENV: development

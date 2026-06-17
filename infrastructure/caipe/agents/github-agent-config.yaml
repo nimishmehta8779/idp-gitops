@@ -1,0 +1,21 @@
+agent:
+  name: github-agent
+  enabled: true
+  description: "GitHub integration agent"
+  watched_repositories:
+    - idp-gitops
+    - idp-platform
+    - team-alpha-infra
+    - team-beta-infra
+    - team-gamma-infra
+  capabilities:
+    - list-prs
+    - get-pr-status
+    - list-repos
+    - get-file-content
+    - list-workflows
+    - get-workflow-status
+  restricted:
+    - merge-pr
+    - delete-repo
+    - push-to-main

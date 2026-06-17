@@ -78,11 +78,42 @@ spec:
               kind: API
 
   steps:
-    - id: fetch-base
-      name: Fetch Base Skeleton
+    - id: fetch-nodejs
+      name: Fetch Node.js Skeleton
+      if: ${{ parameters.language === 'nodejs' }}
       action: fetch:template
       input:
-        url: ./skeleton
+        url: ./skeleton-nodejs
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          language: ${{ parameters.language }}
+          repoName: ${{ parameters.repoName }}
+          dependencies: ${{ parameters.dependencies }}
+          consumesApis: ${{ parameters.consumesApis }}
+
+    - id: fetch-python
+      name: Fetch Python Skeleton
+      if: ${{ parameters.language === 'python' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-python
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          language: ${{ parameters.language }}
+          repoName: ${{ parameters.repoName }}
+          dependencies: ${{ parameters.dependencies }}
+          consumesApis: ${{ parameters.consumesApis }}
+
+    - id: fetch-golang
+      name: Fetch Go Skeleton
+      if: ${{ parameters.language === 'golang' }}
+      action: fetch:template
+      input:
+        url: ./skeleton-golang
         values:
           serviceName: ${{ parameters.serviceName }}
           description: ${{ parameters.description }}
@@ -108,8 +139,12 @@ spec:
 
   output:
     links:
-      - title: Repository
-        url: ${{ steps.publish.output.remoteUrl }}
-      - title: Open in Catalog
+      - title: "Open in Catalog"
+        url: http://localhost:3000/catalog/default/component/${{ steps.register.output.entityRef | replace("component:default/","") }}
         icon: catalog
-        entityRef: ${{ steps.register.output.entityRef }}
+      - title: "View GitHub repo"
+        url: ${{ steps.publish.output.remoteUrl }}
+        icon: github
+      - title: "CI/CD Pipeline"
+        url: ${{ steps.publish.output.remoteUrl }}/actions
+        icon: dashboard
