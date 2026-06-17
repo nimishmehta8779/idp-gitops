@@ -45,10 +45,10 @@ spec:
     spec:
       project: idp-platform-dev
       source:
+        chart: "{{chart}}"
+        repoURL: "{{repoURL}}"
+        targetRevision: 1.0.0
         helm:
-          chart: "{{chart}}"
-          repoURL: "{{repoURL}}"
-          targetRevision: 1.0.0
           values: |
             enableClusterAutoscaler: "{{cluster.metadata.annotations.enableClusterAutoscaler}}"
             enableExternalDNS: "{{cluster.metadata.annotations.enableExternalDNS}}"
