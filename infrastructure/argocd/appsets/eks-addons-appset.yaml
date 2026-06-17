@@ -1,0 +1,67 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: eks-cluster-addons
+  namespace: argocd
+spec:
+  # Generate one Application per EKS cluster that has the label `managed-by: eks-cluster`
+  # and per addon defined in the `elements` list below.
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            managed-by: eks-cluster
+    - list:
+        # Each entry represents an addon to be installed on the target cluster.
+        elements:
+          - name: cluster-autoscaler
+            chart: autoscaler/cluster-autoscaler
+            repoURL: https://kubernetes.github.io/autoscaler
+            valuesFile: values.yaml
+          - name: cluster-proportional-autoscaler
+            chart: autoscaler/cluster-proportional-autoscaler
+            repoURL: https://kubernetes.github.io/autoscaler
+            valuesFile: values.yaml
+          - name: external-dns
+            chart: external-dns/external-dns
+            repoURL: https://kubernetes-sigs.github.io/external-dns/
+            valuesFile: values.yaml
+          - name: aws-efs-csi-driver
+            chart: aws-efs-csi-driver/aws-efs-csi-driver
+            repoURL: https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+            valuesFile: values.yaml
+          - name: velero
+            chart: vmware-tanzu/velero
+            repoURL: https://vmware-tanzu.github.io/helm-charts
+            valuesFile: values.yaml
+  template:
+    metadata:
+      # Application name combines the cluster name and addon name.
+      name: "{{cluster.metadata.name}}-{{name}}"
+      labels:
+        cluster: "{{cluster.metadata.name}}"
+        addon: "{{name}}"
+        managed-by: argocd-applicationset
+    spec:
+      project: idp-platform-dev
+      source:
+        helm:
+          chart: "{{chart}}"
+          repoURL: "{{repoURL}}"
+          targetRevision: 1.0.0
+          values: |
+            enableClusterAutoscaler: "{{cluster.metadata.annotations.enableClusterAutoscaler}}"
+            enableExternalDNS: "{{cluster.metadata.annotations.enableExternalDNS}}"
+            enableVelero: "{{cluster.metadata.annotations.enableVelero}}"
+          valuesFiles:
+            - "addons/{{name}}/{{valuesFile}}"
+      destination:
+        server: "{{cluster.spec.server}}"
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true

@@ -58,6 +58,21 @@ spec:
           default: 2
           minimum: 1
           maximum: 10
+          enableClusterAutoscaler:
+            title: Enable Cluster Autoscaler
+            type: boolean
+            description: Deploy Cluster Autoscaler addon
+            default: false
+          enableExternalDNS:
+            title: Enable External DNS
+            type: boolean
+            description: Deploy External DNS addon
+            default: false
+          enableVelero:
+            title: Enable Velero
+            type: boolean
+            description: Deploy Velero backup addon
+            default: false
         instanceType:
           title: Instance Type
           type: string
@@ -97,6 +112,9 @@ spec:
           nodeCount: ${{ parameters.nodeCount }}
           instanceType: ${{ parameters.instanceType }}
           costCenter: ${{ parameters.costCenter }}
+          enableClusterAutoscaler: ${{ parameters.enableClusterAutoscaler }}
+          enableExternalDNS: ${{ parameters.enableExternalDNS }}
+          enableVelero: ${{ parameters.enableVelero }}
 
     # Step 2a: Dev — push claim file directly to team infra repo main branch
     - id: push-claim-dev

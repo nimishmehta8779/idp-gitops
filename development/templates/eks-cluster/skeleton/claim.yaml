@@ -21,6 +21,9 @@ metadata:
     backstage.io/kubernetes-id: ${{ values.clusterName }}
     backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}
     argocd.argoproj.io/compare-options: IgnoreExtraneous
+    enableClusterAutoscaler: "${{ values.enableClusterAutoscaler }}"
+    enableExternalDNS: "${{ values.enableExternalDNS }}"
+    enableVelero: "${{ values.enableVelero }}"
 spec:
   parameters:
     clusterName: ${{ values.clusterName }}
