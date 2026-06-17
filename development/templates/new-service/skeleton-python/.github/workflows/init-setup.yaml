@@ -29,7 +29,7 @@ jobs:
       - name: Create standard labels
         if: steps.check-init.outputs.skip == 'false'
         env:
-          GH_TOKEN: {% raw %}\${{ secrets.GITHUB_TOKEN }}{% endraw %}
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: |
           labels=(
             "bug:#d73a4a"
@@ -49,7 +49,7 @@ jobs:
       - name: Create welcome issue with onboarding checklist
         if: steps.check-init.outputs.skip == 'false'
         env:
-          GH_TOKEN: {% raw %}\${{ secrets.GITHUB_TOKEN }}{% endraw %}
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: |
           gh issue create \
             --title "🚀 Service onboarding checklist" \
