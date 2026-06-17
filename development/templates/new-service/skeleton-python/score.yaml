@@ -1,0 +1,75 @@
+# Score Workload Specification
+# apiVersion must be score.dev/v1b1
+# Translates to: docker-compose (local), Kubernetes manifests (staging/prod)
+apiVersion: score.dev/v1b1
+metadata:
+  name: ${{ values.serviceName }}
+  annotations:
+    backstage.io/component: ${{ values.serviceName }}
+    idp.platform.io/team: ${{ values.teamName }}
+    idp.platform.io/language: ${{ values.language }}
+    idp.platform.io/cost-center: ${{ values.costCenter | default('default') }}
+
+containers:
+  main:
+    image: .
+    # Image built by CI pipeline — placeholder for local dev
+    {% if values.language == 'nodejs' %}
+    command: ["node"]
+    args: ["dist/index.js"]
+    {% elif values.language == 'python' %}
+    command: ["python"]
+    args: ["-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+    {% elif values.language == 'golang' %}
+    command: ["./app"]
+    args: []
+    {% endif %}
+
+    variables:
+      NODE_ENV: ${environment}
+      LOG_LEVEL: ${resources.config.LOG_LEVEL}
+      PORT: "8080"
+      SERVICE_NAME: ${{ values.serviceName }}
+
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 15
+
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+service:
+  ports:
+    http:
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+
+resources:
+  config:
+    type: environment
+    properties:
+      LOG_LEVEL:
+        type: string
+        default: info
+  {% if values.language == 'nodejs' or values.language == 'python' %}
+  cache:
+    type: redis
+    # Resolved by platform to shared ElastiCache in staging/prod
+    # Resolved by score-compose to local Redis container in dev
+  {% endif %}

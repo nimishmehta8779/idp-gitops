@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.serviceName }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/source-location: url:https://github.com/nimishmehta8779/${{ values.repoName }}
+    backstage.io/techdocs-ref: dir:.
+    score.dev/workload-spec: score.yaml
+    score.dev/spec-version: v1b1
+    idp.platform.io/score-validated: "true"
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:${{ values.owner }}
+  system: idp-core
+  {%- if values.dependencies and values.dependencies.length > 0 %}
+  dependsOn:
+    {%- for dependency in values.dependencies %}
+    - ${{ dependency }}
+    {%- endfor %}
+  {%- endif %}
+  {%- if values.consumesApis and values.consumesApis.length > 0 %}
+  consumesApis:
+    {%- for api in values.consumesApis %}
+    - ${{ api }}
+    {%- endfor %}
+  {%- endif %}

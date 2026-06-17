@@ -1,0 +1,100 @@
+name: Initial Repository Setup
+on:
+  push:
+    branches: [main]
+
+jobs:
+  init-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if already initialized
+        id: check-init
+        run: |
+          if [ -f .github/.initialized ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup branch protection
+        if: steps.check-init.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/branches/main/protection \
+            --method PUT \
+            --field required_status_checks='{"strict":true,"contexts":["ci","security"]}' \
+            --field enforce_admins=false \
+            --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
+            --field restrictions=null
+
+      - name: Create standard labels
+        if: steps.check-init.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          labels=(
+            "bug:#d73a4a"
+            "enhancement:#a2eeef"
+            "security:#e4e669"
+            "dependencies:#0075ca"
+            "breaking-change:#e11d48"
+            "needs-review:#d93f0b"
+            "approved:#0e8a16"
+          )
+          for label in "${labels[@]}"; do
+            name="${label%%:*}"
+            color="${label##*:}"
+            gh label create "$name" --color "$color" --force || true
+          done
+
+      - name: Create welcome issue with onboarding checklist
+        if: steps.check-init.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "🚀 Service onboarding checklist" \
+            --body "## Welcome to ${{ github.repository }}!
+            This service was created via the IDP golden path template.
+
+            ## Checklist
+            - [ ] Update README.md with service description
+            - [ ] Configure environment variables in \`.env.example\`
+            - [ ] Review and update \`score.yaml\` resource requirements
+            - [ ] Verify CI pipeline passes on first PR
+            - [ ] Add team members as repository collaborators
+            - [ ] Link this service to any dependencies in \`catalog-info.yaml\`
+            - [ ] Set up monitoring alerts (use Backstage AI Assistant for help)
+            - [ ] Review security scan results in Actions tab
+
+            ## Resources
+            - [View in Backstage Catalog](http://localhost:3000/catalog)
+            - [IDP Documentation](http://localhost:3000/docs)
+            - [Request infrastructure](http://localhost:3000/create)
+            " \
+            --label "enhancement"
+
+      - name: Register service in Backstage catalog
+        if: steps.check-init.outputs.skip == 'false'
+        run: |
+          curl -sf -X POST http://localhost:7007/api/catalog/locations \
+            -H "Content-Type: application/json" \
+            -d "{\"type\":\"url\",\"target\":\"https://github.com/${{ github.repository }}/blob/main/catalog-info.yaml\"}" \
+            || echo "Backstage registration skipped (localhost not reachable from GitHub Actions — expected for local dev)"
+
+      - name: Mark as initialized
+        if: steps.check-init.outputs.skip == 'false'
+        run: |
+          mkdir -p .github
+          echo "Initialized at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/.initialized
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .github/.initialized
+          git commit -m "chore: mark repository as initialized [skip ci]"
+          git push
