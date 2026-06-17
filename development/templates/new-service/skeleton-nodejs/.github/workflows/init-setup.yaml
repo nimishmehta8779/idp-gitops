@@ -26,7 +26,7 @@ jobs:
         env:
           GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: |
-          gh api repos/${{ github.repository }}/branches/main/protection \
+          gh api repos/{% raw %}${{ github.repository }}{% endraw %}/branches/main/protection \
             --method PUT \
             --field required_status_checks='{"strict":true,"contexts":["ci","security"]}' \
             --field enforce_admins=false \
@@ -60,7 +60,7 @@ jobs:
         run: |
           gh issue create \
             --title "🚀 Service onboarding checklist" \
-            --body "## Welcome to ${{ github.repository }}!
+            --body "## Welcome to {% raw %}${{ github.repository }}{% endraw %}!
             This service was created via the IDP golden path template.
 
             ## Checklist
@@ -85,7 +85,7 @@ jobs:
         run: |
           curl -sf -X POST http://localhost:7007/api/catalog/locations \
             -H "Content-Type: application/json" \
-            -d "{\"type\":\"url\",\"target\":\"https://github.com/${{ github.repository }}/blob/main/catalog-info.yaml\"}" \
+            -d "{\"type\":\"url\",\"target\":\"https://github.com/{% raw %}${{ github.repository }}{% endraw %}/blob/main/catalog-info.yaml\"}" \
             || echo "Backstage registration skipped (localhost not reachable from GitHub Actions — expected for local dev)"
 
       - name: Mark as initialized
