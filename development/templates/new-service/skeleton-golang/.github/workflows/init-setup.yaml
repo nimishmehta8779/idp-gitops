@@ -13,7 +13,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
 
@@ -25,18 +25,6 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Setup branch protection
-        if: steps.check-init.outputs.skip == 'false'
-        env:
-          GH_TOKEN: {% raw %}\${{ secrets.GITHUB_TOKEN }}{% endraw %}
-        run: |
-          gh api repos/{% raw %}${{ github.repository }}{% endraw %}/branches/main/protection \
-            --method PUT \
-            --field required_status_checks='{"strict":true,"contexts":["ci","security"]}' \
-            --field enforce_admins=false \
-            --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-            --field restrictions=null
 
       - name: Create standard labels
         if: steps.check-init.outputs.skip == 'false'
