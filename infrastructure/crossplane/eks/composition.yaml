@@ -50,6 +50,10 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
+                readinessChecks:
+                  - type: MatchString
+                    fieldPath: status.atProvider.status
+                    matchString: ACTIVE
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
@@ -136,6 +140,8 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
+                dependsOn:
+                  - eks-cluster
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
@@ -339,6 +345,8 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
+                dependsOn:
+                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -388,6 +396,8 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
+                dependsOn:
+                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -433,6 +443,8 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
+                dependsOn:
+                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -478,6 +490,8 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
+                dependsOn:
+                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -575,7 +589,7 @@ spec:
             \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
             ebs-csi-role\nspec:\n  providerConfigRef:\n    name: aws-{{ .observed.composite.resource.spec.parameters.environment
             }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment
-            \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicyDocument:
+            \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  dependsOn:\n    - eks-cluster\n  forProvider:\n    assumeRolePolicyDocument:
             |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\"\
             : [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\"\
             : {\n              \"Federated\": \"{{ .observed.composite.resource.status.oidcProviderArn
@@ -603,7 +617,8 @@ spec:
             ebs-csi-role-attachment\nspec:\n  providerConfigRef:\n    name: aws-{{
             .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
-            \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n\
+            \ }}Delete{{ else }}Orphan{{ end }}\n  dependsOn:\n    - eks-cluster\n\
+            \  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n\
             \    roleRef:\n      name: idp-{{ .observed.composite.resource.spec.parameters.environment
             }}-{{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
             ---\napiVersion: eks.aws.upbound.io/v1beta1\nkind: Addon\nmetadata:\n\
@@ -612,7 +627,8 @@ spec:
             addon-aws-ebs-csi-driver\nspec:\n  providerConfigRef:\n    name: aws-{{
             .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
-            \ }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    addonName: aws-ebs-csi-driver\n\
+            \ }}Delete{{ else }}Orphan{{ end }}\n  dependsOn:\n    - eks-cluster\n\
+            \  forProvider:\n    addonName: aws-ebs-csi-driver\n\
             \    clusterName: {{ .observed.composite.resource.spec.parameters.clusterName
             }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n \
             \     name: idp-{{ .observed.composite.resource.spec.parameters.environment
