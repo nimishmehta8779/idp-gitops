@@ -247,6 +247,22 @@ spec:
         labels:
           - decommission-audit
 
+    # Step 6: Add completion note for dev environments
+    - id: completion_note_dev
+      name: Decommissioning Complete (Dev)
+      if: ${{ parameters.environment == 'dev' }}
+      action: debug:log
+      input:
+        message: "Dev cluster ${{ parameters.clusterName.split('/').pop() }} claim files deleted. AWS resources will be automatically deleted by Crossplane within 2-3 minutes."
+
+    # Step 7: Add completion note for staging environments
+    - id: completion_note_staging
+      name: Important: Manual Cleanup Required (Staging)
+      if: ${{ parameters.environment == 'staging' }}
+      action: debug:log
+      input:
+        message: "⚠️ Staging cluster claim deleted. AWS resources will remain due to Orphan deletion policy. See AWS console cleanup instructions below."
+
   output:
     links:
       - title: "Decommission audit record"
@@ -255,6 +271,50 @@ spec:
       - title: "ArgoCD pruning status"
         url: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
         icon: dashboard
-      - title: "Verify AWS cleanup"
-        url: http://localhost:3000/catalog/default/resource/${{ parameters.clusterName.split('/').pop() }}
-        icon: catalog
+      - title: "AWS EKS Console"
+        url: https://console.aws.amazon.com/eks/home?region=${{ parameters.awsRegion }}#/clusters
+        icon: external-link
+    text: |
+      ## Cluster Decommissioning Initiated
+
+      Cluster `${{ parameters.clusterName.split('/').pop() }}` has been marked for decommissioning.
+
+      ### For Dev Environments
+      ✅ Automated cleanup in progress:
+      1. Claim files have been deleted from GitOps repository
+      2. ArgoCD will detect the change and prune resources (2-3 minute sync cycle)
+      3. Crossplane will automatically delete AWS resources (Delete policy)
+      4. Check ArgoCD dashboard link above to monitor pruning
+      5. Verify in AWS EKS console that cluster is gone (typically 5-10 minutes)
+
+      **Expected Status Timeline:**
+      - T+0min: Decommissioning template completes
+      - T+2-3min: ArgoCD syncs and removes resources
+      - T+5-10min: AWS cluster deletion complete
+
+      ### For Staging Environments ⚠️
+      ⚠️ **MANUAL CLEANUP REQUIRED** - Staging uses Orphan deletion policy:
+
+      1. **Claim files have been deleted** from GitOps (automatic)
+      2. **AWS resources still exist** and will incur costs (manual action needed)
+      3. You must manually delete the cluster in AWS console:
+
+         - Open [AWS EKS Console](https://console.aws.amazon.com/eks/home?region=${{ parameters.awsRegion }}#/clusters)
+         - Find cluster: `${{ parameters.clusterName.split('/').pop() }}`
+         - Click delete and confirm
+         - Wait 15-20 minutes for deletion to complete
+         - Verify VPC and related resources are also deleted
+
+      4. After cleanup, update the audit issue with completion details
+
+      ### Verification Checklist
+      - [ ] Decommission audit record created (see link above)
+      - [ ] Claim files deleted from team infra repo
+      - [ ] ArgoCD application status shows pruning in progress (dev only)
+      - [ ] EKS cluster no longer appears in AWS console
+      - [ ] Node groups have been terminated
+      - [ ] Associated IAM roles have been deleted
+      - [ ] Cost center billing has been updated
+
+      ### Need Help?
+      Check the audit issue for detailed decommissioning information and checklist tracking.
