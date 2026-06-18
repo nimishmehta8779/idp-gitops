@@ -12,15 +12,7 @@ metadata:
     instance-type: ${{ values.instanceType }}
     environment: ${{ values.environment }}
     created-by: ${{ values.teamName }}
-    created-at: ${{ values.createdAt }}
-    monthly-cost-estimate: "{% if values.instanceType == 't3.medium' %}${{ values.nodeCount * 144 }}{% elif values.instanceType == 't3.large' %}${{ values.nodeCount * 200 }}{% else %}${{ values.nodeCount * 280 }}{% endif %}"
 spec:
   type: kubernetes-cluster
   owner: group:default/${{ values.teamName }}
   system: system:default/eks-provisioning
-  {%- if values.components and values.components.length > 0 %}
-  dependencyOf:
-    {%- for component in values.components %}
-    - ${{ component }}
-    {%- endfor %}
-  {%- endif %}
