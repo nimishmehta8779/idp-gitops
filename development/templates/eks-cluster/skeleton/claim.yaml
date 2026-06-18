@@ -40,6 +40,9 @@ spec:
     environment: ${{ values.environment }}
     teamName: ${{ values.teamName }}
     costCenter: ${{ values.costCenter }}
+    enableClusterAutoscaler: ${{ values.enableClusterAutoscaler }}
+    enableExternalDNS: ${{ values.enableExternalDNS }}
+    enableVelero: ${{ values.enableVelero }}
     networkRef: {% if values.environment == 'dev' %}dev-network{% else %}staging-network{% endif %}
   compositionRef:
     name: eks-cluster

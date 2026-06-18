@@ -51,6 +51,20 @@ spec:
                     enableEbsCsi:
                       type: boolean
                       default: true
+                    enableClusterAutoscaler:
+                      type: boolean
+                      default: false
+                    enableExternalDNS:
+                      type: boolean
+                      default: false
+                    enableVelero:
+                      type: boolean
+                      default: false
+                    adminRoleArn:
+                      type: string
+                      description: >
+                        IAM role ARN that should receive cluster-admin access.
+                        E.g. arn:aws:iam::123456789012:role/my-admin-role
                     networkRef:
                       type: string
                   required: [clusterName, teamName, networkRef]
@@ -62,6 +76,15 @@ spec:
                     namespace:
                       type: string
               required: [parameters]
+            status:
+              type: object
+              properties:
+                oidcIssuer:
+                  type: string
+                  description: OIDC issuer URL for the EKS cluster
+                oidcProviderArn:
+                  type: string
+                  description: ARN of the OIDC provider created for the cluster
   connectionSecretKeys:
     - kubeconfig
     - clusterEndpoint
