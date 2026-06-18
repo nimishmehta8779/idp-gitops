@@ -7,8 +7,8 @@
 | Environment | dev |
 | Region | us-east-1 |
 | Instance type | t3.medium |
-| Node count | 1 |
-| Reason | test decommission from backstage |
+| Node count | 2 |
+| Reason | to test argued decommission process |
 | Date | ${{ now() }} |
 | Monthly saving | $300 |
 
