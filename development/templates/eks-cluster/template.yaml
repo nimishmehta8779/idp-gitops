@@ -116,26 +116,9 @@ spec:
           enableExternalDNS: ${{ parameters.enableExternalDNS }}
           enableVelero: ${{ parameters.enableVelero }}
 
-    # Step 1.5: Create cluster-specific GitHub repository
-    - id: create-cluster-repo
-      name: Create Cluster-Specific GitHub Repository
-      action: github:repo:create
-      input:
-        repoUrl: github.com?owner=${{ parameters.teamName }}
-        name: ${{ parameters.clusterName }}-infra
-        description: "Infrastructure repository for EKS cluster ${{ parameters.clusterName }}"
-        private: true
-        hasIssues: true
-        hasProjects: true
-        topics:
-          - eks
-          - cluster
-          - infrastructure
-          - ${{ parameters.teamName }}
-
-    # Step 1.6: Initialize cluster repo with workflows and documentation
+    # Step 1.5: Create cluster repository initialization files
     - id: init-cluster-repo-workflows
-      name: Initialize Cluster Repository with Workflows
+      name: Prepare Cluster Repository Files
       action: fetch:template
       input:
         url: ./cluster-repo-skeleton
@@ -145,19 +128,6 @@ spec:
           teamName: ${{ parameters.teamName }}
           awsRegion: ${{ parameters.awsRegion }}
           environment: ${{ parameters.environment }}
-
-    # Step 1.7: Push workflows to cluster repo
-    - id: push-workflows-to-cluster-repo
-      name: Push GitHub Actions Workflows to Cluster Repo
-      action: github:repo:push
-      input:
-        repoUrl: github.com?owner=${{ parameters.teamName }}&repo=${{ parameters.clusterName }}-infra
-        sourcePath: ./cluster-repo
-        branch: main
-        commitMessage: "chore: initialize cluster repository with workflows"
-        gitAuthor:
-          name: Backstage IDP
-          email: idp@platform.io
 
     # Step 2a: Dev — push claim file directly to team infra repo main branch
     - id: push-claim-dev
@@ -267,3 +237,71 @@ spec:
       - title: "Track provisioning"
         url: http://localhost:3000/catalog/default/resource/${{ parameters.clusterName }}
         icon: clock
+    text: |
+      ## ✅ EKS Cluster Provisioning Started
+
+      Your cluster `${{ parameters.clusterName }}` is now provisioning!
+
+      ### Next Steps
+
+      1. **Monitor Cluster Provisioning** (30-35 minutes)
+         - View ArgoCD application status: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
+         - Check Crossplane resources: `kubectl get xeksclusters -n clusters-${{ parameters.environment }}`
+         - Expected timeline: Cluster CREATING (10min) → Node group (20min) → Add-ons (30min) → Ready (35min)
+
+      2. **Create Cluster Infrastructure Repository** (Manual Step)
+         ```bash
+         # Create a new private repository in your GitHub organization:
+         Repository name: ${{ parameters.clusterName }}-infra
+         Description: Infrastructure repository for EKS cluster ${{ parameters.clusterName }}
+         Private: Yes
+         Add .gitignore: Yes (select "Go")
+         ```
+
+         After creating the repository:
+         ```bash
+         # Clone it locally
+         git clone https://github.com/${{ parameters.teamName }}/${{ parameters.clusterName }}-infra
+         cd ${{ parameters.clusterName }}-infra
+
+         # Copy cluster infrastructure files
+         # (Files are prepared in your current Backstage workspace under ./cluster-repo/)
+         ```
+
+      3. **Add GitHub Actions Workflows**
+         Once the repository is created, add the following workflows:
+         - `.github/workflows/get-kubeconfig.yml` - Retrieve kubeconfig on-demand
+         - `.github/workflows/cluster-info.yml` - Auto-update cluster information (hourly)
+         - `.github/workflows/addon-status.yml` - Monitor add-ons (every 15 min)
+         - `.github/workflows/provisioning-status.yml` - Track provisioning (every 5 min)
+
+         *These files are available in the documentation: EKS_PHASE1_COMPLETION.md*
+
+      4. **Validate Cluster When Ready**
+         Once provisioning completes (~35 minutes):
+         ```bash
+         # Get kubeconfig
+         aws eks update-kubeconfig --name ${{ parameters.clusterName }} --region ${{ parameters.awsRegion }}
+
+         # Verify cluster is ready
+         kubectl get nodes
+         kubectl cluster-info
+
+         # All nodes should show "Ready" status
+         ```
+
+      ### Documentation
+
+      - **Quick Reference**: Read `EKS_QUICK_VALIDATION_CARD.md`
+      - **Full Guide**: Read `EKS_PROVISIONING_OPERATIONAL_GUIDE.md`
+      - **Troubleshooting**: See "Troubleshooting" section in the guide
+
+      ### Support
+
+      If you encounter any issues:
+      1. Check the troubleshooting section in the operational guide
+      2. Review Crossplane events: `kubectl describe xeksclusters ${{ parameters.clusterName }} -n clusters-${{ parameters.environment }}`
+      3. Contact #platform-team on Slack with cluster name and error details
+
+      ---
+      ✅ **Cluster provisioning is in progress. Check back in 30-35 minutes!**
