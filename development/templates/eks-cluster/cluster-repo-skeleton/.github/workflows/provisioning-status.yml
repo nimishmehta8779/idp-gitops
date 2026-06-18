@@ -1,0 +1,147 @@
+name: Provisioning Status
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-provisioning-status:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.status.outputs.status }}
+      progress: ${{ steps.status.outputs.progress }}
+      message: ${{ steps.status.outputs.message }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-${{ env.CLUSTER_NAME }}-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check Cluster Provisioning Status
+        id: status
+        run: |
+          CLUSTER_NAME="${{ env.CLUSTER_NAME }}"
+          REGION="${{ env.AWS_REGION }}"
+
+          # Check if cluster exists
+          CLUSTER=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$REGION" 2>/dev/null || echo "{}")
+
+          if [ -z "$(echo "$CLUSTER" | jq -r '.cluster.name // empty')" ]; then
+            echo "status=NOT_FOUND" >> $GITHUB_OUTPUT
+            echo "progress=0" >> $GITHUB_OUTPUT
+            echo "message=Cluster not yet provisioned" >> $GITHUB_OUTPUT
+          else
+            CLUSTER_STATUS=$(echo "$CLUSTER" | jq -r '.cluster.status')
+
+            case "$CLUSTER_STATUS" in
+              CREATING)
+                echo "status=PROVISIONING" >> $GITHUB_OUTPUT
+                echo "progress=25" >> $GITHUB_OUTPUT
+                echo "message=Creating EKS cluster..." >> $GITHUB_OUTPUT
+                ;;
+              ACTIVE)
+                # Check node groups
+                NODE_GROUPS=$(aws eks list-nodegroups --cluster-name "$CLUSTER_NAME" --region "$REGION" --query 'nodegroups' --output text)
+
+                if [ -z "$NODE_GROUPS" ]; then
+                  echo "status=PROVISIONING" >> $GITHUB_OUTPUT
+                  echo "progress=50" >> $GITHUB_OUTPUT
+                  echo "message=Creating node groups..." >> $GITHUB_OUTPUT
+                else
+                  # Check if all node groups are active
+                  ACTIVE_COUNT=0
+                  for ng in $NODE_GROUPS; do
+                    NG_STATUS=$(aws eks describe-nodegroup \
+                      --cluster-name "$CLUSTER_NAME" \
+                      --nodegroup-name "$ng" \
+                      --region "$REGION" \
+                      --query 'nodegroup.status' \
+                      --output text)
+
+                    if [ "$NG_STATUS" = "ACTIVE" ]; then
+                      ((ACTIVE_COUNT++))
+                    fi
+                  done
+
+                  NG_TOTAL=$(echo "$NODE_GROUPS" | wc -w)
+
+                  if [ "$ACTIVE_COUNT" -eq "$NG_TOTAL" ]; then
+                    # Check addons
+                    ADDONS=$(aws eks list-addons --cluster-name "$CLUSTER_NAME" --region "$REGION" --query 'addons' --output text)
+                    if [ -z "$ADDONS" ]; then
+                      echo "status=READY" >> $GITHUB_OUTPUT
+                      echo "progress=100" >> $GITHUB_OUTPUT
+                      echo "message=Cluster ready!" >> $GITHUB_OUTPUT
+                    else
+                      echo "status=PROVISIONING" >> $GITHUB_OUTPUT
+                      echo "progress=85" >> $GITHUB_OUTPUT
+                      echo "message=Deploying add-ons..." >> $GITHUB_OUTPUT
+                    fi
+                  else
+                    echo "status=PROVISIONING" >> $GITHUB_OUTPUT
+                    echo "progress=60" >> $GITHUB_OUTPUT
+                    echo "message=Waiting for node groups ($ACTIVE_COUNT/$NG_TOTAL active)..." >> $GITHUB_OUTPUT
+                  fi
+                fi
+                ;;
+              DELETING)
+                echo "status=DELETING" >> $GITHUB_OUTPUT
+                echo "progress=100" >> $GITHUB_OUTPUT
+                echo "message=Cluster is being deleted..." >> $GITHUB_OUTPUT
+                ;;
+              FAILED)
+                echo "status=FAILED" >> $GITHUB_OUTPUT
+                echo "progress=0" >> $GITHUB_OUTPUT
+                echo "message=Cluster provisioning failed" >> $GITHUB_OUTPUT
+                ;;
+              *)
+                echo "status=$CLUSTER_STATUS" >> $GITHUB_OUTPUT
+                echo "progress=50" >> $GITHUB_OUTPUT
+                echo "message=Status: $CLUSTER_STATUS" >> $GITHUB_OUTPUT
+                ;;
+            esac
+          fi
+
+      - name: Create Status Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # Provisioning Status
+
+          ## Status: ${{ steps.status.outputs.status }}
+
+          Progress: ${{ steps.status.outputs.progress }}%
+
+          Message: ${{ steps.status.outputs.message }}
+
+          ---
+          ✅ Check complete at $(date)
+          EOF
+
+  update-deployment-status:
+    needs: check-provisioning-status
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Backstage Update
+        run: |
+          echo "Status: ${{ needs.check-provisioning-status.outputs.status }}"
+          echo "Progress: ${{ needs.check-provisioning-status.outputs.progress }}"
+          echo "Message: ${{ needs.check-provisioning-status.outputs.message }}"
+
+          # In a real implementation, this would call a Backstage API endpoint
+          # to update the cluster status in real-time
+
+      - name: Notify on Completion
+        if: needs.check-provisioning-status.outputs.status == 'READY'
+        run: |
+          echo "🎉 Cluster is ready!"
+          echo ""
+          echo "Get kubeconfig: gh workflow run get-kubeconfig.yml"
+          echo "View info: cat CLUSTER_INFO.md"
+          echo "Check addons: cat ADDON_STATUS.md"

@@ -1,0 +1,171 @@
+name: Addon Status Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  addon-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-${{ env.CLUSTER_NAME }}-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check Addon Status
+        id: addon-check
+        run: |
+          CLUSTER_NAME="${{ env.CLUSTER_NAME }}"
+          REGION="${{ env.AWS_REGION }}"
+
+          # Get all addons
+          ADDONS=$(aws eks list-addons --cluster-name "$CLUSTER_NAME" --region "$REGION" --query 'addons' --output text)
+
+          echo "## ✅ Addon Status Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Cluster**: $CLUSTER_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "**Region**: $REGION" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Track overall status
+          ALL_HEALTHY=true
+
+          # Check each addon
+          for addon in $ADDONS; do
+            ADDON_INFO=$(aws eks describe-addon \
+              --cluster-name "$CLUSTER_NAME" \
+              --addon-name "$addon" \
+              --region "$REGION")
+
+            STATUS=$(echo "$ADDON_INFO" | jq -r '.addon.addonHealth.issues | if length == 0 then "ACTIVE" else "DEGRADED" end')
+            VERSION=$(echo "$ADDON_INFO" | jq -r '.addon.addonVersion')
+            MARKETPLACE_VERSION=$(echo "$ADDON_INFO" | jq -r '.addon.marketplaceInformation.productId // "N/A"')
+
+            if [ "$STATUS" != "ACTIVE" ]; then
+              ALL_HEALTHY=false
+              ICON="❌"
+            else
+              ICON="✅"
+            fi
+
+            echo "| $ICON | $addon | $VERSION | $STATUS |" >> /tmp/addon_table.txt
+          done
+
+          # Generate markdown table
+          {
+            echo ""
+            echo "### Add-on Details"
+            echo ""
+            echo "| Status | Add-on | Version | Health |"
+            echo "|--------|--------|---------|--------|"
+            cat /tmp/addon_table.txt 2>/dev/null || echo "| ⏳ | Checking... | - | Loading |"
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
+
+          if [ "$ALL_HEALTHY" = "true" ]; then
+            echo "🟢 **All add-ons are healthy!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🟡 **Some add-ons need attention**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Generate Addon Status Document
+        run: |
+          CLUSTER_NAME="${{ env.CLUSTER_NAME }}"
+          REGION="${{ env.AWS_REGION }}"
+
+          # Create addon status file
+          cat > ADDON_STATUS.md << 'EOF'
+          # Add-on Status: ${{ env.CLUSTER_NAME }}
+
+          **Last Updated**: $(date -u)
+
+          ## 📊 Summary
+
+          | Metric | Value |
+          |--------|-------|
+          | **Cluster** | ${{ env.CLUSTER_NAME }} |
+          | **Region** | ${{ env.AWS_REGION }} |
+          | **Check Time** | $(date) |
+
+          ## 🧩 Add-ons
+
+          $(cat /tmp/addon_table.txt 2>/dev/null || echo "No add-ons data available")
+
+          ## 📝 Details
+
+          ### VPC CNI
+          - **Purpose**: Networking plugin for pod-to-pod communication
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/network-policy.html
+
+          ### Kube Proxy
+          - **Purpose**: Network proxy running on each node
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/kube-proxy.html
+
+          ### CoreDNS
+          - **Purpose**: DNS server for cluster DNS resolution
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
+
+          ### EBS CSI Driver
+          - **Purpose**: Storage for EBS volumes
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html
+
+          ### External DNS
+          - **Purpose**: Automatic DNS record creation
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/external-dns.html
+
+          ### Cluster Autoscaler
+          - **Purpose**: Automatic node scaling
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/autoscaling.html
+
+          ### Velero
+          - **Purpose**: Cluster backup and disaster recovery
+          - **Documentation**: https://docs.aws.amazon.com/eks/latest/userguide/disaster-recovery.html
+
+          ---
+          📝 *This status is automatically updated every 15 minutes.*
+          EOF
+
+          cat ADDON_STATUS.md
+
+      - name: Commit Addon Status (if changed)
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'ADDON_STATUS.md'
+          message: 'docs: update addon status'
+          push: true
+          default_author: github_actions
+
+  notify-slack:
+    needs: addon-status
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on Addon Issues
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "⚠️ Addon Status Check Failed for ${{ env.CLUSTER_NAME }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "⚠️ *Addon Status Check Failed*\n\nCluster: ${{ env.CLUSTER_NAME }}\nRegion: ${{ env.AWS_REGION }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

@@ -1,0 +1,27 @@
+# Kubeconfig
+kubeconfig.yaml
+kubeconfig.yml
+~/.kube/config
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.log

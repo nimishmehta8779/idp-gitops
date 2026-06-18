@@ -1,0 +1,143 @@
+name: Cluster Information
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  cluster-info:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-${{ env.CLUSTER_NAME }}-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Gather Cluster Information
+        id: cluster-info
+        run: |
+          CLUSTER_NAME="${{ env.CLUSTER_NAME }}"
+          REGION="${{ env.AWS_REGION }}"
+
+          # Get cluster details
+          CLUSTER_INFO=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$REGION")
+
+          # Extract information
+          ENDPOINT=$(echo "$CLUSTER_INFO" | jq -r '.cluster.endpoint')
+          ARN=$(echo "$CLUSTER_INFO" | jq -r '.cluster.arn')
+          STATUS=$(echo "$CLUSTER_INFO" | jq -r '.cluster.status')
+          VERSION=$(echo "$CLUSTER_INFO" | jq -r '.cluster.version')
+          CREATED_AT=$(echo "$CLUSTER_INFO" | jq -r '.cluster.createdAt')
+          OIDC_ISSUER=$(echo "$CLUSTER_INFO" | jq -r '.cluster.identity.oidc.issuer // "N/A"')
+
+          # Get node groups
+          NODE_GROUPS=$(aws eks list-nodegroups --cluster-name "$CLUSTER_NAME" --region "$REGION" --query 'nodegroups' --output json)
+
+          # Get node count
+          NODE_COUNT=$(aws eks list-nodegroups --cluster-name "$CLUSTER_NAME" --region "$REGION" --query 'nodegroups' --output text | wc -w)
+
+          # Get addons
+          ADDONS=$(aws eks list-addons --cluster-name "$CLUSTER_NAME" --region "$REGION" --query 'addons' --output json)
+
+          # Get addon versions
+          echo "## Addon Versions" > /tmp/addon_details.txt
+          for addon in $(echo "$ADDONS" | jq -r '.[]'); do
+            ADDON_INFO=$(aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name "$addon" --region "$REGION")
+            ADDON_VERSION=$(echo "$ADDON_INFO" | jq -r '.addon.addonVersion')
+            ADDON_STATUS=$(echo "$ADDON_INFO" | jq -r '.addon.addonHealth.issues[0].message // "Healthy"')
+            echo "- **$addon**: $ADDON_VERSION (Status: $ADDON_STATUS)" >> /tmp/addon_details.txt
+          done
+
+          # Store outputs
+          echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
+          echo "arn=${ARN}" >> $GITHUB_OUTPUT
+          echo "status=${STATUS}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "created_at=${CREATED_AT}" >> $GITHUB_OUTPUT
+          echo "oidc_issuer=${OIDC_ISSUER}" >> $GITHUB_OUTPUT
+          echo "node_count=${NODE_COUNT}" >> $GITHUB_OUTPUT
+
+      - name: Generate Cluster Information Document
+        run: |
+          cat > CLUSTER_INFO.md << 'EOF'
+          # Cluster Information: ${{ env.CLUSTER_NAME }}
+
+          **Last Updated**: $(date -u)
+
+          ## 📊 Overview
+
+          | Property | Value |
+          |----------|-------|
+          | **Cluster Name** | ${{ env.CLUSTER_NAME }} |
+          | **Status** | ${{ steps.cluster-info.outputs.status }} |
+          | **Kubernetes Version** | ${{ steps.cluster-info.outputs.version }} |
+          | **AWS Region** | ${{ env.AWS_REGION }} |
+          | **Created At** | ${{ steps.cluster-info.outputs.created_at }} |
+
+          ## 🔌 Endpoints & ARNs
+
+          | Property | Value |
+          |----------|-------|
+          | **Endpoint** | `${{ steps.cluster-info.outputs.endpoint }}` |
+          | **ARN** | `${{ steps.cluster-info.outputs.arn }}` |
+          | **OIDC Issuer** | `${{ steps.cluster-info.outputs.oidc_issuer }}` |
+
+          ## 🖥️ Node Groups
+
+          | Property | Value |
+          |----------|-------|
+          | **Total Node Groups** | ${{ steps.cluster-info.outputs.node_count }} |
+
+          $(cat /tmp/addon_details.txt)
+
+          ## 🧩 Add-ons Status
+
+          $(cat /tmp/addon_details.txt 2>/dev/null || echo "No add-ons deployed yet")
+
+          ## 🔗 Quick Links
+
+          - [AWS EKS Console](https://console.aws.amazon.com/eks/home?region=${{ env.AWS_REGION }}#/clusters/${{ env.CLUSTER_NAME }})
+          - [View in Backstage](http://localhost:3000/catalog/default/resource/${{ env.CLUSTER_NAME }})
+          - [View in ArgoCD](http://localhost:8080/applications/${{ env.TEAM_NAME }}-eks-clusters)
+          - [GitHub Repository](https://github.com/${{ github.repository }})
+
+          ---
+          📝 *This document is automatically updated hourly and after manual trigger.*
+          EOF
+
+          cat CLUSTER_INFO.md
+
+      - name: Commit Cluster Info (if changed)
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'CLUSTER_INFO.md'
+          message: 'docs: update cluster information'
+          push: true
+          default_author: github_actions
+
+      - name: Create Cluster Information Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # Cluster Information Updated
+
+          **Cluster**: ${{ env.CLUSTER_NAME }}
+          **Status**: ${{ steps.cluster-info.outputs.status }}
+          **Endpoint**: ${{ steps.cluster-info.outputs.endpoint }}
+          **ARN**: ${{ steps.cluster-info.outputs.arn }}
+
+          ## Quick Info
+          - Kubernetes Version: ${{ steps.cluster-info.outputs.version }}
+          - Node Groups: ${{ steps.cluster-info.outputs.node_count }}
+          - OIDC Issuer: ${{ steps.cluster-info.outputs.oidc_issuer }}
+
+          [View Full Details](./CLUSTER_INFO.md)
+          EOF

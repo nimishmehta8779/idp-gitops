@@ -116,6 +116,49 @@ spec:
           enableExternalDNS: ${{ parameters.enableExternalDNS }}
           enableVelero: ${{ parameters.enableVelero }}
 
+    # Step 1.5: Create cluster-specific GitHub repository
+    - id: create-cluster-repo
+      name: Create Cluster-Specific GitHub Repository
+      action: github:repo:create
+      input:
+        repoUrl: github.com?owner=${{ parameters.teamName }}
+        name: ${{ parameters.clusterName }}-infra
+        description: "Infrastructure repository for EKS cluster ${{ parameters.clusterName }}"
+        private: true
+        hasIssues: true
+        hasProjects: true
+        topics:
+          - eks
+          - cluster
+          - infrastructure
+          - ${{ parameters.teamName }}
+
+    # Step 1.6: Initialize cluster repo with workflows and documentation
+    - id: init-cluster-repo-workflows
+      name: Initialize Cluster Repository with Workflows
+      action: fetch:template
+      input:
+        url: ./cluster-repo-skeleton
+        targetPath: ./cluster-repo
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          teamName: ${{ parameters.teamName }}
+          awsRegion: ${{ parameters.awsRegion }}
+          environment: ${{ parameters.environment }}
+
+    # Step 1.7: Push workflows to cluster repo
+    - id: push-workflows-to-cluster-repo
+      name: Push GitHub Actions Workflows to Cluster Repo
+      action: github:repo:push
+      input:
+        repoUrl: github.com?owner=${{ parameters.teamName }}&repo=${{ parameters.clusterName }}-infra
+        sourcePath: ./cluster-repo
+        branch: main
+        commitMessage: "chore: initialize cluster repository with workflows"
+        gitAuthor:
+          name: Backstage IDP
+          email: idp@platform.io
+
     # Step 2a: Dev — push claim file directly to team infra repo main branch
     - id: push-claim-dev
       name: Push claim to team infra repo (dev)
