@@ -54,6 +54,8 @@ spec:
                   - type: MatchString
                     fieldPath: status.atProvider.status
                     matchString: ACTIVE
+                dependsOn:
+                  - cluster-role-attachment
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
@@ -142,6 +144,14 @@ spec:
                     provisioned-by: backstage-idp
                 dependsOn:
                   - eks-cluster
+                  - nodegroup-role
+                  - nodegroup-policy-workernode
+                  - nodegroup-policy-cni
+                  - nodegroup-policy-registry
+                readinessChecks:
+                  - type: MatchString
+                    fieldPath: status.atProvider.status
+                    matchString: ACTIVE
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
