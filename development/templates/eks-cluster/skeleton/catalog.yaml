@@ -16,6 +16,7 @@ metadata:
       icon: dashboard
   annotations:
     backstage.io/source-location: url:https://github.com/nimishmehta8779/${{ values.teamName }}-infra/blob/main/eks/${{ values.clusterName }}-catalog.yaml
+    github.com/project-slug: nimishmehta8779/${{ values.teamName }}-infra
     idp.platform.io/cluster-status: provisioning
     idp.platform.io/aws-region: ${{ values.awsRegion }}
     idp.platform.io/cluster-version: "${{ values.kubernetesVersion }}"
