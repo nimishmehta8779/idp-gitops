@@ -5,4 +5,4 @@ metadata:
   name: provider-aws-iam
   namespace: crossplane-system
 spec:
-  package: xpkg.upbound.io/upbound/provider-aws-iam:v0.46.0
+  package: xpkg.upbound.io/upbound/provider-aws-iam:v0.47.0

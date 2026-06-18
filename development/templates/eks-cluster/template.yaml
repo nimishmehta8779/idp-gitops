@@ -230,6 +230,6 @@ spec:
       - title: "Cluster Claim"
         url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/eks/${{ parameters.clusterName }}.yaml
         icon: github
-      - title: "Setup Guide"
-        url: "https://github.com/nimishmehta8779/idp/blob/main/CLUSTER_REPO_SETUP_GUIDE.md"
-        icon: book
+      - title: "Grant kubectl Access (run after cluster is ACTIVE)"
+        url: "https://github.com/nimishmehta8779/idp/blob/main/docs/eks-grant-access.md"
+        icon: docs
