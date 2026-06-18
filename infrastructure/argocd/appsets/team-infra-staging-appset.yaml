@@ -39,7 +39,6 @@ spec:
           selfHeal: false
         syncOptions:
           - CreateNamespace=true
-          - ApplyOutOfSyncOnly=true
       ignoreDifferences:
         - group: platform.io
           kind: XEKSCluster
