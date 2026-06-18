@@ -1,0 +1,11 @@
+apiVersion: platform.io/v1alpha1
+kind: Network
+metadata:
+  name: staging-network
+  namespace: clusters-staging
+spec:
+  parameters:
+    environment: staging
+    region: us-east-1
+  writeConnectionSecretToRef:
+    name: staging-network-secret

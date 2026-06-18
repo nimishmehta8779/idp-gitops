@@ -1,0 +1,11 @@
+apiVersion: platform.io/v1alpha1
+kind: Network
+metadata:
+  name: dev-network
+  namespace: clusters-dev
+spec:
+  parameters:
+    environment: dev
+    region: us-east-1
+  writeConnectionSecretToRef:
+    name: dev-network-secret
