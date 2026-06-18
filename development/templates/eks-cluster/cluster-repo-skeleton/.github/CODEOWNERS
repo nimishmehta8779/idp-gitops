@@ -1,16 +1,16 @@
-# CODEOWNERS file for ${{ values.clusterName }}
+# CODEOWNERS file for <cluster-name>
 
 # All files require approval from team leads
-* @${{ values.teamName }}/leads
+* @<team-name>/leads
 
 # Workflows require platform team approval
 .github/workflows/ @platform-team/platform-engineers
 
 # Cluster configuration requires both team and platform approval
-terraform/ @${{ values.teamName }}/leads @platform-team/platform-engineers
+terraform/ @<team-name>/leads @platform-team/platform-engineers
 
 # Documentation can be updated by team members
-docs/ @${{ values.teamName }}/members
+docs/ @<team-name>/members
 
 # Scripts require approval
-scripts/ @${{ values.teamName }}/leads
+scripts/ @<team-name>/leads

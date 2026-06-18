@@ -116,18 +116,14 @@ spec:
           enableExternalDNS: ${{ parameters.enableExternalDNS }}
           enableVelero: ${{ parameters.enableVelero }}
 
-    # Step 1.5: Create cluster repository initialization files
+    # Step 1.5: Create cluster repository initialization files (plain copy - no template processing
+    # to avoid conflicts between Backstage ${{ }} syntax and GitHub Actions ${{ }} syntax)
     - id: init-cluster-repo-workflows
       name: Prepare Cluster Repository Files
-      action: fetch:template
+      action: fetch:plain
       input:
         url: ./cluster-repo-skeleton
         targetPath: ./cluster-repo
-        values:
-          clusterName: ${{ parameters.clusterName }}
-          teamName: ${{ parameters.teamName }}
-          awsRegion: ${{ parameters.awsRegion }}
-          environment: ${{ parameters.environment }}
 
     # Step 2a: Dev — push claim file directly to team infra repo main branch
     - id: push-claim-dev

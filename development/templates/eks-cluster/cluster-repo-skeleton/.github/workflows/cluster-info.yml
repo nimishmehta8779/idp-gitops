@@ -5,6 +5,11 @@ on:
   schedule:
     - cron: '0 * * * *'  # Every hour
 
+env:
+  CLUSTER_NAME: REPLACE_WITH_CLUSTER_NAME   # e.g. alpha-dev-general-01
+  AWS_REGION: REPLACE_WITH_AWS_REGION        # e.g. us-east-1
+  TEAM_NAME: REPLACE_WITH_TEAM_NAME          # e.g. team-alpha
+
 permissions:
   id-token: write
   contents: write
