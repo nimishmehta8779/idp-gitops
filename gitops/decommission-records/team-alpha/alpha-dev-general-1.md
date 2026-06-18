@@ -8,7 +8,7 @@
 | Region | us-east-1 |
 | Instance type | t3.medium |
 | Node count | 2 |
-| Reason | Test decommissioing process |
+| Reason | Testing to recommit end to end |
 | Date | ${{ now() }} |
 | Monthly saving | $300 |
 
