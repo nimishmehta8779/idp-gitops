@@ -1,0 +1,80 @@
+##############################################################################
+# sync-eks-addon-labels.yaml
+#
+# Kyverno ClusterPolicy – Propagate EKS addon-toggle labels onto the
+# matching ArgoCD cluster Secret.
+#
+# Trigger: EKSCluster resource (platform.io/v1alpha1) is created or updated.
+#
+# Action: Generate/mutate the ArgoCD cluster Secret (argocd namespace) that
+#         corresponds to this EKSCluster and stamp the addon toggle labels
+#         onto it so that the ApplicationSet cluster selectors can gate
+#         optional addon deployments.
+#
+# Note: ArgoCD cluster Secrets are identified by:
+#   - label argocd.argoproj.io/secret-type=cluster
+#   - label managed-by=eks-cluster   (set by the composition/manually)
+#
+# This policy only MUTATES (patches) the Secret if it already exists; it
+# does NOT generate a new Secret because ArgoCD manages secret creation.
+##############################################################################
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: sync-eks-addon-labels-to-argocd
+  annotations:
+    policies.kyverno.io/title: Sync EKS Addon Labels to ArgoCD Cluster Secret
+    policies.kyverno.io/category: IDP
+    policies.kyverno.io/subject: Secret
+    policies.kyverno.io/description: >-
+      When an EKSCluster resource is created or updated, this policy patches
+      the matching ArgoCD cluster Secret in the argocd namespace to carry the
+      same addon-toggle labels (enable-cluster-autoscaler, enable-external-dns,
+      enable-velero, managed-by). This enables ArgoCD ApplicationSet cluster
+      selectors to conditionally deploy addons based on the user's choices in
+      the Backstage EKS template.
+spec:
+  rules:
+    # ──────────────────────────────────────────────────────────────────────
+    # Rule: patch the ArgoCD cluster Secret with addon toggle labels
+    # ──────────────────────────────────────────────────────────────────────
+    - name: patch-argocd-cluster-secret-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.io/v1alpha1/EKSCluster
+              operations:
+                - CREATE
+                - UPDATE
+      context:
+        # Load the ArgoCD cluster Secret for this EKS cluster.
+        # The Secret name convention is "<clusterName>-kubeconfig" which is
+        # the writeConnectionSecretToRef set in the claim.
+        - name: clusterSecret
+          apiCall:
+            urlPath: "/api/v1/namespaces/argocd/secrets/{{ request.object.metadata.name }}"
+            jmesPath: "@"
+      # Only proceed if the ArgoCD Secret already exists (ArgoCD registers it
+      # after the cluster is provisioned and kubeconfig is available).
+      preconditions:
+        all:
+          - key: "{{ clusterSecret.metadata.name || '' }}"
+            operator: NotEquals
+            value: ""
+      mutate:
+        targets:
+          - apiVersion: v1
+            kind: Secret
+            name: "{{ request.object.metadata.name }}"
+            namespace: argocd
+        patchStrategicMerge:
+          metadata:
+            labels:
+              # Always stamp the cluster as managed-by eks-cluster so the
+              # ApplicationSet base selector matches.
+              managed-by: eks-cluster
+              # Copy the addon toggle labels from the EKSCluster resource.
+              enable-cluster-autoscaler: "{{ request.object.metadata.labels.\"enable-cluster-autoscaler\" || 'false' }}"
+              enable-external-dns: "{{ request.object.metadata.labels.\"enable-external-dns\" || 'false' }}"
+              enable-velero: "{{ request.object.metadata.labels.\"enable-velero\" || 'false' }}"

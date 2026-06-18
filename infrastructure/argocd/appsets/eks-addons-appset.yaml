@@ -1,62 +1,71 @@
+##############################################################################
+# eks-addons-appset.yaml
+#
+# ArgoCD ApplicationSet – deploys EKS add-ons after every successful cluster
+# provisioning.
+#
+# Strategy
+# ────────
+# Two groups of ApplicationSets are defined in this single file (separated by
+# "---"):
+#
+#   Group A – ALWAYS-ON addons
+#     Deployed to every cluster that carries the label managed-by=eks-cluster.
+#     Currently: cluster-proportional-autoscaler, aws-efs-csi-driver.
+#
+#   Group B – OPTIONAL addons
+#     One ApplicationSet per optional addon.  Each set matches only clusters
+#     whose annotation equals "true".  The Backstage EKS template stamps those
+#     annotations on the EKSCluster resource (and the ArgoCD cluster secret)
+#     during provisioning.
+#     Currently: cluster-autoscaler, external-dns, velero.
+#
+# How cluster annotations reach ArgoCD cluster secrets
+# ─────────────────────────────────────────────────────
+# Crossplane writes a Kubernetes Secret for each EKSCluster.  An external
+# process (e.g. a small Crossplane Composition step or an ESO ExternalSecret)
+# must copy the IDP annotations from the EKSCluster CR onto the ArgoCD cluster
+# Secret (label argocd.argoproj.io/secret-type=cluster) so that the
+# ApplicationSet cluster selector can read them.
+##############################################################################
+
+###############################################################################
+# Group A – Always-on: cluster-proportional-autoscaler
+###############################################################################
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: eks-cluster-addons
+  name: eks-addon-proportional-autoscaler
   namespace: argocd
 spec:
-  # Generate one Application per EKS cluster that has the label `managed-by: eks-cluster`
-  # and per addon defined in the `elements` list below.
   generators:
     - clusters:
         selector:
           matchLabels:
             managed-by: eks-cluster
-    - list:
-        # Each entry represents an addon to be installed on the target cluster.
-        elements:
-          - name: cluster-autoscaler
-            chart: autoscaler/cluster-autoscaler
-            repoURL: https://kubernetes.github.io/autoscaler
-            valuesFile: values.yaml
-          - name: cluster-proportional-autoscaler
-            chart: autoscaler/cluster-proportional-autoscaler
-            repoURL: https://kubernetes.github.io/autoscaler
-            valuesFile: values.yaml
-          - name: external-dns
-            chart: external-dns/external-dns
-            repoURL: https://kubernetes-sigs.github.io/external-dns/
-            valuesFile: values.yaml
-          - name: aws-efs-csi-driver
-            chart: aws-efs-csi-driver/aws-efs-csi-driver
-            repoURL: https://kubernetes-sigs.github.io/aws-efs-csi-driver/
-            valuesFile: values.yaml
-          - name: velero
-            chart: vmware-tanzu/velero
-            repoURL: https://vmware-tanzu.github.io/helm-charts
-            valuesFile: values.yaml
   template:
     metadata:
-      # Application name combines the cluster name and addon name.
-      name: "{{cluster.metadata.name}}-{{name}}"
+      name: "{{name}}-proportional-autoscaler"
       labels:
-        cluster: "{{cluster.metadata.name}}"
-        addon: "{{name}}"
+        cluster: "{{name}}"
+        addon: cluster-proportional-autoscaler
         managed-by: argocd-applicationset
     spec:
       project: idp-platform-dev
       source:
-        chart: "{{chart}}"
-        repoURL: "{{repoURL}}"
-        targetRevision: 1.0.0
+        chart: cluster-proportional-autoscaler
+        repoURL: https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
+        targetRevision: "1.1.0"
         helm:
+          releaseName: cluster-proportional-autoscaler
           values: |
-            enableClusterAutoscaler: "{{cluster.metadata.annotations.enableClusterAutoscaler}}"
-            enableExternalDNS: "{{cluster.metadata.annotations.enableExternalDNS}}"
-            enableVelero: "{{cluster.metadata.annotations.enableVelero}}"
-          valuesFiles:
-            - "addons/{{name}}/{{valuesFile}}"
+            config:
+              linear:
+                nodesPerReplica: 5
+                min: 1
+                max: 10
       destination:
-        server: "{{cluster.spec.server}}"
+        server: "{{server}}"
         namespace: kube-system
       syncPolicy:
         automated:
@@ -64,4 +73,247 @@ spec:
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
-          - ApplyOutOfSyncOnly=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 3m
+
+---
+###############################################################################
+# Group A – Always-on: aws-efs-csi-driver
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: eks-addon-efs-csi-driver
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            managed-by: eks-cluster
+  template:
+    metadata:
+      name: "{{name}}-efs-csi-driver"
+      labels:
+        cluster: "{{name}}"
+        addon: aws-efs-csi-driver
+        managed-by: argocd-applicationset
+    spec:
+      project: idp-platform-dev
+      source:
+        chart: aws-efs-csi-driver
+        repoURL: https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+        targetRevision: "3.0.8"
+        helm:
+          releaseName: aws-efs-csi-driver
+          values: |
+            controller:
+              serviceAccount:
+                annotations:
+                  eks.amazonaws.com/role-arn: "{{metadata.annotations.idp.platform.io/efs-role-arn}}"
+      destination:
+        server: "{{server}}"
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 3m
+
+---
+###############################################################################
+# Group B – Optional: cluster-autoscaler
+# Deployed only when the cluster annotation enableClusterAutoscaler="true"
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: eks-addon-cluster-autoscaler
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            managed-by: eks-cluster
+            # ArgoCD cluster selector supports matching on annotations too via
+            # matchExpressions on metadata. We label the cluster secret when the
+            # annotation is "true" (see note at top of file).
+            enable-cluster-autoscaler: "true"
+  template:
+    metadata:
+      name: "{{name}}-cluster-autoscaler"
+      labels:
+        cluster: "{{name}}"
+        addon: cluster-autoscaler
+        managed-by: argocd-applicationset
+    spec:
+      project: idp-platform-dev
+      source:
+        chart: cluster-autoscaler
+        repoURL: https://kubernetes.github.io/autoscaler
+        targetRevision: "9.37.0"
+        helm:
+          releaseName: cluster-autoscaler
+          values: |
+            autoDiscovery:
+              clusterName: "{{name}}"
+            awsRegion: "{{metadata.annotations.idp\.platform\.io/aws-region}}"
+            rbac:
+              serviceAccount:
+                annotations:
+                  eks.amazonaws.com/role-arn: "{{metadata.annotations.idp\.platform\.io/autoscaler-role-arn}}"
+      destination:
+        server: "{{server}}"
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 3m
+
+---
+###############################################################################
+# Group B – Optional: external-dns
+# Deployed only when the cluster annotation enableExternalDNS="true"
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: eks-addon-external-dns
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            managed-by: eks-cluster
+            enable-external-dns: "true"
+  template:
+    metadata:
+      name: "{{name}}-external-dns"
+      labels:
+        cluster: "{{name}}"
+        addon: external-dns
+        managed-by: argocd-applicationset
+    spec:
+      project: idp-platform-dev
+      source:
+        chart: external-dns
+        repoURL: https://kubernetes-sigs.github.io/external-dns/
+        targetRevision: "1.15.0"
+        helm:
+          releaseName: external-dns
+          values: |
+            provider: aws
+            aws:
+              region: "{{metadata.annotations.idp\.platform\.io/aws-region}}"
+            serviceAccount:
+              annotations:
+                eks.amazonaws.com/role-arn: "{{metadata.annotations.idp\.platform\.io/external-dns-role-arn}}"
+            policy: upsert-only
+            txtOwnerId: "{{name}}"
+      destination:
+        server: "{{server}}"
+        namespace: external-dns
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 3m
+
+---
+###############################################################################
+# Group B – Optional: velero
+# Deployed only when the cluster annotation enableVelero="true"
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: eks-addon-velero
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            managed-by: eks-cluster
+            enable-velero: "true"
+  template:
+    metadata:
+      name: "{{name}}-velero"
+      labels:
+        cluster: "{{name}}"
+        addon: velero
+        managed-by: argocd-applicationset
+    spec:
+      project: idp-platform-dev
+      source:
+        chart: velero
+        repoURL: https://vmware-tanzu.github.io/helm-charts
+        targetRevision: "7.2.1"
+        helm:
+          releaseName: velero
+          values: |
+            configuration:
+              backupStorageLocation:
+                - name: default
+                  provider: aws
+                  bucket: "{{name}}-velero-backups"
+                  config:
+                    region: "{{metadata.annotations.idp\.platform\.io/aws-region}}"
+            serviceAccount:
+              server:
+                annotations:
+                  eks.amazonaws.com/role-arn: "{{metadata.annotations.idp\.platform\.io/velero-role-arn}}"
+            initContainers:
+              - name: velero-plugin-for-aws
+                image: velero/velero-plugin-for-aws:v1.10.0
+                volumeMounts:
+                  - mountPath: /target
+                    name: plugins
+      destination:
+        server: "{{server}}"
+        namespace: velero
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 3m

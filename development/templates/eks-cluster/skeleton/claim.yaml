@@ -9,6 +9,12 @@ metadata:
     managed-by: crossplane
     provisioned-by: backstage-idp
     cost-center: ${{ values.costCenter }}
+    # Addon toggle labels — propagated to the ArgoCD cluster Secret by the
+    # Crossplane composition so that the ApplicationSet selectors can gate
+    # optional addon deployments.
+    enable-cluster-autoscaler: "${{ values.enableClusterAutoscaler }}"
+    enable-external-dns: "${{ values.enableExternalDNS }}"
+    enable-velero: "${{ values.enableVelero }}"
   annotations:
     idp.platform.io/cost-acknowledged: "true"
     idp.platform.io/cluster-status: provisioning
