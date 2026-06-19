@@ -748,7 +748,7 @@ spec:
             {{- end }}
 
             {{- if and $p.enableEbsCsi $ready }}
-            {{- /* EFS CSI IRSA — reuses enableEbsCsi toggle per spec */ }}
+            # EFS CSI IRSA - reuses enableEbsCsi toggle per spec
             ---
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role
@@ -934,6 +934,3 @@ spec:
                   team: {{ $p.teamName }}
                   cluster-name: {{ $cluster }}
             {{- end }}
-    - step: auto-ready
-      functionRef:
-        name: function-auto-ready
