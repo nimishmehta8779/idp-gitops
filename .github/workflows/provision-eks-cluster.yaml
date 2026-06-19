@@ -1,0 +1,144 @@
+name: EKS Cluster Provisioning (Reusable)
+
+# Called by team infra repos when an EKS claim file changes.
+# Platform team owns this workflow — team repos only call it.
+on:
+  workflow_call:
+    inputs:
+      cluster_name:
+        required: true
+        type: string
+      aws_region:
+        required: false
+        type: string
+        default: us-east-1
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  track-provisioning:
+    name: Track EKS Cluster Provisioning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::415703161648:role/github-actions-eks-readonly
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Wait for ArgoCD to sync claim
+        run: |
+          CLUSTER_NAME="${{ inputs.cluster_name }}"
+          echo "::notice::Cluster claim committed — waiting 60s for ArgoCD to sync and Crossplane to start provisioning $CLUSTER_NAME..."
+          sleep 60
+
+      - name: Wait for EKS control plane to become ACTIVE
+        run: |
+          CLUSTER_NAME="${{ inputs.cluster_name }}"
+          REGION="${{ inputs.aws_region }}"
+          MAX_WAIT=3600
+          ELAPSED=0
+          INTERVAL=30
+
+          echo "::notice::Polling AWS EKS for cluster: $CLUSTER_NAME"
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$REGION" \
+              --query 'cluster.status' --output text 2>/dev/null || echo "NOT_FOUND")
+
+            echo "[$((ELAPSED/60))m $((ELAPSED%60))s] Cluster status: $STATUS"
+
+            case "$STATUS" in
+              ACTIVE)
+                echo "::notice::EKS control plane is ACTIVE"
+                break
+                ;;
+              CREATING)
+                echo "Control plane creating, waiting..."
+                ;;
+              FAILED)
+                echo "::error::Cluster creation FAILED"
+                exit 1
+                ;;
+              NOT_FOUND)
+                echo "Cluster not yet visible in AWS (Crossplane still provisioning)..."
+                ;;
+            esac
+
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "::error::Timed out waiting for EKS cluster $CLUSTER_NAME to become ACTIVE"
+            exit 1
+          fi
+
+      - name: Wait for node groups to be ACTIVE
+        run: |
+          CLUSTER_NAME="${{ inputs.cluster_name }}"
+          REGION="${{ inputs.aws_region }}"
+          MAX_WAIT=1800
+          ELAPSED=0
+          INTERVAL=30
+
+          echo "::notice::Waiting for node groups to become ACTIVE..."
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            NODE_GROUPS=$(aws eks list-nodegroups --cluster-name "$CLUSTER_NAME" \
+              --region "$REGION" --query 'nodegroups' --output text 2>/dev/null || echo "")
+
+            if [ -z "$NODE_GROUPS" ]; then
+              echo "[$((ELAPSED/60))m] No node groups yet, waiting..."
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+              continue
+            fi
+
+            ALL_ACTIVE=true
+            for NG in $NODE_GROUPS; do
+              NG_STATUS=$(aws eks describe-nodegroup \
+                --cluster-name "$CLUSTER_NAME" \
+                --nodegroup-name "$NG" \
+                --region "$REGION" \
+                --query 'nodegroup.status' --output text 2>/dev/null || echo "UNKNOWN")
+              echo "[$((ELAPSED/60))m] Node group $NG: $NG_STATUS"
+              [ "$NG_STATUS" != "ACTIVE" ] && ALL_ACTIVE=false
+            done
+
+            if [ "$ALL_ACTIVE" = "true" ]; then
+              echo "::notice::All node groups are ACTIVE"
+              break
+            fi
+
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+      - name: Cluster ready summary
+        run: |
+          CLUSTER_NAME="${{ inputs.cluster_name }}"
+          REGION="${{ inputs.aws_region }}"
+
+          ENDPOINT=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$REGION" \
+            --query 'cluster.endpoint' --output text 2>/dev/null || echo "N/A")
+          VERSION=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$REGION" \
+            --query 'cluster.version' --output text 2>/dev/null || echo "N/A")
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ✅ EKS Cluster Ready: \`$CLUSTER_NAME\`
+
+          | Field | Value |
+          |---|---|
+          | Cluster | \`$CLUSTER_NAME\` |
+          | Region | \`$REGION\` |
+          | Kubernetes | \`$VERSION\` |
+          | Endpoint | \`$ENDPOINT\` |
+
+          Cluster is ACTIVE and visible in the AWS console.
+          EOF
+
+          echo "::notice title=EKS Cluster Ready::$CLUSTER_NAME is now ACTIVE in $REGION"

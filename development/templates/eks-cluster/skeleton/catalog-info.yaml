@@ -12,7 +12,7 @@ metadata:
     instance-type: ${{ values.instanceType }}
     environment: ${{ values.environment }}
     created-by: ${{ values.teamName }}
-    github.com/project-slug: nimishmehta8779/${{ values.teamName }}-infra
+    github.com/project-slug: nimishmehta8779/idp-gitops
 spec:
   type: kubernetes-cluster
   owner: group:default/${{ values.teamName }}
