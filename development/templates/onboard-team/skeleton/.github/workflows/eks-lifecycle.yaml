@@ -1,0 +1,315 @@
+name: EKS Cluster Lifecycle Monitor
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'eks/*.yaml'
+      - 'eks/*.yml'
+
+jobs:
+  eks-lifecycle:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::415703161648:role/github-actions-eks-readonly
+          aws-region: us-east-1
+
+      - name: Run lifecycle monitor
+        id: monitor
+        env:
+          BEFORE_SHA: {% raw %}${{ github.event.before }}{% endraw %}
+          AFTER_SHA: {% raw %}${{ github.sha }}{% endraw %}
+        run: |
+          python - <<'EOF'
+          import os
+          import sys
+          import json
+          import yaml
+          import time
+          import subprocess
+
+          before = os.environ.get('BEFORE_SHA', '')
+          after = os.environ.get('AFTER_SHA', '')
+
+          print(f"Comparing changes between {before} and {after}...")
+
+          # Get changed files
+          try:
+              if before == "0000000000000000000000000000000000000000" or not before:
+                  # Compare current commit against its parent
+                  cmd = ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", after]
+              else:
+                  cmd = ["git", "diff", "--name-only", before, after]
+              
+              changed_files = subprocess.check_output(cmd).decode("utf-8").strip().split('\n')
+          except Exception as e:
+              print(f"Error checking git diff: {e}")
+              # Fallback to last commit diff
+              try:
+                  changed_files = subprocess.check_output(["git", "diff", "--name-only", "HEAD~1", "HEAD"]).decode("utf-8").strip().split('\n')
+              except Exception:
+                  changed_files = []
+
+          changed_files = [f.strip() for f in changed_files if f.strip()]
+          print(f"Changed files in commit: {changed_files}")
+
+          eks_files = [f for f in changed_files if f.startswith('eks/') and (f.endswith('.yaml') or f.endswith('.yml'))]
+          if not eks_files:
+              print("No EKS claim files modified. Exiting.")
+              sys.exit(0)
+
+          print(f"Found changed EKS files: {eks_files}")
+
+          for file_path in eks_files:
+              action = "provision"
+              is_deleted = not os.path.exists(file_path)
+              
+              if is_deleted:
+                  action = "decommission"
+                  # Retrieve name and region from historical commit
+                  try:
+                      prev_content = subprocess.check_output(["git", "show", f"HEAD~1:{file_path}"]).decode("utf-8")
+                      data = yaml.safe_load(prev_content)
+                      cluster_name = data['metadata']['name']
+                      region = data['spec']['parameters']['region']
+                  except Exception as e:
+                      print(f"Error retrieving deleted file info: {e}")
+                      # Try to guess from filename
+                      cluster_name = os.path.splitext(os.path.basename(file_path))[0]
+                      region = "us-east-1"
+                  enable_autoscaler = "false"
+                  enable_external_dns = "false"
+                  enable_velero = "false"
+              else:
+                  with open(file_path, 'r') as f:
+                      data = yaml.safe_load(f)
+                      spec = data.get('spec', {})
+                      params = spec.get('parameters', {})
+                      cluster_name = params.get('clusterName', data.get('metadata', {}).get('name'))
+                      region = params.get('region', 'us-east-1')
+                      labels = data.get('metadata', {}).get('labels', {})
+                      enable_autoscaler = labels.get('enable-cluster-autoscaler', 'false')
+                      enable_external_dns = labels.get('enable-external-dns', 'false')
+                      enable_velero = labels.get('enable-velero', 'false')
+
+              print(f"\n--- Processing EKS Cluster: {cluster_name} ({action.upper()}) ---")
+              summary_file = os.environ.get('GITHUB_STEP_SUMMARY')
+
+              if action == "provision":
+                  if summary_file:
+                      with open(summary_file, 'a') as sf:
+                          sf.write(f"### 🚀 EKS Cluster Provisioning Monitor: `{cluster_name}`\n")
+                          sf.write("- **Region:** `" + region + "`\n")
+                          sf.write("- **Status:** ⏳ Provisioning cluster...\n")
+
+                  # Poll EKS Cluster status
+                  cluster_active = False
+                  start_time = time.time()
+                  timeout = 3600 # 60 minutes
+                  print(f"Waiting for EKS cluster '{cluster_name}' to become ACTIVE...")
+                  
+                  while time.time() - start_time < timeout:
+                      res = subprocess.run(["aws", "eks", "describe-cluster", "--name", cluster_name, "--region", region], capture_output=True, text=True)
+                      if res.returncode != 0:
+                          if "ResourceNotFoundException" in res.stderr:
+                              print("Cluster not found yet in AWS EKS. Waiting...")
+                          else:
+                              print(f"AWS API Error: {res.stderr.strip()}")
+                      else:
+                          try:
+                              cluster_data = json.loads(res.stdout)
+                              status = cluster_data['cluster']['status']
+                              print(f"Cluster Status: {status}")
+                              if status == "ACTIVE":
+                                  cluster_active = True
+                                  break
+                              elif status in ["FAILED", "DELETING"]:
+                                  print(f"Cluster provisioning failed with status: {status}")
+                                  sys.exit(1)
+                          except Exception as parse_err:
+                              print(f"Error parsing AWS CLI response: {parse_err}")
+                      
+                      time.sleep(30)
+
+                  if not cluster_active:
+                      print("Timeout waiting for EKS cluster to become ACTIVE.")
+                      sys.exit(1)
+
+                  print("EKS Cluster is ACTIVE!")
+                  if summary_file:
+                      with open(summary_file, 'a') as sf:
+                          sf.write("- **Status:** ✅ Cluster ACTIVE! Now waiting for Node Groups...\n")
+
+                  # Poll Node Groups status
+                  node_groups_active = False
+                  start_time = time.time()
+                  print("Waiting for EKS Node Groups to become ACTIVE...")
+                  
+                  while time.time() - start_time < timeout:
+                      res = subprocess.run(["aws", "eks", "list-nodegroups", "--cluster-name", cluster_name, "--region", region], capture_output=True, text=True)
+                      if res.returncode != 0:
+                          print(f"Error listing node groups: {res.stderr.strip()}")
+                      else:
+                          try:
+                              ng_data = json.loads(res.stdout)
+                              ngs = ng_data.get('nodegroups', [])
+                              if not ngs:
+                                  print("No node groups defined/detected yet. Waiting...")
+                              else:
+                                  all_active = True
+                                  for ng in ngs:
+                                      res_ng = subprocess.run(["aws", "eks", "describe-nodegroup", "--cluster-name", cluster_name, "--nodegroup-name", ng, "--region", region], capture_output=True, text=True)
+                                      if res_ng.returncode == 0:
+                                          ng_info = json.loads(res_ng.stdout)
+                                          ng_status = ng_info['nodegroup']['status']
+                                          print(f"  Node Group '{ng}' Status: {ng_status}")
+                                          if ng_status != "ACTIVE":
+                                              all_active = False
+                                              if ng_status in ["CREATE_FAILED", "DELETING"]:
+                                                  print(f"Node group '{ng}' failed or deleting: {ng_status}")
+                                                  sys.exit(1)
+                                      else:
+                                          all_active = False
+                                  
+                                  if all_active:
+                                      node_groups_active = True
+                                      break
+                          except Exception as parse_err:
+                              print(f"Error parsing Node Group info: {parse_err}")
+                      
+                      time.sleep(30)
+
+                  if not node_groups_active:
+                      print("Timeout waiting for EKS Node Groups to become ACTIVE.")
+                      sys.exit(1)
+
+                  print("All Node Groups are ACTIVE!")
+                  if summary_file:
+                      with open(summary_file, 'a') as sf:
+                          sf.write("- **Status:** ✅ Node Groups ACTIVE! Verifying Addons...\n")
+
+                  # Update local kubeconfig to check addon status
+                  try:
+                      print("Updating kubeconfig for EKS cluster...")
+                      subprocess.run(["aws", "eks", "update-kubeconfig", "--name", cluster_name, "--region", region], check=True)
+                      
+                      # Wait 180 seconds for ArgoCD to sync addon applications
+                      print("Waiting 180 seconds for ArgoCD to synchronize addons...")
+                      time.sleep(180)
+
+                      addons_status = []
+                      if enable_autoscaler == 'true':
+                          print("Verifying Cluster Autoscaler...")
+                          autoscaler_ready = False
+                          for _ in range(6):
+                              res = subprocess.run(["kubectl", "get", "deployment", "-n", "kube-system", "cluster-autoscaler", "-o", "jsonpath={.status.readyReplicas}"], capture_output=True, text=True)
+                              if res.returncode == 0 and res.stdout.strip() and int(res.stdout.strip()) > 0:
+                                  autoscaler_ready = True
+                                  break
+                              time.sleep(20)
+                          addons_status.append(f"- Cluster Autoscaler: {'✅ Ready' if autoscaler_ready else '⚠️ Pending'}")
+
+                      if enable_external_dns == 'true':
+                          print("Verifying ExternalDNS...")
+                          dns_ready = False
+                          for _ in range(6):
+                              res = subprocess.run(["kubectl", "get", "deployment", "-n", "kube-system", "external-dns", "-o", "jsonpath={.status.readyReplicas}"], capture_output=True, text=True)
+                              if res.returncode == 0 and res.stdout.strip() and int(res.stdout.strip()) > 0:
+                                  dns_ready = True
+                                  break
+                              time.sleep(20)
+                          addons_status.append(f"- ExternalDNS: {'✅ Ready' if dns_ready else '⚠️ Pending'}")
+
+                      if enable_velero == 'true':
+                          print("Verifying Velero...")
+                          velero_ready = False
+                          for _ in range(6):
+                              res = subprocess.run(["kubectl", "get", "deployment", "-n", "velero", "velero", "-o", "jsonpath={.status.readyReplicas}"], capture_output=True, text=True)
+                              if res.returncode == 0 and res.stdout.strip() and int(res.stdout.strip()) > 0:
+                                  velero_ready = True
+                                  break
+                              time.sleep(20)
+                          addons_status.append(f"- Velero: {'✅ Ready' if velero_ready else '⚠️ Pending'}")
+
+                      if addons_status:
+                          print("Addon verification results:")
+                          for addon in addons_status:
+                              print(addon)
+                          if summary_file:
+                              with open(summary_file, 'a') as sf:
+                                  sf.write("- **Addons Checked:**\n" + '\n'.join(addons_status) + "\n")
+                  except Exception as kube_err:
+                      print(f"Warning: Failed to verify addons using kubectl: {kube_err}")
+
+                  print(f"EKS Cluster '{cluster_name}' successfully provisioned end-to-end!")
+                  if summary_file:
+                      with open(summary_file, 'a') as sf:
+                          sf.write("### 🎉 SUCCESS: Cluster `" + cluster_name + "` is fully provisioned and addons validated!\n\n")
+
+              elif action == "decommission":
+                  if summary_file:
+                      with open(summary_file, 'a') as sf:
+                          sf.write(f"### 🗑️ EKS Cluster Decommissioning Monitor: `{cluster_name}`\n")
+                          sf.write("- **Region:** `" + region + "`\n")
+                          sf.write("- **Status:** ⏳ Decommissioning cluster...\n")
+
+                  # Poll EKS Cluster deletion
+                  cluster_deleted = False
+                  start_time = time.time()
+                  timeout = 3600
+                  print(f"Waiting for EKS cluster '{cluster_name}' to be fully deleted from AWS...")
+
+                  while time.time() - start_time < timeout:
+                      res = subprocess.run(["aws", "eks", "describe-cluster", "--name", cluster_name, "--region", region], capture_output=True, text=True)
+                      if res.returncode != 0:
+                          if "ResourceNotFoundException" in res.stderr:
+                              cluster_deleted = True
+                              break
+                          else:
+                              print(f"AWS API Error: {res.stderr.strip()}")
+                      else:
+                          try:
+                              cluster_data = json.loads(res.stdout)
+                              status = cluster_data['cluster']['status']
+                              print(f"Cluster Status: {status}")
+                              if status == "DELETING":
+                                  pass
+                              else:
+                                  print(f"Unexpected cluster status during deletion: {status}")
+                          except Exception as parse_err:
+                              print(f"Error parsing AWS CLI response: {parse_err}")
+                      
+                      time.sleep(30)
+
+                  if not cluster_deleted:
+                      print("Timeout waiting for EKS cluster to be deleted from AWS.")
+                      sys.exit(1)
+
+                  print(f"EKS Cluster '{cluster_name}' is fully deleted!")
+                  if summary_file:
+                      with open(summary_file, 'a') as sf:
+                          sf.write("- **Status:** ✅ Cluster fully deleted from AWS!\n")
+                          sf.write("### 🎉 SUCCESS: Cluster `" + cluster_name + "` decommission complete!\n\n")
+
+          EOF

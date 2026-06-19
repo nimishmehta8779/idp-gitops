@@ -93,6 +93,10 @@ spec:
                       - |
                         set -euo pipefail
 
+                        # Parse AWS credentials from the ini-format secret (key: credentials)
+                        export AWS_ACCESS_KEY_ID=$(awk -F= '/aws_access_key_id/{gsub(/ /,"",$2); print $2}' /etc/aws-creds/credentials)
+                        export AWS_SECRET_ACCESS_KEY=$(awk -F= '/aws_secret_access_key/{gsub(/ /,"",$2); print $2}' /etc/aws-creds/credentials)
+
                         CLUSTER_NAME="{{ request.object.spec.parameters.clusterName }}"
                         REGION="{{ request.object.spec.parameters.region }}"
                         ENVIRONMENT="{{ request.object.spec.parameters.environment }}"
@@ -229,9 +233,9 @@ spec:
                           --query 'Role.Arn' --output text 2>/dev/null || echo "")
 
                         # Addon toggle labels from composite metadata
-                        ENABLE_AUTOSCALER="{{ request.object.metadata.labels.\"enable-cluster-autoscaler\" || 'false' }}"
-                        ENABLE_EXTERNAL_DNS="{{ request.object.metadata.labels.\"enable-external-dns\" || 'false' }}"
-                        ENABLE_VELERO="{{ request.object.metadata.labels.\"enable-velero\" || 'false' }}"
+                        ENABLE_AUTOSCALER="{{ request.object.metadata.labels."enable-cluster-autoscaler" || 'false' }}"
+                        ENABLE_EXTERNAL_DNS="{{ request.object.metadata.labels."enable-external-dns" || 'false' }}"
+                        ENABLE_VELERO="{{ request.object.metadata.labels."enable-velero" || 'false' }}"
                         AWS_REGION="{{ request.object.spec.parameters.region }}"
 
                         cat > /tmp/argocd-cluster-secret.yaml <<EOF
@@ -288,16 +292,6 @@ spec:
 
                         echo "==> Done! Cluster ${CLUSTER_NAME} registered with ArgoCD."
                     env:
-                      - name: AWS_ACCESS_KEY_ID
-                        valueFrom:
-                          secretKeyRef:
-                            name: aws-credentials-dev
-                            key: AWS_ACCESS_KEY_ID
-                      - name: AWS_SECRET_ACCESS_KEY
-                        valueFrom:
-                          secretKeyRef:
-                            name: aws-credentials-dev
-                            key: AWS_SECRET_ACCESS_KEY
                       - name: AWS_DEFAULT_REGION
                         value: us-east-1
                     volumeMounts:

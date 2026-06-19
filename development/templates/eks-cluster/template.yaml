@@ -233,6 +233,9 @@ spec:
       - title: "View in Catalog"
         url: http://localhost:3000/catalog/default/resource/${{ parameters.clusterName }}
         icon: catalog
+      - title: "Track provisioning (GitHub Actions)"
+        url: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/actions
+        icon: github
       - title: "ArgoCD Status"
         url: http://localhost:8080/applications/${{ parameters.teamName }}-eks-clusters
         icon: dashboard

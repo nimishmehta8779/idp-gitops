@@ -1,0 +1,54 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: deregister-eks-cluster-argocd
+  annotations:
+    policies.kyverno.io/title: Auto-deregister EKS Cluster from ArgoCD
+    policies.kyverno.io/category: IDP
+    policies.kyverno.io/subject: Job
+    policies.kyverno.io/description: >-
+      When an XEKSCluster composite is deleted, generate a Job that deletes
+      the corresponding ArgoCD cluster Secret in the argocd namespace.
+spec:
+  rules:
+    - name: generate-argocd-deregistration-job
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.io/v1alpha1/XEKSCluster
+              operations:
+                - DELETE
+      generate:
+        apiVersion: batch/v1
+        kind: Job
+        name: "deregister-argocd-{{ request.object.spec.parameters.clusterName }}"
+        namespace: crossplane-system
+        synchronize: false
+        data:
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: kyverno
+              idp.platform.io/cluster-name: "{{ request.object.spec.parameters.clusterName }}"
+          spec:
+            backoffLimit: 3
+            ttlSecondsAfterFinished: 3600
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/managed-by: kyverno
+                  idp.platform.io/cluster-name: "{{ request.object.spec.parameters.clusterName }}"
+              spec:
+                restartPolicy: OnFailure
+                serviceAccountName: default
+                containers:
+                  - name: deregister
+                    image: bitnami/kubectl:latest
+                    command: ["/bin/bash", "-c"]
+                    args:
+                      - |
+                        set -euo pipefail
+                        CLUSTER_NAME="{{ request.object.spec.parameters.clusterName }}"
+                        echo "==> Deleting ArgoCD cluster Secret for ${CLUSTER_NAME}..."
+                        kubectl delete secret "${CLUSTER_NAME}" -n argocd --ignore-not-found
+                        echo "==> Done! Cluster ${CLUSTER_NAME} deregistered from ArgoCD."
