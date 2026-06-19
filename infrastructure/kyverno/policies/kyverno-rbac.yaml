@@ -9,8 +9,11 @@ metadata:
     app.kubernetes.io/managed-by: idp
 rules:
   - apiGroups: [""]
-    resources: ["secrets"]
+    resources: ["secrets", "serviceaccounts"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["platform.io"]
     resources: ["xeksclusters", "eksclusters"]
     verbs: ["get", "list", "watch"]
