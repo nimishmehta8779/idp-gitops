@@ -607,7 +607,7 @@ spec:
                 name: aws-{{ $env }}
               deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
               forProvider:
-                assumeRolePolicyDocument: |
+                assumeRolePolicy: |
                   {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -684,7 +684,7 @@ spec:
                 name: aws-{{ $env }}
               deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
               forProvider:
-                assumeRolePolicyDocument: |
+                assumeRolePolicy: |
                   {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -764,7 +764,7 @@ spec:
                 name: aws-{{ $env }}
               deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
               forProvider:
-                assumeRolePolicyDocument: |
+                assumeRolePolicy: |
                   {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -817,7 +817,7 @@ spec:
                 name: aws-{{ $env }}
               deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
               forProvider:
-                assumeRolePolicyDocument: |
+                assumeRolePolicy: |
                   {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -877,7 +877,7 @@ spec:
                 name: aws-{{ $env }}
               deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
               forProvider:
-                assumeRolePolicyDocument: |
+                assumeRolePolicy: |
                   {
                     "Version": "2012-10-17",
                     "Statement": [
