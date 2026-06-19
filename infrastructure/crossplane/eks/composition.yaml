@@ -344,6 +344,9 @@ spec:
                   clientIdList:
                     - sts.amazonaws.com
                   url: ''
+                  thumbprintList:
+                    - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+                    - 06b25927c42a721631c1efd9431e648fa62e1e39
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
