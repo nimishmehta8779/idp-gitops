@@ -66,6 +66,8 @@
         "iam:CreateOpenIDConnectProvider",
         "iam:DeleteOpenIDConnectProvider",
         "iam:GetOpenIDConnectProvider",
+        "iam:TagOpenIDConnectProvider",
+        "iam:UntagOpenIDConnectProvider",
         "iam:TagRole",
         "iam:UntagRole",
         "iam:ListAttachedRolePolicies",
@@ -77,6 +79,17 @@
       "Resource": [
         "arn:aws:iam::*:role/idp-dev-*",
         "arn:aws:iam::*:oidc-provider/*"
+      ]
+    },
+    {
+      "Sid": "AllowServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:CreateServiceLinkedRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/aws-service-role/*"
       ]
     },
     {

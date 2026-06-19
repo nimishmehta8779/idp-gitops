@@ -114,6 +114,11 @@ spec:
                         export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecretAccessKey'])")
                         export AWS_SESSION_TOKEN=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SessionToken'])")
 
+                        echo "==> Installing kubectl..."
+                        curl -sL "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /tmp/kubectl
+                        chmod +x /tmp/kubectl
+                        export PATH="/tmp:${PATH}"
+
                         echo "==> Updating kubeconfig for ${CLUSTER_NAME}..."
                         aws eks update-kubeconfig \
                           --name "${CLUSTER_NAME}" \
@@ -122,9 +127,10 @@ spec:
 
                         export KUBECONFIG=/tmp/eks-kubeconfig
 
-                        echo "==> Waiting for EKS API server to be responsive..."
+                        ENDPOINT=$(aws eks describe-cluster --name "${CLUSTER_NAME}" --region "${REGION}" --query "cluster.endpoint" --output text)
+                        echo "==> Waiting for EKS API server endpoint ${ENDPOINT} to be responsive..."
                         for i in $(seq 1 30); do
-                          if kubectl get ns --request-timeout='5s' >/dev/null 2>&1; then
+                          if curl -k -s -f -o /dev/null --connect-timeout 5 "${ENDPOINT}/healthz"; then
                             echo "EKS API server is responsive."
                             break
                           fi
@@ -238,9 +244,7 @@ spec:
                         # Now switch to in-cluster context (no KUBECONFIG = uses pod's service account)
                         unset KUBECONFIG
 
-                        # Install kubectl for in-cluster API calls
-                        curl -sL "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-                          -o /tmp/kubectl && chmod +x /tmp/kubectl
+                        # kubectl is already installed and in PATH
 
                         # Fetch IRSA role ARNs from AWS directly (roles are named deterministically)
                         # This is more reliable than reading from XEKSCluster status since
@@ -298,7 +302,7 @@ spec:
                         EOF
 
                         echo "==> Applying ArgoCD cluster Secret to kind cluster..."
-                        /tmp/kubectl apply -f /tmp/argocd-cluster-secret.yaml
+                        kubectl apply -f /tmp/argocd-cluster-secret.yaml
 
                         echo "==> Patching XEKSCluster status with IRSA role ARNs..."
                         # Build the status patch JSON — only include non-empty ARNs
@@ -311,7 +315,7 @@ spec:
                         STATUS_PATCH+="}}"
 
                         if [ "$STATUS_PATCH" != '{"status":{}}' ]; then
-                          /tmp/kubectl patch xekscluster "${CLUSTER_NAME}" \
+                          kubectl patch xekscluster "${CLUSTER_NAME}" \
                             --type merge \
                             --subresource status \
                             -p "${STATUS_PATCH}" || echo "WARN: could not patch XEKSCluster status (may not have permission)"
