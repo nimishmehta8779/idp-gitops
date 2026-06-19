@@ -7,11 +7,12 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     cluster-status: provisioning
     aws-region: ${{ values.awsRegion }}
-    cluster-version: ${{ values.kubernetesVersion }}
+    cluster-version: "${{ values.kubernetesVersion }}"
     node-count: "${{ values.nodeCount }}"
     instance-type: ${{ values.instanceType }}
     environment: ${{ values.environment }}
     created-by: ${{ values.teamName }}
+    github.com/project-slug: nimishmehta8779/${{ values.teamName }}-infra
 spec:
   type: kubernetes-cluster
   owner: group:default/${{ values.teamName }}
