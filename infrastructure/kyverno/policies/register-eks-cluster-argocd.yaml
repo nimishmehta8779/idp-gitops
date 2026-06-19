@@ -122,6 +122,16 @@ spec:
 
                         export KUBECONFIG=/tmp/eks-kubeconfig
 
+                        echo "==> Waiting for EKS API server to be responsive..."
+                        for i in $(seq 1 30); do
+                          if kubectl get ns --request-timeout='5s' >/dev/null 2>&1; then
+                            echo "EKS API server is responsive."
+                            break
+                          fi
+                          echo "Waiting for API server to respond (attempt $i)..."
+                          sleep 10
+                        done
+
                         ADMIN_ROLE_ARN="{{ request.object.spec.parameters.adminRoleArn || '' }}"
 
                         if [ -n "${ADMIN_ROLE_ARN}" ]; then
