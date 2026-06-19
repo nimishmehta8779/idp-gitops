@@ -4,15 +4,32 @@ metadata:
   name: idp-platform-dev
   namespace: argocd
 spec:
-  description: IDP platform — dev environment EKS cluster provisioning via team infra repos
+  description: IDP platform — dev environment EKS cluster provisioning and addon management
   sourceRepos:
+    # Team infra repos (cluster claims)
     - https://github.com/nimishmehta8779/*-infra
     - https://github.com/nimishmehta8779/*-infra.git
+    # Helm repos for EKS addons
+    - https://kubernetes.github.io/autoscaler
+    - https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+    - https://kubernetes-sigs.github.io/external-dns/
+    - https://vmware-tanzu.github.io/helm-charts
+    - https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
   destinations:
+    # Local kind cluster — for Crossplane claim objects
     - server: https://kubernetes.default.svc
       namespace: clusters-dev
     - server: https://kubernetes.default.svc
       namespace: clusters
+    # All provisioned EKS clusters — for addon deployments
+    - server: '*'
+      namespace: kube-system
+    - server: '*'
+      namespace: kube-system
+    - server: '*'
+      namespace: external-dns
+    - server: '*'
+      namespace: velero
   clusterResourceWhitelist:
     - group: 'platform.io'
       kind: 'XEKSCluster'
@@ -20,6 +37,10 @@ spec:
       kind: 'EKSCluster'
     - group: '*'
       kind: 'Namespace'
+    - group: 'rbac.authorization.k8s.io'
+      kind: 'ClusterRole'
+    - group: 'rbac.authorization.k8s.io'
+      kind: 'ClusterRoleBinding'
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'
