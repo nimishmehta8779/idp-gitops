@@ -1,14 +1,65 @@
+---
+# Grants kyverno controllers permission to manage ArgoCD cluster Secrets
+# and read Crossplane EKS composite resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-argocd-secret-manager
+  labels:
+    app.kubernetes.io/managed-by: idp
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["platform.io"]
+    resources: ["xeksclusters", "eksclusters"]
+    verbs: ["get", "list", "watch"]
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kyverno-background-controller-jobs
+  name: kyverno-argocd-secret-manager
   labels:
     app.kubernetes.io/managed-by: idp
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin
+  name: kyverno-argocd-secret-manager
 subjects:
   - kind: ServiceAccount
     name: kyverno-background-controller
     namespace: kyverno
+  - kind: ServiceAccount
+    name: kyverno-admission-controller
+    namespace: kyverno
+---
+# Grants crossplane-system/default SA permission to write ArgoCD cluster Secrets
+# and read/patch XEKSCluster composites (used by the ArgoCD registration Job).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-cluster-registration
+  labels:
+    app.kubernetes.io/managed-by: idp
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "patch", "update", "delete"]
+  - apiGroups: ["platform.io"]
+    resources: ["xeksclusters", "xeksclusters/status"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-cluster-registration
+  labels:
+    app.kubernetes.io/managed-by: idp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-cluster-registration
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: crossplane-system
