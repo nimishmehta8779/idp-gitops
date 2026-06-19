@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-config
+  namespace: argocd
+spec:
+  project: idp-platform
+  source:
+    repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+    targetRevision: main
+    path: infrastructure/argocd/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false        # never auto-delete argocd-cm
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
