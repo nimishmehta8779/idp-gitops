@@ -85,6 +85,18 @@ spec:
                 oidcProviderArn:
                   type: string
                   description: ARN of the OIDC provider created for the cluster
+                autoscalerRoleArn:
+                  type: string
+                  description: IAM role ARN for cluster-autoscaler IRSA
+                efsRoleArn:
+                  type: string
+                  description: IAM role ARN for EFS CSI driver IRSA
+                externalDnsRoleArn:
+                  type: string
+                  description: IAM role ARN for external-dns IRSA
+                veleroRoleArn:
+                  type: string
+                  description: IAM role ARN for Velero IRSA
   connectionSecretKeys:
     - kubeconfig
     - clusterEndpoint

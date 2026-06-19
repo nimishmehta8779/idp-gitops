@@ -1,0 +1,306 @@
+##############################################################################
+# register-eks-cluster-argocd.yaml
+#
+# Kyverno ClusterPolicy – Auto-register EKS clusters with ArgoCD.
+#
+# Trigger: XEKSCluster composite resource transitions to Ready=True.
+#
+# Action: Generate a batch/v1 Job in crossplane-system that:
+#   1. Assumes idp-dev-role via STS (ExternalId: crossplane-idp)
+#   2. Runs aws eks update-kubeconfig for the provisioned cluster
+#   3. Creates argocd-manager ServiceAccount + ClusterRoleBinding in the EKS cluster
+#   4. Creates an ArgoCD cluster Secret in the argocd namespace on the kind cluster
+#   5. Labels the Secret with addon toggles and IRSA role ARN annotations
+#      so ApplicationSet selectors and Helm values work immediately
+#
+# Prerequisites:
+#   - Secret aws-credentials-dev in crossplane-system with keys
+#     AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for a user that can
+#     call sts:AssumeRole to arn:aws:iam::415703161648:role/idp-dev-role
+#   - function-auto-ready installed (for ArgoCD to pick up the cluster)
+#
+# Security note: the Job mounts aws-credentials-dev read-only and uses
+# in-cluster RBAC (default SA in crossplane-system) to write the ArgoCD
+# cluster Secret. Tighten the Job SA permissions as needed.
+##############################################################################
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: register-eks-cluster-argocd
+  annotations:
+    policies.kyverno.io/title: Auto-register EKS Cluster with ArgoCD
+    policies.kyverno.io/category: IDP
+    policies.kyverno.io/subject: Job
+    policies.kyverno.io/description: >-
+      When an XEKSCluster composite becomes Ready=True, generate a Job that
+      registers the cluster with ArgoCD by creating a cluster Secret in the
+      argocd namespace, labeled with addon toggles and annotated with IRSA
+      role ARNs so ApplicationSets and Helm values work immediately.
+spec:
+  rules:
+    - name: generate-argocd-registration-job
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.io/v1alpha1/XEKSCluster
+              operations:
+                - CREATE
+                - UPDATE
+      # Only fire when the composite is Ready=True and has a cluster name
+      preconditions:
+        all:
+          - key: "{{ request.object.status.conditions[?type=='Ready'].status | [0] || 'False' }}"
+            operator: Equals
+            value: "True"
+          - key: "{{ request.object.spec.parameters.clusterName || '' }}"
+            operator: NotEquals
+            value: ""
+      generate:
+        apiVersion: batch/v1
+        kind: Job
+        name: "register-argocd-{{ request.object.spec.parameters.clusterName }}"
+        namespace: crossplane-system
+        # Recreate the Job each time the XEKSCluster updates (e.g. after
+        # a failed attempt or when IRSA ARNs become available).
+        synchronize: false
+        data:
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: kyverno
+              idp.platform.io/cluster-name: "{{ request.object.spec.parameters.clusterName }}"
+          spec:
+            # Retry up to 3 times in case EKS endpoint is not yet reachable
+            backoffLimit: 3
+            ttlSecondsAfterFinished: 3600
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/managed-by: kyverno
+                  idp.platform.io/cluster-name: "{{ request.object.spec.parameters.clusterName }}"
+              spec:
+                restartPolicy: OnFailure
+                serviceAccountName: default
+                volumes:
+                  - name: aws-creds
+                    secret:
+                      secretName: aws-credentials-dev
+                containers:
+                  - name: register
+                    image: amazon/aws-cli:latest
+                    command: ["/bin/bash", "-c"]
+                    args:
+                      - |
+                        set -euo pipefail
+
+                        CLUSTER_NAME="{{ request.object.spec.parameters.clusterName }}"
+                        REGION="{{ request.object.spec.parameters.region }}"
+                        ENVIRONMENT="{{ request.object.spec.parameters.environment }}"
+                        ACCOUNT_ID="415703161648"
+                        IDP_ROLE="arn:aws:iam::${ACCOUNT_ID}:role/idp-dev-role"
+
+                        echo "==> Assuming idp-dev-role..."
+                        CREDS=$(aws sts assume-role \
+                          --role-arn "${IDP_ROLE}" \
+                          --role-session-name "kyverno-argocd-register-${CLUSTER_NAME}" \
+                          --external-id "crossplane-idp" \
+                          --output json)
+
+                        export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+                        export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecretAccessKey'])")
+                        export AWS_SESSION_TOKEN=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SessionToken'])")
+
+                        echo "==> Updating kubeconfig for ${CLUSTER_NAME}..."
+                        aws eks update-kubeconfig \
+                          --name "${CLUSTER_NAME}" \
+                          --region "${REGION}" \
+                          --kubeconfig /tmp/eks-kubeconfig
+
+                        export KUBECONFIG=/tmp/eks-kubeconfig
+
+                        ADMIN_ROLE_ARN="{{ request.object.spec.parameters.adminRoleArn || '' }}"
+
+                        echo "==> Patching aws-auth to add admin access..."
+                        if [ -n "${ADMIN_ROLE_ARN}" ]; then
+                          # Determine if it's a role or user ARN
+                          if echo "${ADMIN_ROLE_ARN}" | grep -q ":role/"; then
+                            MAPENTRY="- rolearn: ${ADMIN_ROLE_ARN}\n  username: admin\n  groups:\n    - system:masters"
+                            kubectl get configmap aws-auth -n kube-system -o json | \
+                              python3 -c "
+                        import sys, json
+                        cm = json.load(sys.stdin)
+                        existing = cm.get('data', {}).get('mapRoles', '') or ''
+                        entry = '- rolearn: ${ADMIN_ROLE_ARN}\n  username: admin\n  groups:\n    - system:masters\n'
+                        if '${ADMIN_ROLE_ARN}' not in existing:
+                            cm.setdefault('data', {})['mapRoles'] = existing + entry
+                        print(json.dumps(cm))
+                        " | kubectl apply -f - || true
+                          else
+                            kubectl get configmap aws-auth -n kube-system -o json | \
+                              python3 -c "
+                        import sys, json
+                        cm = json.load(sys.stdin)
+                        existing = cm.get('data', {}).get('mapUsers', '') or ''
+                        entry = '- userarn: ${ADMIN_ROLE_ARN}\n  username: admin\n  groups:\n    - system:masters\n'
+                        if '${ADMIN_ROLE_ARN}' not in existing:
+                            cm.setdefault('data', {})['mapUsers'] = existing + entry
+                        print(json.dumps(cm))
+                        " | kubectl apply -f - || true
+                          fi
+                          echo "aws-auth patched for ${ADMIN_ROLE_ARN}"
+                        fi
+
+                        echo "==> Creating argocd-manager ServiceAccount in EKS cluster..."
+                        kubectl apply -f - <<'SAEOF'
+                        apiVersion: v1
+                        kind: ServiceAccount
+                        metadata:
+                          name: argocd-manager
+                          namespace: kube-system
+                        SAEOF
+
+                        kubectl apply -f - <<'CRBEOF'
+                        apiVersion: rbac.authorization.k8s.io/v1
+                        kind: ClusterRoleBinding
+                        metadata:
+                          name: argocd-manager-role-binding
+                        roleRef:
+                          apiGroup: rbac.authorization.k8s.io
+                          kind: ClusterRole
+                          name: cluster-admin
+                        subjects:
+                          - kind: ServiceAccount
+                            name: argocd-manager
+                            namespace: kube-system
+                        CRBEOF
+
+                        echo "==> Creating argocd-manager token secret..."
+                        kubectl apply -f - <<'TOKEOF'
+                        apiVersion: v1
+                        kind: Secret
+                        metadata:
+                          name: argocd-manager-token
+                          namespace: kube-system
+                          annotations:
+                            kubernetes.io/service-account.name: argocd-manager
+                        type: kubernetes.io/service-account-token
+                        TOKEOF
+
+                        echo "==> Waiting for token to be populated..."
+                        for i in $(seq 1 20); do
+                          TOKEN=$(kubectl get secret argocd-manager-token -n kube-system \
+                            -o jsonpath='{.data.token}' 2>/dev/null || echo "")
+                          if [ -n "$TOKEN" ]; then break; fi
+                          sleep 3
+                        done
+
+                        if [ -z "$TOKEN" ]; then
+                          echo "ERROR: argocd-manager token not populated after 60s"
+                          exit 1
+                        fi
+
+                        SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+                        CA_DATA=$(kubectl get secret argocd-manager-token -n kube-system \
+                          -o jsonpath='{.data.ca\.crt}')
+
+                        echo "==> Building ArgoCD cluster Secret..."
+                        # Now switch to in-cluster context (no KUBECONFIG = uses pod's service account)
+                        unset KUBECONFIG
+
+                        # Install kubectl for in-cluster API calls
+                        curl -sL "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+                          -o /tmp/kubectl && chmod +x /tmp/kubectl
+
+                        # Fetch IRSA role ARNs from AWS directly (roles are named deterministically)
+                        # This is more reliable than reading from XEKSCluster status since
+                        # the status may not be populated yet when this job runs.
+                        ACCOUNT_ID_FOR_ARNS="415703161648"
+                        AUTOSCALER_ARN=$(aws iam get-role \
+                          --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-autoscaler-role" \
+                          --query 'Role.Arn' --output text 2>/dev/null || echo "")
+                        EFS_ARN=$(aws iam get-role \
+                          --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-efs-role" \
+                          --query 'Role.Arn' --output text 2>/dev/null || echo "")
+                        EXTERNALDNS_ARN=$(aws iam get-role \
+                          --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-externaldns-role" \
+                          --query 'Role.Arn' --output text 2>/dev/null || echo "")
+                        VELERO_ARN=$(aws iam get-role \
+                          --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-velero-role" \
+                          --query 'Role.Arn' --output text 2>/dev/null || echo "")
+
+                        # Addon toggle labels from composite metadata
+                        ENABLE_AUTOSCALER="{{ request.object.metadata.labels.\"enable-cluster-autoscaler\" || 'false' }}"
+                        ENABLE_EXTERNAL_DNS="{{ request.object.metadata.labels.\"enable-external-dns\" || 'false' }}"
+                        ENABLE_VELERO="{{ request.object.metadata.labels.\"enable-velero\" || 'false' }}"
+                        AWS_REGION="{{ request.object.spec.parameters.region }}"
+
+                        cat > /tmp/argocd-cluster-secret.yaml <<EOF
+                        apiVersion: v1
+                        kind: Secret
+                        metadata:
+                          name: ${CLUSTER_NAME}
+                          namespace: argocd
+                          labels:
+                            argocd.argoproj.io/secret-type: cluster
+                            managed-by: eks-cluster
+                            enable-cluster-autoscaler: "${ENABLE_AUTOSCALER}"
+                            enable-external-dns: "${ENABLE_EXTERNAL_DNS}"
+                            enable-velero: "${ENABLE_VELERO}"
+                          annotations:
+                            idp.platform.io/aws-region: "${AWS_REGION}"
+                            idp.platform.io/autoscaler-role-arn: "${AUTOSCALER_ARN}"
+                            idp.platform.io/efs-role-arn: "${EFS_ARN}"
+                            idp.platform.io/external-dns-role-arn: "${EXTERNALDNS_ARN}"
+                            idp.platform.io/velero-role-arn: "${VELERO_ARN}"
+                        type: Opaque
+                        stringData:
+                          name: "${CLUSTER_NAME}"
+                          server: "${SERVER}"
+                          config: |
+                            {
+                              "bearerToken": "$(echo "$TOKEN" | base64 -d)",
+                              "tlsClientConfig": {
+                                "insecure": false,
+                                "caData": "${CA_DATA}"
+                              }
+                            }
+                        EOF
+
+                        echo "==> Applying ArgoCD cluster Secret to kind cluster..."
+                        /tmp/kubectl apply -f /tmp/argocd-cluster-secret.yaml
+
+                        echo "==> Patching XEKSCluster status with IRSA role ARNs..."
+                        # Build the status patch JSON — only include non-empty ARNs
+                        STATUS_PATCH='{"status":{'
+                        COMMA=""
+                        [ -n "$AUTOSCALER_ARN" ]   && STATUS_PATCH+="${COMMA}\"autoscalerRoleArn\":\"${AUTOSCALER_ARN}\""   && COMMA=","
+                        [ -n "$EFS_ARN" ]           && STATUS_PATCH+="${COMMA}\"efsRoleArn\":\"${EFS_ARN}\""                 && COMMA=","
+                        [ -n "$EXTERNALDNS_ARN" ]   && STATUS_PATCH+="${COMMA}\"externalDnsRoleArn\":\"${EXTERNALDNS_ARN}\"" && COMMA=","
+                        [ -n "$VELERO_ARN" ]        && STATUS_PATCH+="${COMMA}\"veleroRoleArn\":\"${VELERO_ARN}\""
+                        STATUS_PATCH+="}}"
+
+                        if [ "$STATUS_PATCH" != '{"status":{}}' ]; then
+                          /tmp/kubectl patch xekscluster "${CLUSTER_NAME}" \
+                            --type merge \
+                            --subresource status \
+                            -p "${STATUS_PATCH}" || echo "WARN: could not patch XEKSCluster status (may not have permission)"
+                        fi
+
+                        echo "==> Done! Cluster ${CLUSTER_NAME} registered with ArgoCD."
+                    env:
+                      - name: AWS_ACCESS_KEY_ID
+                        valueFrom:
+                          secretKeyRef:
+                            name: aws-credentials-dev
+                            key: AWS_ACCESS_KEY_ID
+                      - name: AWS_SECRET_ACCESS_KEY
+                        valueFrom:
+                          secretKeyRef:
+                            name: aws-credentials-dev
+                            key: AWS_SECRET_ACCESS_KEY
+                      - name: AWS_DEFAULT_REGION
+                        value: us-east-1
+                    volumeMounts:
+                      - name: aws-creds
+                        mountPath: /etc/aws-creds
+                        readOnly: true

@@ -43,6 +43,7 @@ spec:
     enableClusterAutoscaler: ${{ values.enableClusterAutoscaler }}
     enableExternalDNS: ${{ values.enableExternalDNS }}
     enableVelero: ${{ values.enableVelero }}
+    adminRoleArn: ${{ values.adminRoleArn }}
     networkRef: {% if values.environment == 'dev' %}dev-network{% else %}staging-network{% endif %}
   compositionRef:
     name: eks-cluster

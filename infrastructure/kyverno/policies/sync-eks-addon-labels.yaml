@@ -78,3 +78,9 @@ spec:
               enable-cluster-autoscaler: "{{ request.object.metadata.labels.\"enable-cluster-autoscaler\" || 'false' }}"
               enable-external-dns: "{{ request.object.metadata.labels.\"enable-external-dns\" || 'false' }}"
               enable-velero: "{{ request.object.metadata.labels.\"enable-velero\" || 'false' }}"
+            annotations:
+              # Propagate IRSA role ARNs so ArgoCD ApplicationSet Helm values can read them.
+              idp.platform.io/autoscaler-role-arn: "{{ request.object.status.autoscalerRoleArn || '' }}"
+              idp.platform.io/efs-role-arn: "{{ request.object.status.efsRoleArn || '' }}"
+              idp.platform.io/external-dns-role-arn: "{{ request.object.status.externalDnsRoleArn || '' }}"
+              idp.platform.io/velero-role-arn: "{{ request.object.status.veleroRoleArn || '' }}"

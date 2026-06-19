@@ -94,6 +94,14 @@ spec:
           type: string
           description: Cost center identifier for billing/accounting purposes.
           default: default
+        adminRoleArn:
+          title: Admin IAM Principal ARN
+          type: string
+          description: >
+            IAM role or user ARN to grant cluster-admin (system:masters) access
+            via aws-auth. Defaults to the platform IAM user.
+          default: "arn:aws:iam::415703161648:user/nimish"
+          ui:widget: hidden
 
   steps:
     # Step 1: Render skeleton
@@ -115,6 +123,7 @@ spec:
           enableClusterAutoscaler: ${{ parameters.enableClusterAutoscaler }}
           enableExternalDNS: ${{ parameters.enableExternalDNS }}
           enableVelero: ${{ parameters.enableVelero }}
+          adminRoleArn: ${{ parameters.adminRoleArn }}
 
     # Step 1.5: Create cluster repository initialization files (plain copy - no template processing
     # to avoid conflicts between Backstage ${{ }} syntax and GitHub Actions ${{ }} syntax)

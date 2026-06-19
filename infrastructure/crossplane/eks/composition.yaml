@@ -573,72 +573,367 @@ spec:
         kind: GoTemplate
         source: Inline
         inline:
-          template: "{{- if and .observed.composite.resource.spec.parameters.enableEbsCsi
-            (index .observed.composite.resource \"status\") (index .observed.composite.resource.status
-            \"oidcProviderArn\") (index .observed.composite.resource.status \"oidcIssuer\"\
-            ) }}\n{{- $issuer := replace \"https://\" \"\" .observed.composite.resource.status.oidcIssuer
-            }}\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name:
-            idp-{{ .observed.composite.resource.spec.parameters.environment }}-{{
-            .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
-            \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
-            ebs-csi-role\nspec:\n  providerConfigRef:\n    name: aws-{{ .observed.composite.resource.spec.parameters.environment
-            }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment
-            \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicyDocument:
-            |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\"\
-            : [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\"\
-            : {\n              \"Federated\": \"{{ .observed.composite.resource.status.oidcProviderArn
-            }}\"\n            },\n            \"Action\": \"sts:AssumeRoleWithWebIdentity\"\
-            ,\n            \"Condition\": {\n              \"StringEquals\": {\n \
-            \               \"{{ $issuer }}:sub\": \"system:serviceaccount:kube-system:ebs-csi-controller-sa\"\
-            ,\n                \"{{ $issuer }}:aud\": \"sts.amazonaws.com\"\n    \
-            \          }\n            }\n          }\n        ]\n      }\n    tags:\n\
-            \      managed-by: crossplane\n      provisioned-by: backstage-idp\n \
-            \     environment: {{ .observed.composite.resource.spec.parameters.environment
-            }}\n      team: {{ .observed.composite.resource.spec.parameters.teamName
-            }}\n      cluster-name: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}\n      cost-center: {{ .observed.composite.resource.spec.parameters.costCenter
-            }}\n      kubernetes-version: \"{{ .observed.composite.resource.spec.parameters.kubernetesVersion
-            }}\"\n      region: {{ .observed.composite.resource.spec.parameters.region
-            }}\n      {{- if hasKey .observed.composite.resource.metadata \"labels\"\
-            \ }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
-            \"backstage.io/owned\" }}\n      backstage.io/owned: \"{{ index .observed.composite.resource.metadata.labels
-            \"backstage.io/owned\" }}\"\n      {{- end }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
-            \"backstage.io/team\" }}\n      backstage.io/team: \"{{ index .observed.composite.resource.metadata.labels
-            \"backstage.io/team\" }}\"\n      {{- end }}\n      {{- end }}\n---\n\
-            apiVersion: iam.aws.upbound.io/v1beta1\nkind: RolePolicyAttachment\nmetadata:\n\
-            \  name: {{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-attach\n\
-            \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
-            ebs-csi-role-attachment\nspec:\n  providerConfigRef:\n    name: aws-{{
-            .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
-            {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
-            \ }}Delete{{ else }}Orphan{{ end }}\n\
-            \  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n\
-            \    roleRef:\n      name: idp-{{ .observed.composite.resource.spec.parameters.environment
-            }}-{{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
-            ---\napiVersion: eks.aws.upbound.io/v1beta1\nkind: Addon\nmetadata:\n\
-            \  name: {{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-csi\n\
-            \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
-            addon-aws-ebs-csi-driver\nspec:\n  providerConfigRef:\n    name: aws-{{
-            .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
-            {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
-            \ }}Delete{{ else }}Orphan{{ end }}\n\
-            \  forProvider:\n    addonName: aws-ebs-csi-driver\n\
-            \    clusterName: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n \
-            \     name: idp-{{ .observed.composite.resource.spec.parameters.environment
-            }}-{{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
-            \    region: {{ .observed.composite.resource.spec.parameters.region }}\n\
-            \    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n\
-            \      environment: {{ .observed.composite.resource.spec.parameters.environment
-            }}\n      team: {{ .observed.composite.resource.spec.parameters.teamName
-            }}\n      cluster-name: {{ .observed.composite.resource.spec.parameters.clusterName
-            }}\n      cost-center: {{ .observed.composite.resource.spec.parameters.costCenter
-            }}\n      kubernetes-version: \"{{ .observed.composite.resource.spec.parameters.kubernetesVersion
-            }}\"\n      region: {{ .observed.composite.resource.spec.parameters.region
-            }}\n      {{- if hasKey .observed.composite.resource.metadata \"labels\"\
-            \ }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
-            \"backstage.io/owned\" }}\n      backstage.io/owned: \"{{ index .observed.composite.resource.metadata.labels
-            \"backstage.io/owned\" }}\"\n      {{- end }}\n      {{- if hasKey .observed.composite.resource.metadata.labels
-            \"backstage.io/team\" }}\n      backstage.io/team: \"{{ index .observed.composite.resource.metadata.labels
-            \"backstage.io/team\" }}\"\n      {{- end }}\n      {{- end }}\n{{- end
-            }}\n"
+          template: |
+            {{- $p := .observed.composite.resource.spec.parameters }}
+            {{- $env := $p.environment }}
+            {{- $cluster := $p.clusterName }}
+            {{- $hasStatus := index .observed.composite.resource "status" }}
+            {{- $oidcArn := "" }}
+            {{- $oidcIssuer := "" }}
+            {{- if $hasStatus }}
+            {{-   if index .observed.composite.resource.status "oidcProviderArn" }}
+            {{-     $oidcArn = .observed.composite.resource.status.oidcProviderArn }}
+            {{-   end }}
+            {{-   if index .observed.composite.resource.status "oidcIssuer" }}
+            {{-     $oidcIssuer = .observed.composite.resource.status.oidcIssuer }}
+            {{-   end }}
+            {{- end }}
+            {{- $issuer := replace "https://" "" $oidcIssuer }}
+            {{- $ready := and $oidcArn $oidcIssuer }}
+
+            {{- if and $p.enableEbsCsi $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-ebs-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ebs-csi-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicyDocument: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              name: {{ $cluster }}-ebs-attach
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ebs-csi-role-attachment
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+                roleRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-ebs-role
+            ---
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: Addon
+            metadata:
+              name: {{ $cluster }}-ebs-csi
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: addon-aws-ebs-csi-driver
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                addonName: aws-ebs-csi-driver
+                clusterName: {{ $cluster }}
+                resolveConflicts: OVERWRITE
+                serviceAccountRoleArnRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-ebs-role
+                region: {{ $p.region }}
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            {{- end }}
+
+            {{- if and $p.enableClusterAutoscaler $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-autoscaler-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: autoscaler-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicyDocument: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:cluster-autoscaler-aws-cluster-autoscaler",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                inlinePolicy:
+                  - name: cluster-autoscaler
+                    policy: |
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "autoscaling:DescribeAutoScalingGroups",
+                              "autoscaling:DescribeAutoScalingInstances",
+                              "autoscaling:DescribeLaunchConfigurations",
+                              "autoscaling:DescribeScalingActivities",
+                              "autoscaling:DescribeTags",
+                              "autoscaling:SetDesiredCapacity",
+                              "autoscaling:TerminateInstanceInAutoScalingGroup",
+                              "ec2:DescribeImages",
+                              "ec2:DescribeInstanceTypes",
+                              "ec2:DescribeLaunchTemplateVersions",
+                              "ec2:GetInstanceTypesFromInstanceRequirements",
+                              "eks:DescribeNodegroup"
+                            ],
+                            "Resource": "*"
+                          }
+                        ]
+                      }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              name: {{ $cluster }}-autoscaler-attach
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: autoscaler-irsa-role-attachment
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/AutoScalingFullAccess
+                roleRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-autoscaler-role
+            {{- end }}
+
+            {{- if and $p.enableEbsCsi $ready }}
+            {{- /* EFS CSI IRSA — reuses enableEbsCsi toggle per spec */ }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-efs-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: efs-csi-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicyDocument: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:efs-csi-controller-sa",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              name: {{ $cluster }}-efs-attach
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: efs-csi-irsa-role-attachment
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy
+                roleRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-efs-role
+            {{- end }}
+
+            {{- if and $p.enableExternalDNS $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-externaldns-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: externaldns-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicyDocument: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:external-dns",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                inlinePolicy:
+                  - name: external-dns
+                    policy: |
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                          {
+                            "Effect": "Allow",
+                            "Action": ["route53:ChangeResourceRecordSets"],
+                            "Resource": "arn:aws:route53:::hostedzone/*"
+                          },
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "route53:ListHostedZones",
+                              "route53:ListResourceRecordSets",
+                              "route53:ListTagsForResource"
+                            ],
+                            "Resource": "*"
+                          }
+                        ]
+                      }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            {{- end }}
+
+            {{- if and $p.enableVelero $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-velero-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicyDocument: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:velero:velero",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                inlinePolicy:
+                  - name: velero
+                    policy: |
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "ec2:DescribeVolumes",
+                              "ec2:DescribeSnapshots",
+                              "ec2:CreateTags",
+                              "ec2:CreateVolume",
+                              "ec2:CreateSnapshot",
+                              "ec2:DeleteSnapshot"
+                            ],
+                            "Resource": "*"
+                          },
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "s3:GetObject",
+                              "s3:DeleteObject",
+                              "s3:PutObject",
+                              "s3:AbortMultipartUpload",
+                              "s3:ListMultipartUploadParts"
+                            ],
+                            "Resource": "arn:aws:s3:::{{ $cluster }}-velero-backups/*"
+                          },
+                          {
+                            "Effect": "Allow",
+                            "Action": ["s3:ListBucket"],
+                            "Resource": "arn:aws:s3:::{{ $cluster }}-velero-backups"
+                          }
+                        ]
+                      }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            {{- end }}
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready
