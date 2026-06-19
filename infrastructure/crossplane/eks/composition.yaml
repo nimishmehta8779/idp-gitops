@@ -37,6 +37,10 @@ spec:
         kind: Resources
         resources:
           - name: eks-cluster
+            readinessChecks:
+              - type: MatchString
+                fieldPath: status.atProvider.status
+                matchString: ACTIVE
             base:
               apiVersion: eks.aws.upbound.io/v1beta1
               kind: Cluster
@@ -50,12 +54,6 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
-                readinessChecks:
-                  - type: MatchString
-                    fieldPath: status.atProvider.status
-                    matchString: ACTIVE
-                dependsOn:
-                  - cluster-role-attachment
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
@@ -125,6 +123,10 @@ spec:
               - type: PatchSet
                 patchSetName: provider-config-ref
           - name: node-group
+            readinessChecks:
+              - type: MatchString
+                fieldPath: status.atProvider.status
+                matchString: ACTIVE
             base:
               apiVersion: eks.aws.upbound.io/v1beta1
               kind: NodeGroup
@@ -142,16 +144,6 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
-                dependsOn:
-                  - eks-cluster
-                  - nodegroup-role
-                  - nodegroup-policy-workernode
-                  - nodegroup-policy-cni
-                  - nodegroup-policy-registry
-                readinessChecks:
-                  - type: MatchString
-                    fieldPath: status.atProvider.status
-                    matchString: ACTIVE
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
@@ -355,8 +347,6 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
-                dependsOn:
-                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -406,8 +396,6 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
-                dependsOn:
-                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -453,8 +441,6 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
-                dependsOn:
-                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -500,8 +486,6 @@ spec:
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
-                dependsOn:
-                  - eks-cluster
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.labels["backstage.io/owned"]
@@ -599,7 +583,7 @@ spec:
             \  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name:
             ebs-csi-role\nspec:\n  providerConfigRef:\n    name: aws-{{ .observed.composite.resource.spec.parameters.environment
             }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment
-            \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  dependsOn:\n    - eks-cluster\n  forProvider:\n    assumeRolePolicyDocument:
+            \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicyDocument:
             |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\"\
             : [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\"\
             : {\n              \"Federated\": \"{{ .observed.composite.resource.status.oidcProviderArn
@@ -627,7 +611,7 @@ spec:
             ebs-csi-role-attachment\nspec:\n  providerConfigRef:\n    name: aws-{{
             .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
-            \ }}Delete{{ else }}Orphan{{ end }}\n  dependsOn:\n    - eks-cluster\n\
+            \ }}Delete{{ else }}Orphan{{ end }}\n\
             \  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n\
             \    roleRef:\n      name: idp-{{ .observed.composite.resource.spec.parameters.environment
             }}-{{ .observed.composite.resource.spec.parameters.clusterName }}-ebs-role\n\
@@ -637,7 +621,7 @@ spec:
             addon-aws-ebs-csi-driver\nspec:\n  providerConfigRef:\n    name: aws-{{
             .observed.composite.resource.spec.parameters.environment }}\n  deletionPolicy:
             {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\"\
-            \ }}Delete{{ else }}Orphan{{ end }}\n  dependsOn:\n    - eks-cluster\n\
+            \ }}Delete{{ else }}Orphan{{ end }}\n\
             \  forProvider:\n    addonName: aws-ebs-csi-driver\n\
             \    clusterName: {{ .observed.composite.resource.spec.parameters.clusterName
             }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n \
