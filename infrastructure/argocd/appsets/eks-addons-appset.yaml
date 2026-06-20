@@ -6,19 +6,15 @@
 #
 # Strategy
 # ────────
-# Two groups of ApplicationSets are defined in this single file (separated by
-# "---"):
+# One ApplicationSet per optional addon.  Each set matches only clusters
+# whose annotation equals "true".  The Backstage EKS template stamps those
+# annotations on the EKSCluster resource (and the ArgoCD cluster secret)
+# during provisioning.
+#   Currently: cluster-autoscaler, external-dns, velero.
 #
-#   Group A – ALWAYS-ON addons
-#     Deployed to every cluster that carries the label managed-by=eks-cluster.
-#     Currently: cluster-proportional-autoscaler, aws-efs-csi-driver.
-#
-#   Group B – OPTIONAL addons
-#     One ApplicationSet per optional addon.  Each set matches only clusters
-#     whose annotation equals "true".  The Backstage EKS template stamps those
-#     annotations on the EKSCluster resource (and the ArgoCD cluster secret)
-#     during provisioning.
-#     Currently: cluster-autoscaler, external-dns, velero.
+# Every addon Application carries label cluster="{{name}}" so you can filter
+# the ArgoCD dashboard by that label to see all addons for one cluster
+# grouped together.
 #
 # How cluster annotations reach ArgoCD cluster secrets
 # ─────────────────────────────────────────────────────
@@ -30,112 +26,7 @@
 ##############################################################################
 
 ###############################################################################
-# Group A – Always-on: cluster-proportional-autoscaler
-###############################################################################
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: eks-addon-proportional-autoscaler
-  namespace: argocd
-spec:
-  generators:
-    - clusters:
-        selector:
-          matchLabels:
-            managed-by: eks-cluster
-  template:
-    metadata:
-      name: "{{name}}-proportional-autoscaler"
-      labels:
-        cluster: "{{name}}"
-        addon: cluster-proportional-autoscaler
-        managed-by: argocd-applicationset
-    spec:
-      project: idp-platform-dev
-      source:
-        chart: cluster-proportional-autoscaler
-        repoURL: https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
-        targetRevision: "1.1.0"
-        helm:
-          releaseName: cluster-proportional-autoscaler
-          values: |
-            config:
-              linear:
-                nodesPerReplica: 5
-                min: 1
-                max: 10
-      destination:
-        server: "{{server}}"
-        namespace: kube-system
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-        retry:
-          limit: 3
-          backoff:
-            duration: 30s
-            factor: 2
-            maxDuration: 3m
-
----
-###############################################################################
-# Group A – Always-on: aws-efs-csi-driver
-###############################################################################
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: eks-addon-efs-csi-driver
-  namespace: argocd
-spec:
-  generators:
-    - clusters:
-        selector:
-          matchLabels:
-            managed-by: eks-cluster
-  template:
-    metadata:
-      name: "{{name}}-efs-csi-driver"
-      labels:
-        cluster: "{{name}}"
-        addon: aws-efs-csi-driver
-        managed-by: argocd-applicationset
-    spec:
-      project: idp-platform-dev
-      source:
-        chart: aws-efs-csi-driver
-        repoURL: https://kubernetes-sigs.github.io/aws-efs-csi-driver/
-        targetRevision: "3.0.8"
-        helm:
-          releaseName: aws-efs-csi-driver
-          values: |
-            controller:
-              serviceAccount:
-                annotations:
-                  eks.amazonaws.com/role-arn: "{{metadata.annotations.idp.platform.io/efs-role-arn}}"
-      destination:
-        server: "{{server}}"
-        namespace: kube-system
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-        retry:
-          limit: 3
-          backoff:
-            duration: 30s
-            factor: 2
-            maxDuration: 3m
-
----
-###############################################################################
-# Group B – Optional: cluster-autoscaler
+# Optional: cluster-autoscaler
 # Deployed only when the cluster annotation enableClusterAutoscaler="true"
 ###############################################################################
 apiVersion: argoproj.io/v1alpha1

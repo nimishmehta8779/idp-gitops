@@ -278,9 +278,6 @@ spec:
                         AUTOSCALER_ARN=$(aws iam get-role \
                           --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-autoscaler-role" \
                           --query 'Role.Arn' --output text 2>/dev/null || echo "")
-                        EFS_ARN=$(aws iam get-role \
-                          --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-efs-role" \
-                          --query 'Role.Arn' --output text 2>/dev/null || echo "")
                         EXTERNALDNS_ARN=$(aws iam get-role \
                           --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-externaldns-role" \
                           --query 'Role.Arn' --output text 2>/dev/null || echo "")
@@ -309,7 +306,6 @@ spec:
                           annotations:
                             idp.platform.io/aws-region: "${AWS_REGION}"
                             idp.platform.io/autoscaler-role-arn: "${AUTOSCALER_ARN}"
-                            idp.platform.io/efs-role-arn: "${EFS_ARN}"
                             idp.platform.io/external-dns-role-arn: "${EXTERNALDNS_ARN}"
                             idp.platform.io/velero-role-arn: "${VELERO_ARN}"
                         type: Opaque
@@ -334,7 +330,6 @@ spec:
                         STATUS_PATCH='{"status":{'
                         COMMA=""
                         [ -n "$AUTOSCALER_ARN" ]   && STATUS_PATCH+="${COMMA}\"autoscalerRoleArn\":\"${AUTOSCALER_ARN}\""   && COMMA=","
-                        [ -n "$EFS_ARN" ]           && STATUS_PATCH+="${COMMA}\"efsRoleArn\":\"${EFS_ARN}\""                 && COMMA=","
                         [ -n "$EXTERNALDNS_ARN" ]   && STATUS_PATCH+="${COMMA}\"externalDnsRoleArn\":\"${EXTERNALDNS_ARN}\"" && COMMA=","
                         [ -n "$VELERO_ARN" ]        && STATUS_PATCH+="${COMMA}\"veleroRoleArn\":\"${VELERO_ARN}\""
                         STATUS_PATCH+="}}"
