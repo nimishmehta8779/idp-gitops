@@ -1,0 +1,1529 @@
+apiVersion: v1
+items:
+- apiVersion: apiextensions.crossplane.io/v1
+  kind: Composition
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: crossplane-compositions:apiextensions.crossplane.io/Composition:crossplane-system/eks-cluster
+      config.crossplane.io/frozen: "true"
+      config.crossplane.io/stable-version: "2026-06-20"
+      description: 'FROZEN - All EKS configurations complete: accessConfig, access
+        entries (0.0.0.0/0), addon provisioning (EBS CSI, cluster-autoscaler, external-dns,
+        velero), IRSA roles, S3 backup buckets. No further EKS/addon template changes
+        needed.'
+      idp.platform.io/depends-on: xnetworks.platform.io
+      idp.platform.io/network-must-exist: "true"
+      idp.platform.io/network-ref-field: spec.parameters.networkRef
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apiextensions.crossplane.io/v1","kind":"Composition","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"crossplane-compositions:apiextensions.crossplane.io/Composition:crossplane-system/eks-cluster","config.crossplane.io/frozen":"true","config.crossplane.io/stable-version":"2026-06-20","description":"FROZEN - All EKS configurations complete: accessConfig, access entries (0.0.0.0/0), addon provisioning (EBS CSI, cluster-autoscaler, external-dns, velero), IRSA roles, S3 backup buckets. No further EKS/addon template changes needed.","idp.platform.io/depends-on":"xnetworks.platform.io","idp.platform.io/network-must-exist":"true","idp.platform.io/network-ref-field":"spec.parameters.networkRef"},"labels":{"guide":"crossplane-eks"},"name":"eks-cluster"},"spec":{"compositeTypeRef":{"apiVersion":"platform.io/v1alpha1","kind":"XEKSCluster"},"mode":"Pipeline","pipeline":[{"functionRef":{"name":"function-environment-configs"},"input":{"apiVersion":"environmentconfigs.fn.crossplane.io/v1beta1","kind":"Input","spec":{"environmentConfigs":[{"selector":{"matchLabels":[{"key":"environment","type":"FromCompositeFieldPath","valueFromFieldPath":"spec.parameters.environment"}],"mode":"Single"},"type":"Selector"}]}},"step":"environment-configs"},{"functionRef":{"name":"function-patch-and-transform"},"input":{"apiVersion":"pt.fn.crossplane.io/v1beta1","kind":"Resources","patchSets":[{"name":"regional-resource","patches":[{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.region","type":"FromCompositeFieldPath"}]},{"name":"mandatory-tags","patches":[{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.teamName","toFieldPath":"spec.forProvider.tags[\"team\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.tags[\"cluster-name\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.costCenter","toFieldPath":"spec.forProvider.tags[\"cost-center\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.kubernetesVersion","toFieldPath":"spec.forProvider.tags[\"kubernetes-version\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.tags[\"region\"]","type":"FromCompositeFieldPath"}]},{"name":"deletion-policy","patches":[{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.deletionPolicy","transforms":[{"map":{"dev":"Delete","staging":"Orphan"},"type":"map"}],"type":"FromCompositeFieldPath"}]},{"name":"provider-config-ref","patches":[{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.providerConfigRef.name","transforms":[{"map":{"dev":"aws-dev","staging":"aws-staging"},"type":"map"}],"type":"FromCompositeFieldPath"}]}],"resources":[{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"Cluster","spec":{"forProvider":{"accessConfig":[{"authenticationMode":"API","bootstrapClusterCreatorAdminPermissions":true}],"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"},"version":"1.34","vpcConfig":[{"subnetIdSelector":{"matchLabels":{"managed-by":"crossplane"}}}]}}},"name":"eks-cluster","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.kubernetesVersion","toFieldPath":"spec.forProvider.version"},{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.region"},{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-cluster-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"spec.forProvider.roleArnRef.name","type":"CombineFromComposite"},{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.forProvider.vpcConfig[0].subnetIdSelector.matchLabels.environment","type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.identity[0].oidc[0].issuer","toFieldPath":"status.oidcIssuer","type":"ToCompositeFieldPath"},{"fromFieldPath":"status.atProvider.arn","toFieldPath":"status.accountId","transforms":[{"string":{"regexp":{"group":1,"match":"arn:aws:eks:[^:]+:([0-9]+):"},"type":"Regexp"},"type":"string"}],"type":"ToCompositeFieldPath"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}],"readinessChecks":[{"fieldPath":"status.atProvider.status","matchString":"ACTIVE","type":"MatchString"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"Role","spec":{"forProvider":{"assumeRolePolicy":"{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\": \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n}\n","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"nodegroup-role","patches":[{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-node-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"metadata.name","type":"CombineFromComposite"},{"fromFieldPath":"spec.parameters.teamName","toFieldPath":"spec.forProvider.tags[\"team\"]"},{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.forProvider.tags[\"environment\"]"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"NodeGroup","spec":{"forProvider":{"amiType":"AL2023_x86_64_STANDARD","instanceTypes":[],"scalingConfig":[{"desiredSize":2,"maxSize":10,"minSize":1}],"subnetIdSelector":{"matchLabels":{"managed-by":"crossplane"}},"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"node-group","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-node-group","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.clusterName"},{"fromFieldPath":"spec.parameters.nodeInstanceType","toFieldPath":"spec.forProvider.instanceTypes[0]"},{"fromFieldPath":"spec.parameters.nodeCount","toFieldPath":"spec.forProvider.scalingConfig[0].desiredSize"},{"fromFieldPath":"spec.parameters.nodeCount","toFieldPath":"spec.forProvider.scalingConfig[0].minSize"},{"fromFieldPath":"spec.parameters.nodeCount","toFieldPath":"spec.forProvider.scalingConfig[0].maxSize"},{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-node-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"spec.forProvider.nodeRoleArnRef.name","type":"CombineFromComposite"},{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.forProvider.subnetIdSelector.matchLabels.environment","type":"FromCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}],"readinessChecks":[{"fieldPath":"status.atProvider.status","matchString":"ACTIVE","type":"MatchString"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"Role","spec":{"forProvider":{"assumeRolePolicy":"{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\": \"eks.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n}\n","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"cluster-role","patches":[{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-cluster-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"metadata.name","type":"CombineFromComposite"},{"fromFieldPath":"spec.parameters.teamName","toFieldPath":"spec.forProvider.tags[\"team\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"RolePolicyAttachment","spec":{"forProvider":{"policyArn":"arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"}}},"name":"cluster-role-attachment","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-cluster-role-attachment","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-cluster-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"spec.forProvider.roleRef.name","type":"CombineFromComposite"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"RolePolicyAttachment","spec":{"forProvider":{"policyArn":"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"}}},"name":"nodegroup-policy-workernode","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-node-policy-workernode","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-node-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"spec.forProvider.roleRef.name","type":"CombineFromComposite"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"RolePolicyAttachment","spec":{"forProvider":{"policyArn":"arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"}}},"name":"nodegroup-policy-cni","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-node-policy-cni","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-node-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"spec.forProvider.roleRef.name","type":"CombineFromComposite"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"RolePolicyAttachment","spec":{"forProvider":{"policyArn":"arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"}}},"name":"nodegroup-policy-registry","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-node-policy-registry","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"combine":{"strategy":"string","string":{"fmt":"idp-%s-%s-node-role"},"variables":[{"fromFieldPath":"spec.parameters.environment"},{"fromFieldPath":"spec.parameters.clusterName"}]},"toFieldPath":"spec.forProvider.roleRef.name","type":"CombineFromComposite"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"iam.aws.upbound.io/v1beta1","kind":"OpenIDConnectProvider","spec":{"forProvider":{"clientIdList":["sts.amazonaws.com"],"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"},"thumbprintList":["9e99a48a9960b14926bb7f3b02e22da2b0ab7280","06b25927c42a721631c1efd9431e648fa62e1e39"],"url":""}}},"name":"oidc-provider","patches":[{"fromFieldPath":"metadata.labels[\"backstage.io/owned\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/owned\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"backstage.io/team\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/team\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"environment\"]","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"managed-by\"]","toFieldPath":"spec.forProvider.tags[\"managed-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"provisioned-by\"]","toFieldPath":"spec.forProvider.tags[\"provisioned-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-oidc","type":"Format"},"type":"string"}]},{"fromFieldPath":"status.oidcIssuer","policy":{"fromFieldPath":"Required"},"toFieldPath":"spec.forProvider.url","type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.arn","toFieldPath":"status.oidcProviderArn","type":"ToCompositeFieldPath"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"Addon","spec":{"forProvider":{"addonName":"vpc-cni","clusterName":"","resolveConflicts":"OVERWRITE","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"addon-vpc-cni","patches":[{"fromFieldPath":"metadata.labels[\"backstage.io/owned\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/owned\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"backstage.io/team\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/team\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"environment\"]","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"managed-by\"]","toFieldPath":"spec.forProvider.tags[\"managed-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"provisioned-by\"]","toFieldPath":"spec.forProvider.tags[\"provisioned-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-vpc-cni","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.clusterName"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"},{"patchSetName":"regional-resource","type":"PatchSet"}]},{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"Addon","spec":{"forProvider":{"addonName":"kube-proxy","clusterName":"","resolveConflicts":"OVERWRITE","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"addon-kube-proxy","patches":[{"fromFieldPath":"metadata.labels[\"backstage.io/owned\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/owned\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"backstage.io/team\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/team\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"environment\"]","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"managed-by\"]","toFieldPath":"spec.forProvider.tags[\"managed-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"provisioned-by\"]","toFieldPath":"spec.forProvider.tags[\"provisioned-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-kube-proxy","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.clusterName"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"},{"patchSetName":"regional-resource","type":"PatchSet"}]},{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"Addon","spec":{"forProvider":{"addonName":"coredns","clusterName":"","resolveConflicts":"OVERWRITE","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"addon-coredns","patches":[{"fromFieldPath":"metadata.labels[\"backstage.io/owned\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/owned\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"backstage.io/team\"]","toFieldPath":"spec.forProvider.tags[\"backstage.io/team\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"environment\"]","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"managed-by\"]","toFieldPath":"spec.forProvider.tags[\"managed-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.labels[\"provisioned-by\"]","toFieldPath":"spec.forProvider.tags[\"provisioned-by\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-coredns","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.clusterName"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"},{"patchSetName":"regional-resource","type":"PatchSet"}]},{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"AccessEntry","spec":{"forProvider":{"accessScope":[{"source":"0.0.0.0/0","type":"ipv4"}],"clusterName":"","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"},"type":"STANDARD"}}},"name":"platform-admins-access-entry","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-platform-admins-access-entry","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.clusterName"},{"fromFieldPath":"status.accountId","policy":{"fromFieldPath":"Required"},"toFieldPath":"spec.forProvider.principalArn","transforms":[{"string":{"fmt":"arn:aws:iam::%s:role/idp-platform-admins","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"},{"patchSetName":"regional-resource","type":"PatchSet"}],"readinessChecks":[{"type":"None"}]},{"base":{"apiVersion":"eks.aws.upbound.io/v1beta1","kind":"AccessPolicyAssociation","spec":{"forProvider":{"accessScope":[{"type":"cluster"}],"clusterName":"","policyArn":"arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"}}},"name":"platform-admins-access-policy-association","patches":[{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-platform-admins-access-policy","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.clusterName","toFieldPath":"spec.forProvider.clusterName"},{"fromFieldPath":"status.accountId","policy":{"fromFieldPath":"Required"},"toFieldPath":"spec.forProvider.principalArn","transforms":[{"string":{"fmt":"arn:aws:iam::%s:role/idp-platform-admins","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"},{"patchSetName":"regional-resource","type":"PatchSet"}],"readinessChecks":[{"type":"None"}]}]},"step":"patch-and-transform"},{"functionRef":{"name":"function-go-templating"},"input":{"apiVersion":"gotemplating.fn.crossplane.io/v1beta1","inline":{"template":"{{- $p := .observed.composite.resource.spec.parameters }}\n{{- $env := $p.environment }}\n{{- $cluster := $p.clusterName }}\n{{- $hasStatus := index .observed.composite.resource \"status\" }}\n{{- $oidcArn := \"\" }}\n{{- $oidcIssuer := \"\" }}\n{{- if $hasStatus }}\n{{-   if index .observed.composite.resource.status \"oidcProviderArn\" }}\n{{-     $oidcArn = .observed.composite.resource.status.oidcProviderArn }}\n{{-   end }}\n{{-   if index .observed.composite.resource.status \"oidcIssuer\" }}\n{{-     $oidcIssuer = .observed.composite.resource.status.oidcIssuer }}\n{{-   end }}\n{{- end }}\n{{- $issuer := replace \"https://\" \"\" $oidcIssuer }}\n{{- $ready := and $oidcArn $oidcIssuer }}\n\n{{- if and $p.enableEbsCsi $ready }}\n---\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name: idp-{{ $env }}-{{ $cluster }}-ebs-role\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: ebs-csi-role\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicy: |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\": [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\": { \"Federated\": \"{{ $oidcArn }}\" },\n            \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n            \"Condition\": {\n              \"StringEquals\": {\n                \"{{ $issuer }}:sub\": \"system:serviceaccount:kube-system:ebs-csi-controller-sa\",\n                \"{{ $issuer }}:aud\": \"sts.amazonaws.com\"\n              }\n            }\n          }\n        ]\n      }\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      environment: {{ $env }}\n      team: {{ $p.teamName }}\n      cluster-name: {{ $cluster }}\n---\napiVersion: iam.aws.upbound.io/v1beta1\nkind: RolePolicyAttachment\nmetadata:\n  name: {{ $cluster }}-ebs-attach\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: ebs-csi-role-attachment\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy\n    roleRef:\n      name: idp-{{ $env }}-{{ $cluster }}-ebs-role\n---\napiVersion: eks.aws.upbound.io/v1beta1\nkind: Addon\nmetadata:\n  name: {{ $cluster }}-ebs-csi\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: addon-aws-ebs-csi-driver\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    addonName: aws-ebs-csi-driver\n    clusterName: {{ $cluster }}\n    resolveConflicts: OVERWRITE\n    serviceAccountRoleArnRef:\n      name: idp-{{ $env }}-{{ $cluster }}-ebs-role\n    region: {{ $p.region }}\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      environment: {{ $env }}\n      team: {{ $p.teamName }}\n      cluster-name: {{ $cluster }}\n{{- end }}\n\n{{- if and $p.enableClusterAutoscaler $ready }}\n---\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name: idp-{{ $env }}-{{ $cluster }}-autoscaler-role\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: autoscaler-irsa-role\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicy: |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\": [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\": { \"Federated\": \"{{ $oidcArn }}\" },\n            \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n            \"Condition\": {\n              \"StringEquals\": {\n                \"{{ $issuer }}:sub\": \"system:serviceaccount:kube-system:cluster-autoscaler-aws-cluster-autoscaler\",\n                \"{{ $issuer }}:aud\": \"sts.amazonaws.com\"\n              }\n            }\n          }\n        ]\n      }\n    inlinePolicy:\n      - name: cluster-autoscaler\n        policy: |\n          {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n              {\n                \"Effect\": \"Allow\",\n                \"Action\": [\n                  \"autoscaling:DescribeAutoScalingGroups\",\n                  \"autoscaling:DescribeAutoScalingInstances\",\n                  \"autoscaling:DescribeLaunchConfigurations\",\n                  \"autoscaling:DescribeScalingActivities\",\n                  \"autoscaling:DescribeTags\",\n                  \"autoscaling:SetDesiredCapacity\",\n                  \"autoscaling:TerminateInstanceInAutoScalingGroup\",\n                  \"ec2:DescribeImages\",\n                  \"ec2:DescribeInstanceTypes\",\n                  \"ec2:DescribeLaunchTemplateVersions\",\n                  \"ec2:GetInstanceTypesFromInstanceRequirements\",\n                  \"eks:DescribeNodegroup\"\n                ],\n                \"Resource\": \"*\"\n              }\n            ]\n          }\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      environment: {{ $env }}\n      team: {{ $p.teamName }}\n      cluster-name: {{ $cluster }}\n---\napiVersion: iam.aws.upbound.io/v1beta1\nkind: RolePolicyAttachment\nmetadata:\n  name: {{ $cluster }}-autoscaler-attach\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: autoscaler-irsa-role-attachment\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    policyArn: arn:aws:iam::aws:policy/AutoScalingFullAccess\n    roleRef:\n      name: idp-{{ $env }}-{{ $cluster }}-autoscaler-role\n{{- end }}\n\n{{- if and $p.enableExternalDNS $ready }}\n---\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name: idp-{{ $env }}-{{ $cluster }}-externaldns-role\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: externaldns-irsa-role\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicy: |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\": [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\": { \"Federated\": \"{{ $oidcArn }}\" },\n            \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n            \"Condition\": {\n              \"StringEquals\": {\n                \"{{ $issuer }}:sub\": \"system:serviceaccount:kube-system:external-dns\",\n                \"{{ $issuer }}:aud\": \"sts.amazonaws.com\"\n              }\n            }\n          }\n        ]\n      }\n    inlinePolicy:\n      - name: external-dns\n        policy: |\n          {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n              {\n                \"Effect\": \"Allow\",\n                \"Action\": [\"route53:ChangeResourceRecordSets\"],\n                \"Resource\": \"arn:aws:route53:::hostedzone/*\"\n              },\n              {\n                \"Effect\": \"Allow\",\n                \"Action\": [\n                  \"route53:ListHostedZones\",\n                  \"route53:ListResourceRecordSets\",\n                  \"route53:ListTagsForResource\"\n                ],\n                \"Resource\": \"*\"\n              }\n            ]\n          }\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      environment: {{ $env }}\n      team: {{ $p.teamName }}\n      cluster-name: {{ $cluster }}\n{{- end }}\n\n{{- if and $p.enableVelero $ready }}\n---\napiVersion: s3.aws.upbound.io/v1beta1\nkind: Bucket\nmetadata:\n  name: {{ $cluster }}-velero-backups\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    region: {{ $p.region }}\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      environment: {{ $env }}\n      team: {{ $p.teamName }}\n      cluster-name: {{ $cluster }}\n---\napiVersion: s3.aws.upbound.io/v1beta1\nkind: BucketServerSideEncryptionConfiguration\nmetadata:\n  name: {{ $cluster }}-velero-backups-sse\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket-sse\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    region: {{ $p.region }}\n    bucket: {{ $cluster }}-velero-backups\n    rule:\n      - applyServerSideEncryptionByDefault:\n          - sseAlgorithm: AES256\n---\napiVersion: s3.aws.upbound.io/v1beta1\nkind: BucketPublicAccessBlock\nmetadata:\n  name: {{ $cluster }}-velero-backups-pab\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket-pab\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    region: {{ $p.region }}\n    bucket: {{ $cluster }}-velero-backups\n    blockPublicAcls: true\n    blockPublicPolicy: true\n    ignorePublicAcls: true\n    restrictPublicBuckets: true\n---\napiVersion: iam.aws.upbound.io/v1beta1\nkind: Role\nmetadata:\n  name: idp-{{ $env }}-{{ $cluster }}-velero-role\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: velero-irsa-role\nspec:\n  providerConfigRef:\n    name: aws-{{ $env }}\n  deletionPolicy: {{ if eq $env \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    assumeRolePolicy: |\n      {\n        \"Version\": \"2012-10-17\",\n        \"Statement\": [\n          {\n            \"Effect\": \"Allow\",\n            \"Principal\": { \"Federated\": \"{{ $oidcArn }}\" },\n            \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n            \"Condition\": {\n              \"StringEquals\": {\n                \"{{ $issuer }}:sub\": \"system:serviceaccount:velero:velero\",\n                \"{{ $issuer }}:aud\": \"sts.amazonaws.com\"\n              }\n            }\n          }\n        ]\n      }\n    inlinePolicy:\n      - name: velero\n        policy: |\n          {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n              {\n                \"Effect\": \"Allow\",\n                \"Action\": [\n                  \"ec2:DescribeVolumes\",\n                  \"ec2:DescribeSnapshots\",\n                  \"ec2:CreateTags\",\n                  \"ec2:CreateVolume\",\n                  \"ec2:CreateSnapshot\",\n                  \"ec2:DeleteSnapshot\"\n                ],\n                \"Resource\": \"*\"\n              },\n              {\n                \"Effect\": \"Allow\",\n                \"Action\": [\n                  \"s3:GetObject\",\n                  \"s3:DeleteObject\",\n                  \"s3:PutObject\",\n                  \"s3:AbortMultipartUpload\",\n                  \"s3:ListMultipartUploadParts\"\n                ],\n                \"Resource\": \"arn:aws:s3:::{{ $cluster }}-velero-backups/*\"\n              },\n              {\n                \"Effect\": \"Allow\",\n                \"Action\": [\"s3:ListBucket\"],\n                \"Resource\": \"arn:aws:s3:::{{ $cluster }}-velero-backups\"\n              }\n            ]\n          }\n    tags:\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      environment: {{ $env }}\n      team: {{ $p.teamName }}\n      cluster-name: {{ $cluster }}\n{{- end }}\n"},"kind":"GoTemplate","source":"Inline"},"step":"go-templating"},{"functionRef":{"name":"function-auto-ready"},"step":"auto-ready"}]}}
+    creationTimestamp: "2026-06-16T10:21:56Z"
+    generation: 27
+    labels:
+      guide: crossplane-eks
+    name: eks-cluster
+    resourceVersion: "680336"
+    uid: da73318d-bc37-44ce-9bae-d1da367174a1
+  spec:
+    compositeTypeRef:
+      apiVersion: platform.io/v1alpha1
+      kind: XEKSCluster
+    mode: Pipeline
+    pipeline:
+    - functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+          - selector:
+              matchLabels:
+              - key: environment
+                type: FromCompositeFieldPath
+                valueFromFieldPath: spec.parameters.environment
+              mode: Single
+            type: Selector
+      step: environment-configs
+    - functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        patchSets:
+        - name: regional-resource
+          patches:
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.region
+            type: FromCompositeFieldPath
+        - name: mandatory-tags
+          patches:
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.teamName
+            toFieldPath: spec.forProvider.tags["team"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.tags["cluster-name"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.costCenter
+            toFieldPath: spec.forProvider.tags["cost-center"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.kubernetesVersion
+            toFieldPath: spec.forProvider.tags["kubernetes-version"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.tags["region"]
+            type: FromCompositeFieldPath
+        - name: deletion-policy
+          patches:
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.deletionPolicy
+            transforms:
+            - map:
+                dev: Delete
+                staging: Orphan
+              type: map
+            type: FromCompositeFieldPath
+        - name: provider-config-ref
+          patches:
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.providerConfigRef.name
+            transforms:
+            - map:
+                dev: aws-dev
+                staging: aws-staging
+              type: map
+            type: FromCompositeFieldPath
+        resources:
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: Cluster
+            spec:
+              forProvider:
+                accessConfig:
+                - authenticationMode: API
+                  bootstrapClusterCreatorAdminPermissions: true
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                version: "1.34"
+                vpcConfig:
+                - subnetIdSelector:
+                    matchLabels:
+                      managed-by: crossplane
+          name: eks-cluster
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.kubernetesVersion
+            toFieldPath: spec.forProvider.version
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.region
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-cluster-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.roleArnRef.name
+            type: CombineFromComposite
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.forProvider.vpcConfig[0].subnetIdSelector.matchLabels.environment
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
+            toFieldPath: status.oidcIssuer
+            type: ToCompositeFieldPath
+          - fromFieldPath: status.atProvider.arn
+            toFieldPath: status.accountId
+            transforms:
+            - string:
+                regexp:
+                  group: 1
+                  match: 'arn:aws:eks:[^:]+:([0-9]+):'
+                type: Regexp
+              type: string
+            type: ToCompositeFieldPath
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          readinessChecks:
+          - fieldPath: status.atProvider.status
+            matchString: ACTIVE
+            type: MatchString
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            spec:
+              forProvider:
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                      "Effect": "Allow",
+                      "Principal": {"Service": "ec2.amazonaws.com"},
+                      "Action": "sts:AssumeRole"
+                    }]
+                  }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: nodegroup-role
+          patches:
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-node-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            type: CombineFromComposite
+          - fromFieldPath: spec.parameters.teamName
+            toFieldPath: spec.forProvider.tags["team"]
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.forProvider.tags["environment"]
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: NodeGroup
+            spec:
+              forProvider:
+                amiType: AL2023_x86_64_STANDARD
+                instanceTypes: []
+                scalingConfig:
+                - desiredSize: 2
+                  maxSize: 10
+                  minSize: 1
+                subnetIdSelector:
+                  matchLabels:
+                    managed-by: crossplane
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: node-group
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-node-group'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.clusterName
+          - fromFieldPath: spec.parameters.nodeInstanceType
+            toFieldPath: spec.forProvider.instanceTypes[0]
+          - fromFieldPath: spec.parameters.nodeCount
+            toFieldPath: spec.forProvider.scalingConfig[0].desiredSize
+          - fromFieldPath: spec.parameters.nodeCount
+            toFieldPath: spec.forProvider.scalingConfig[0].minSize
+          - fromFieldPath: spec.parameters.nodeCount
+            toFieldPath: spec.forProvider.scalingConfig[0].maxSize
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-node-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.nodeRoleArnRef.name
+            type: CombineFromComposite
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.environment
+            type: FromCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          readinessChecks:
+          - fieldPath: status.atProvider.status
+            matchString: ACTIVE
+            type: MatchString
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            spec:
+              forProvider:
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                      "Effect": "Allow",
+                      "Principal": {"Service": "eks.amazonaws.com"},
+                      "Action": "sts:AssumeRole"
+                    }]
+                  }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: cluster-role
+          patches:
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-cluster-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            type: CombineFromComposite
+          - fromFieldPath: spec.parameters.teamName
+            toFieldPath: spec.forProvider.tags["team"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            spec:
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+          name: cluster-role-attachment
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-cluster-role-attachment'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-cluster-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.roleRef.name
+            type: CombineFromComposite
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            spec:
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+          name: nodegroup-policy-workernode
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-node-policy-workernode'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-node-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.roleRef.name
+            type: CombineFromComposite
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            spec:
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+          name: nodegroup-policy-cni
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-node-policy-cni'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-node-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.roleRef.name
+            type: CombineFromComposite
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            spec:
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+          name: nodegroup-policy-registry
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-node-policy-registry'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - combine:
+              strategy: string
+              string:
+                fmt: idp-%s-%s-node-role
+              variables:
+              - fromFieldPath: spec.parameters.environment
+              - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.roleRef.name
+            type: CombineFromComposite
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: OpenIDConnectProvider
+            spec:
+              forProvider:
+                clientIdList:
+                - sts.amazonaws.com
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                thumbprintList:
+                - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+                - 06b25927c42a721631c1efd9431e648fa62e1e39
+                url: ""
+          name: oidc-provider
+          patches:
+          - fromFieldPath: metadata.labels["backstage.io/owned"]
+            toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["backstage.io/team"]
+            toFieldPath: spec.forProvider.tags["backstage.io/team"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["environment"]
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["managed-by"]
+            toFieldPath: spec.forProvider.tags["managed-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["provisioned-by"]
+            toFieldPath: spec.forProvider.tags["provisioned-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-oidc'
+                type: Format
+              type: string
+          - fromFieldPath: status.oidcIssuer
+            policy:
+              fromFieldPath: Required
+            toFieldPath: spec.forProvider.url
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.arn
+            toFieldPath: status.oidcProviderArn
+            type: ToCompositeFieldPath
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: Addon
+            spec:
+              forProvider:
+                addonName: vpc-cni
+                clusterName: ""
+                resolveConflicts: OVERWRITE
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: addon-vpc-cni
+          patches:
+          - fromFieldPath: metadata.labels["backstage.io/owned"]
+            toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["backstage.io/team"]
+            toFieldPath: spec.forProvider.tags["backstage.io/team"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["environment"]
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["managed-by"]
+            toFieldPath: spec.forProvider.tags["managed-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["provisioned-by"]
+            toFieldPath: spec.forProvider.tags["provisioned-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-vpc-cni'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.clusterName
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          - patchSetName: regional-resource
+            type: PatchSet
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: Addon
+            spec:
+              forProvider:
+                addonName: kube-proxy
+                clusterName: ""
+                resolveConflicts: OVERWRITE
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: addon-kube-proxy
+          patches:
+          - fromFieldPath: metadata.labels["backstage.io/owned"]
+            toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["backstage.io/team"]
+            toFieldPath: spec.forProvider.tags["backstage.io/team"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["environment"]
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["managed-by"]
+            toFieldPath: spec.forProvider.tags["managed-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["provisioned-by"]
+            toFieldPath: spec.forProvider.tags["provisioned-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-kube-proxy'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.clusterName
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          - patchSetName: regional-resource
+            type: PatchSet
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: Addon
+            spec:
+              forProvider:
+                addonName: coredns
+                clusterName: ""
+                resolveConflicts: OVERWRITE
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: addon-coredns
+          patches:
+          - fromFieldPath: metadata.labels["backstage.io/owned"]
+            toFieldPath: spec.forProvider.tags["backstage.io/owned"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["backstage.io/team"]
+            toFieldPath: spec.forProvider.tags["backstage.io/team"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["environment"]
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["managed-by"]
+            toFieldPath: spec.forProvider.tags["managed-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.labels["provisioned-by"]
+            toFieldPath: spec.forProvider.tags["provisioned-by"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-coredns'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.clusterName
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          - patchSetName: regional-resource
+            type: PatchSet
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: AccessEntry
+            spec:
+              forProvider:
+                accessScope:
+                - source: 0.0.0.0/0
+                  type: ipv4
+                clusterName: ""
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                type: STANDARD
+          name: platform-admins-access-entry
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-platform-admins-access-entry'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.clusterName
+          - fromFieldPath: status.accountId
+            policy:
+              fromFieldPath: Required
+            toFieldPath: spec.forProvider.principalArn
+            transforms:
+            - string:
+                fmt: arn:aws:iam::%s:role/idp-platform-admins
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          - patchSetName: regional-resource
+            type: PatchSet
+          readinessChecks:
+          - type: None
+        - base:
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: AccessPolicyAssociation
+            spec:
+              forProvider:
+                accessScope:
+                - type: cluster
+                clusterName: ""
+                policyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+          name: platform-admins-access-policy-association
+          patches:
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-platform-admins-access-policy'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.clusterName
+            toFieldPath: spec.forProvider.clusterName
+          - fromFieldPath: status.accountId
+            policy:
+              fromFieldPath: Required
+            toFieldPath: spec.forProvider.principalArn
+            transforms:
+            - string:
+                fmt: arn:aws:iam::%s:role/idp-platform-admins
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+          - patchSetName: regional-resource
+            type: PatchSet
+          readinessChecks:
+          - type: None
+      step: patch-and-transform
+    - functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        inline:
+          template: |
+            {{- $p := .observed.composite.resource.spec.parameters }}
+            {{- $env := $p.environment }}
+            {{- $cluster := $p.clusterName }}
+            {{- $hasStatus := index .observed.composite.resource "status" }}
+            {{- $oidcArn := "" }}
+            {{- $oidcIssuer := "" }}
+            {{- if $hasStatus }}
+            {{-   if index .observed.composite.resource.status "oidcProviderArn" }}
+            {{-     $oidcArn = .observed.composite.resource.status.oidcProviderArn }}
+            {{-   end }}
+            {{-   if index .observed.composite.resource.status "oidcIssuer" }}
+            {{-     $oidcIssuer = .observed.composite.resource.status.oidcIssuer }}
+            {{-   end }}
+            {{- end }}
+            {{- $issuer := replace "https://" "" $oidcIssuer }}
+            {{- $ready := and $oidcArn $oidcIssuer }}
+
+            {{- if and $p.enableEbsCsi $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-ebs-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ebs-csi-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              name: {{ $cluster }}-ebs-attach
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ebs-csi-role-attachment
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+                roleRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-ebs-role
+            ---
+            apiVersion: eks.aws.upbound.io/v1beta1
+            kind: Addon
+            metadata:
+              name: {{ $cluster }}-ebs-csi
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: addon-aws-ebs-csi-driver
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                addonName: aws-ebs-csi-driver
+                clusterName: {{ $cluster }}
+                resolveConflicts: OVERWRITE
+                serviceAccountRoleArnRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-ebs-role
+                region: {{ $p.region }}
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            {{- end }}
+
+            {{- if and $p.enableClusterAutoscaler $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-autoscaler-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: autoscaler-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:cluster-autoscaler-aws-cluster-autoscaler",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                inlinePolicy:
+                  - name: cluster-autoscaler
+                    policy: |
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "autoscaling:DescribeAutoScalingGroups",
+                              "autoscaling:DescribeAutoScalingInstances",
+                              "autoscaling:DescribeLaunchConfigurations",
+                              "autoscaling:DescribeScalingActivities",
+                              "autoscaling:DescribeTags",
+                              "autoscaling:SetDesiredCapacity",
+                              "autoscaling:TerminateInstanceInAutoScalingGroup",
+                              "ec2:DescribeImages",
+                              "ec2:DescribeInstanceTypes",
+                              "ec2:DescribeLaunchTemplateVersions",
+                              "ec2:GetInstanceTypesFromInstanceRequirements",
+                              "eks:DescribeNodegroup"
+                            ],
+                            "Resource": "*"
+                          }
+                        ]
+                      }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: RolePolicyAttachment
+            metadata:
+              name: {{ $cluster }}-autoscaler-attach
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: autoscaler-irsa-role-attachment
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                policyArn: arn:aws:iam::aws:policy/AutoScalingFullAccess
+                roleRef:
+                  name: idp-{{ $env }}-{{ $cluster }}-autoscaler-role
+            {{- end }}
+
+            {{- if and $p.enableExternalDNS $ready }}
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-externaldns-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: externaldns-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:kube-system:external-dns",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                inlinePolicy:
+                  - name: external-dns
+                    policy: |
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                          {
+                            "Effect": "Allow",
+                            "Action": ["route53:ChangeResourceRecordSets"],
+                            "Resource": "arn:aws:route53:::hostedzone/*"
+                          },
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "route53:ListHostedZones",
+                              "route53:ListResourceRecordSets",
+                              "route53:ListTagsForResource"
+                            ],
+                            "Resource": "*"
+                          }
+                        ]
+                      }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            {{- end }}
+
+            {{- if and $p.enableVelero $ready }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: Bucket
+            metadata:
+              name: {{ $cluster }}-velero-backups
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                region: {{ $p.region }}
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: BucketServerSideEncryptionConfiguration
+            metadata:
+              name: {{ $cluster }}-velero-backups-sse
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket-sse
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                region: {{ $p.region }}
+                bucket: {{ $cluster }}-velero-backups
+                rule:
+                  - applyServerSideEncryptionByDefault:
+                      - sseAlgorithm: AES256
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: BucketPublicAccessBlock
+            metadata:
+              name: {{ $cluster }}-velero-backups-pab
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket-pab
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                region: {{ $p.region }}
+                bucket: {{ $cluster }}-velero-backups
+                blockPublicAcls: true
+                blockPublicPolicy: true
+                ignorePublicAcls: true
+                restrictPublicBuckets: true
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: idp-{{ $env }}-{{ $cluster }}-velero-role
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-irsa-role
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": { "Federated": "{{ $oidcArn }}" },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                          "StringEquals": {
+                            "{{ $issuer }}:sub": "system:serviceaccount:velero:velero",
+                            "{{ $issuer }}:aud": "sts.amazonaws.com"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                inlinePolicy:
+                  - name: velero
+                    policy: |
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "ec2:DescribeVolumes",
+                              "ec2:DescribeSnapshots",
+                              "ec2:CreateTags",
+                              "ec2:CreateVolume",
+                              "ec2:CreateSnapshot",
+                              "ec2:DeleteSnapshot"
+                            ],
+                            "Resource": "*"
+                          },
+                          {
+                            "Effect": "Allow",
+                            "Action": [
+                              "s3:GetObject",
+                              "s3:DeleteObject",
+                              "s3:PutObject",
+                              "s3:AbortMultipartUpload",
+                              "s3:ListMultipartUploadParts"
+                            ],
+                            "Resource": "arn:aws:s3:::{{ $cluster }}-velero-backups/*"
+                          },
+                          {
+                            "Effect": "Allow",
+                            "Action": ["s3:ListBucket"],
+                            "Resource": "arn:aws:s3:::{{ $cluster }}-velero-backups"
+                          }
+                        ]
+                      }
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            {{- end }}
+        kind: GoTemplate
+        source: Inline
+      step: go-templating
+    - functionRef:
+        name: function-auto-ready
+      step: auto-ready
+- apiVersion: apiextensions.crossplane.io/v1
+  kind: Composition
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: network-infra:apiextensions.crossplane.io/Composition:crossplane-system/network-composition
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apiextensions.crossplane.io/v1","kind":"Composition","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"network-infra:apiextensions.crossplane.io/Composition:crossplane-system/network-composition"},"labels":{"guide":"crossplane-network"},"name":"network-composition"},"spec":{"compositeTypeRef":{"apiVersion":"platform.io/v1alpha1","kind":"XNetwork"},"mode":"Pipeline","pipeline":[{"functionRef":{"name":"function-environment-configs"},"input":{"apiVersion":"environmentconfigs.fn.crossplane.io/v1beta1","kind":"Input","spec":{"environmentConfigs":[{"selector":{"matchLabels":[{"key":"environment","type":"FromCompositeFieldPath","valueFromFieldPath":"spec.parameters.environment"}],"mode":"Single"},"type":"Selector"}]}},"step":"environment-configs"},{"functionRef":{"name":"function-patch-and-transform"},"input":{"apiVersion":"pt.fn.crossplane.io/v1beta1","kind":"Resources","patchSets":[{"name":"regional-resource","patches":[{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.region","type":"FromCompositeFieldPath"}]},{"name":"mandatory-tags","patches":[{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.forProvider.tags[\"environment\"]","type":"FromCompositeFieldPath"},{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.tags[\"region\"]","type":"FromCompositeFieldPath"}]},{"name":"deletion-policy","patches":[{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.deletionPolicy","transforms":[{"map":{"dev":"Delete","staging":"Orphan"},"type":"map"}],"type":"FromCompositeFieldPath"}]},{"name":"provider-config-ref","patches":[{"fromFieldPath":"spec.parameters.environment","toFieldPath":"spec.providerConfigRef.name","transforms":[{"map":{"dev":"aws-dev","staging":"aws-staging"},"type":"map"}],"type":"FromCompositeFieldPath"}]}],"resources":[{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"VPC","spec":{"forProvider":{"cidrBlock":"10.0.0.0/16","tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"vpc","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-vpc","type":"Format"},"type":"string"}]},{"fromFieldPath":"vpcCidr","toFieldPath":"spec.forProvider.cidrBlock","type":"FromEnvironmentFieldPath"},{"fromFieldPath":"spec.parameters.vpcCidr","policy":{"fromFieldPath":"Optional"},"toFieldPath":"spec.forProvider.cidrBlock","type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.id","toFieldPath":"status.vpcId","type":"ToCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"Subnet","metadata":{"labels":{"managed-by":"crossplane"}},"spec":{"forProvider":{"availabilityZone":"","cidrBlock":"10.0.1.0/24","mapPublicIpOnLaunch":true,"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"subnet-a","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-subnet-a","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.availabilityZone","transforms":[{"string":{"fmt":"%sa","type":"Format"},"type":"string"}]},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.vpcIdRef.name","transforms":[{"string":{"fmt":"%s-vpc","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"subnetACidr","toFieldPath":"spec.forProvider.cidrBlock","type":"FromEnvironmentFieldPath"},{"fromFieldPath":"spec.parameters.subnetACidr","policy":{"fromFieldPath":"Optional"},"toFieldPath":"spec.forProvider.cidrBlock","type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.id","toFieldPath":"status.subnetAId","type":"ToCompositeFieldPath"},{"fromFieldPath":"spec.parameters.environment","toFieldPath":"metadata.labels[environment]","type":"FromCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"Subnet","metadata":{"labels":{"managed-by":"crossplane"}},"spec":{"forProvider":{"availabilityZone":"","cidrBlock":"10.0.2.0/24","mapPublicIpOnLaunch":true,"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"subnet-b","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-subnet-b","type":"Format"},"type":"string"}]},{"fromFieldPath":"spec.parameters.region","toFieldPath":"spec.forProvider.availabilityZone","transforms":[{"string":{"fmt":"%sb","type":"Format"},"type":"string"}]},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.vpcIdRef.name","transforms":[{"string":{"fmt":"%s-vpc","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"subnetBCidr","toFieldPath":"spec.forProvider.cidrBlock","type":"FromEnvironmentFieldPath"},{"fromFieldPath":"spec.parameters.subnetBCidr","policy":{"fromFieldPath":"Optional"},"toFieldPath":"spec.forProvider.cidrBlock","type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.id","toFieldPath":"status.subnetBId","type":"ToCompositeFieldPath"},{"fromFieldPath":"spec.parameters.environment","toFieldPath":"metadata.labels[environment]","type":"FromCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"InternetGateway","spec":{"forProvider":{"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"igw","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-igw","type":"Format"},"type":"string"}]},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.vpcIdRef.name","transforms":[{"string":{"fmt":"%s-vpc","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.id","toFieldPath":"status.internetGatewayId","type":"ToCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"RouteTable","spec":{"forProvider":{"tags":{"managed-by":"crossplane","provisioned-by":"backstage-idp"}}}},"name":"route-table","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-rt","type":"Format"},"type":"string"}]},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.vpcIdRef.name","transforms":[{"string":{"fmt":"%s-vpc","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"status.atProvider.id","toFieldPath":"status.routeTableId","type":"ToCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"mandatory-tags","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"Route","spec":{"forProvider":{"destinationCidrBlock":"0.0.0.0/0"}}},"name":"route-to-igw","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-route-igw","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.routeTableIdRef.name","transforms":[{"string":{"fmt":"%s-rt","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.gatewayIdRef.name","transforms":[{"string":{"fmt":"%s-igw","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"RouteTableAssociation","spec":{"forProvider":{}}},"name":"rta-subnet-a","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-rta-a","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.routeTableIdRef.name","transforms":[{"string":{"fmt":"%s-rt","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.subnetIdRef.name","transforms":[{"string":{"fmt":"%s-subnet-a","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]},{"base":{"apiVersion":"ec2.aws.upbound.io/v1beta1","kind":"RouteTableAssociation","spec":{"forProvider":{}}},"name":"rta-subnet-b","patches":[{"fromFieldPath":"metadata.name","toFieldPath":"metadata.name","transforms":[{"string":{"fmt":"%s-rta-b","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.routeTableIdRef.name","transforms":[{"string":{"fmt":"%s-rt","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"fromFieldPath":"metadata.name","toFieldPath":"spec.forProvider.subnetIdRef.name","transforms":[{"string":{"fmt":"%s-subnet-b","type":"Format"},"type":"string"}],"type":"FromCompositeFieldPath"},{"patchSetName":"regional-resource","type":"PatchSet"},{"patchSetName":"deletion-policy","type":"PatchSet"},{"patchSetName":"provider-config-ref","type":"PatchSet"}]}]},"step":"patch-and-transform"},{"functionRef":{"name":"function-go-templating"},"input":{"apiVersion":"gotemplating.fn.crossplane.io/v1beta1","inline":{"template":"{{ if .observed.composite.resource.spec.parameters.enableNatGateway }}\napiVersion: ec2.aws.upbound.io/v1beta1\nkind: EIP\nmetadata:\n  name: {{ .observed.composite.resource.metadata.name }}-nat-eip\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: nat-eip\nspec:\n  providerConfigRef:\n    name: {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\" }}aws-dev{{ else }}aws-staging{{ end }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    domain: vpc\n    region: {{ .observed.composite.resource.spec.parameters.region }}\n    tags:\n      environment: {{ .observed.composite.resource.spec.parameters.environment }}\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      region: {{ .observed.composite.resource.spec.parameters.region }}\n---\napiVersion: ec2.aws.upbound.io/v1beta1\nkind: NATGateway\nmetadata:\n  name: {{ .observed.composite.resource.metadata.name }}-nat-gw\n  annotations:\n    gotemplating.fn.crossplane.io/composition-resource-name: nat-gw\nspec:\n  providerConfigRef:\n    name: {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\" }}aws-dev{{ else }}aws-staging{{ end }}\n  deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment \"dev\" }}Delete{{ else }}Orphan{{ end }}\n  forProvider:\n    allocationIdRef:\n      name: {{ .observed.composite.resource.metadata.name }}-nat-eip\n    subnetIdRef:\n      name: {{ .observed.composite.resource.metadata.name }}-subnet-a\n    region: {{ .observed.composite.resource.spec.parameters.region }}\n    tags:\n      environment: {{ .observed.composite.resource.spec.parameters.environment }}\n      managed-by: crossplane\n      provisioned-by: backstage-idp\n      region: {{ .observed.composite.resource.spec.parameters.region }}\n{{ end }}\n"},"kind":"GoTemplate","source":"Inline"},"step":"go-templating"}]}}
+    creationTimestamp: "2026-06-16T10:21:58Z"
+    generation: 1
+    labels:
+      guide: crossplane-network
+    name: network-composition
+    resourceVersion: "3870"
+    uid: d8ef6e55-9e30-4c41-9384-007afbd126e8
+  spec:
+    compositeTypeRef:
+      apiVersion: platform.io/v1alpha1
+      kind: XNetwork
+    mode: Pipeline
+    pipeline:
+    - functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+          - selector:
+              matchLabels:
+              - key: environment
+                type: FromCompositeFieldPath
+                valueFromFieldPath: spec.parameters.environment
+              mode: Single
+            type: Selector
+      step: environment-configs
+    - functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        patchSets:
+        - name: regional-resource
+          patches:
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.region
+            type: FromCompositeFieldPath
+        - name: mandatory-tags
+          patches:
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.forProvider.tags["environment"]
+            type: FromCompositeFieldPath
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.tags["region"]
+            type: FromCompositeFieldPath
+        - name: deletion-policy
+          patches:
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.deletionPolicy
+            transforms:
+            - map:
+                dev: Delete
+                staging: Orphan
+              type: map
+            type: FromCompositeFieldPath
+        - name: provider-config-ref
+          patches:
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: spec.providerConfigRef.name
+            transforms:
+            - map:
+                dev: aws-dev
+                staging: aws-staging
+              type: map
+            type: FromCompositeFieldPath
+        resources:
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: VPC
+            spec:
+              forProvider:
+                cidrBlock: 10.0.0.0/16
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: vpc
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-vpc'
+                type: Format
+              type: string
+          - fromFieldPath: vpcCidr
+            toFieldPath: spec.forProvider.cidrBlock
+            type: FromEnvironmentFieldPath
+          - fromFieldPath: spec.parameters.vpcCidr
+            policy:
+              fromFieldPath: Optional
+            toFieldPath: spec.forProvider.cidrBlock
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.id
+            toFieldPath: status.vpcId
+            type: ToCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: Subnet
+            metadata:
+              labels:
+                managed-by: crossplane
+            spec:
+              forProvider:
+                availabilityZone: ""
+                cidrBlock: 10.0.1.0/24
+                mapPublicIpOnLaunch: true
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: subnet-a
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-subnet-a'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.availabilityZone
+            transforms:
+            - string:
+                fmt: '%sa'
+                type: Format
+              type: string
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.vpcIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-vpc'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: subnetACidr
+            toFieldPath: spec.forProvider.cidrBlock
+            type: FromEnvironmentFieldPath
+          - fromFieldPath: spec.parameters.subnetACidr
+            policy:
+              fromFieldPath: Optional
+            toFieldPath: spec.forProvider.cidrBlock
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.id
+            toFieldPath: status.subnetAId
+            type: ToCompositeFieldPath
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: metadata.labels[environment]
+            type: FromCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: Subnet
+            metadata:
+              labels:
+                managed-by: crossplane
+            spec:
+              forProvider:
+                availabilityZone: ""
+                cidrBlock: 10.0.2.0/24
+                mapPublicIpOnLaunch: true
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: subnet-b
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-subnet-b'
+                type: Format
+              type: string
+          - fromFieldPath: spec.parameters.region
+            toFieldPath: spec.forProvider.availabilityZone
+            transforms:
+            - string:
+                fmt: '%sb'
+                type: Format
+              type: string
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.vpcIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-vpc'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: subnetBCidr
+            toFieldPath: spec.forProvider.cidrBlock
+            type: FromEnvironmentFieldPath
+          - fromFieldPath: spec.parameters.subnetBCidr
+            policy:
+              fromFieldPath: Optional
+            toFieldPath: spec.forProvider.cidrBlock
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.id
+            toFieldPath: status.subnetBId
+            type: ToCompositeFieldPath
+          - fromFieldPath: spec.parameters.environment
+            toFieldPath: metadata.labels[environment]
+            type: FromCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: InternetGateway
+            spec:
+              forProvider:
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: igw
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-igw'
+                type: Format
+              type: string
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.vpcIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-vpc'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.id
+            toFieldPath: status.internetGatewayId
+            type: ToCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: RouteTable
+            spec:
+              forProvider:
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+          name: route-table
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-rt'
+                type: Format
+              type: string
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.vpcIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-vpc'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: status.atProvider.id
+            toFieldPath: status.routeTableId
+            type: ToCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: mandatory-tags
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: Route
+            spec:
+              forProvider:
+                destinationCidrBlock: 0.0.0.0/0
+          name: route-to-igw
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-route-igw'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.routeTableIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-rt'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.gatewayIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-igw'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: RouteTableAssociation
+            spec:
+              forProvider: {}
+          name: rta-subnet-a
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-rta-a'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.routeTableIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-rt'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.subnetIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-subnet-a'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+        - base:
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: RouteTableAssociation
+            spec:
+              forProvider: {}
+          name: rta-subnet-b
+          patches:
+          - fromFieldPath: metadata.name
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-rta-b'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.routeTableIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-rt'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - fromFieldPath: metadata.name
+            toFieldPath: spec.forProvider.subnetIdRef.name
+            transforms:
+            - string:
+                fmt: '%s-subnet-b'
+                type: Format
+              type: string
+            type: FromCompositeFieldPath
+          - patchSetName: regional-resource
+            type: PatchSet
+          - patchSetName: deletion-policy
+            type: PatchSet
+          - patchSetName: provider-config-ref
+            type: PatchSet
+      step: patch-and-transform
+    - functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        inline:
+          template: |
+            {{ if .observed.composite.resource.spec.parameters.enableNatGateway }}
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: EIP
+            metadata:
+              name: {{ .observed.composite.resource.metadata.name }}-nat-eip
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: nat-eip
+            spec:
+              providerConfigRef:
+                name: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}aws-dev{{ else }}aws-staging{{ end }}
+              deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                domain: vpc
+                region: {{ .observed.composite.resource.spec.parameters.region }}
+                tags:
+                  environment: {{ .observed.composite.resource.spec.parameters.environment }}
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  region: {{ .observed.composite.resource.spec.parameters.region }}
+            ---
+            apiVersion: ec2.aws.upbound.io/v1beta1
+            kind: NATGateway
+            metadata:
+              name: {{ .observed.composite.resource.metadata.name }}-nat-gw
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: nat-gw
+            spec:
+              providerConfigRef:
+                name: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}aws-dev{{ else }}aws-staging{{ end }}
+              deletionPolicy: {{ if eq .observed.composite.resource.spec.parameters.environment "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                allocationIdRef:
+                  name: {{ .observed.composite.resource.metadata.name }}-nat-eip
+                subnetIdRef:
+                  name: {{ .observed.composite.resource.metadata.name }}-subnet-a
+                region: {{ .observed.composite.resource.spec.parameters.region }}
+                tags:
+                  environment: {{ .observed.composite.resource.spec.parameters.environment }}
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  region: {{ .observed.composite.resource.spec.parameters.region }}
+            {{ end }}
+        kind: GoTemplate
+        source: Inline
+      step: go-templating
+kind: List
+metadata:
+  resourceVersion: ""

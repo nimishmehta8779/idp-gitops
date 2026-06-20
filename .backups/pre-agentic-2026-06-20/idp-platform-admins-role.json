@@ -1,0 +1,38 @@
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "idp-platform-admins",
+        "RoleId": "AROAWBSOW3MYPWIYCKJSM",
+        "Arn": "arn:aws:iam::415703161648:role/idp-platform-admins",
+        "CreateDate": "2026-06-20T12:25:57+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "AWS": "arn:aws:iam::415703161648:user/nimish"
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {
+                            "sts:ExternalId": "crossplane-idp"
+                        }
+                    }
+                }
+            ]
+        },
+        "MaxSessionDuration": 3600,
+        "Tags": [
+            {
+                "Key": "managed-by",
+                "Value": "crossplane"
+            },
+            {
+                "Key": "purpose",
+                "Value": "eks-break-glass"
+            }
+        ],
+        "RoleLastUsed": {}
+    }
+}

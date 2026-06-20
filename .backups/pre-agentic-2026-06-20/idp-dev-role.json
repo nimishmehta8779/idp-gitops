@@ -1,0 +1,35 @@
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "idp-dev-role",
+        "RoleId": "AROAWBSOW3MYLL2ZYYQTX",
+        "Arn": "arn:aws:iam::415703161648:role/idp-dev-role",
+        "CreateDate": "2026-06-13T11:21:46+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "AWS": "arn:aws:iam::415703161648:user/nimish"
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {
+                            "sts:ExternalId": "crossplane-idp"
+                        }
+                    }
+                }
+            ]
+        },
+        "MaxSessionDuration": 3600,
+        "PermissionsBoundary": {
+            "PermissionsBoundaryType": "Policy",
+            "PermissionsBoundaryArn": "arn:aws:iam::415703161648:policy/idp-dev-boundary"
+        },
+        "RoleLastUsed": {
+            "LastUsedDate": "2026-06-20T17:09:35+00:00",
+            "Region": "us-east-1"
+        }
+    }
+}

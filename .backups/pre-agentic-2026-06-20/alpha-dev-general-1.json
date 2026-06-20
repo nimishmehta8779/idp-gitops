@@ -1,0 +1,5 @@
+
+aws: [ERROR]: An error occurred (ResourceNotFoundException) when calling the DescribeCluster operation: No cluster found for name: alpha-dev-general-1.
+
+Additional error details:
+clusterName: alpha-dev-general-1

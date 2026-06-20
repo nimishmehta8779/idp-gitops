@@ -1,0 +1,470 @@
+apiVersion: v1
+items:
+- apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: team-appsets:argoproj.io/ApplicationSet:argocd/eks-addon-cluster-autoscaler
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"ApplicationSet","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"team-appsets:argoproj.io/ApplicationSet:argocd/eks-addon-cluster-autoscaler"},"name":"eks-addon-cluster-autoscaler","namespace":"argocd"},"spec":{"generators":[{"clusters":{"selector":{"matchLabels":{"enable-cluster-autoscaler":"true","managed-by":"eks-cluster"}}}}],"template":{"metadata":{"labels":{"addon":"cluster-autoscaler","cluster":"{{name}}","managed-by":"argocd-applicationset"},"name":"{{name}}-cluster-autoscaler"},"spec":{"destination":{"namespace":"kube-system","server":"{{server}}"},"project":"idp-platform-dev","source":{"chart":"cluster-autoscaler","helm":{"releaseName":"cluster-autoscaler","values":"autoDiscovery:\n  clusterName: \"{{name}}\"\nawsRegion: \"{{metadata.annotations.idp.platform.io/aws-region}}\"\nrbac:\n  serviceAccount:\n    annotations:\n      eks.amazonaws.com/role-arn: \"{{metadata.annotations.idp.platform.io/autoscaler-role-arn}}\"\n"},"repoURL":"https://kubernetes.github.io/autoscaler","targetRevision":"9.37.0"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"retry":{"backoff":{"duration":"30s","factor":2,"maxDuration":"3m"},"limit":3},"syncOptions":["CreateNamespace=true","ServerSideApply=true"]}}}}}
+    creationTimestamp: "2026-06-18T06:40:54Z"
+    generation: 7
+    name: eks-addon-cluster-autoscaler
+    namespace: argocd
+    resourceVersion: "674145"
+    uid: 3b2948de-d901-4a07-8a96-4c39ad3d92d9
+  spec:
+    generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable-cluster-autoscaler: "true"
+            managed-by: eks-cluster
+    template:
+      metadata:
+        labels:
+          addon: cluster-autoscaler
+          cluster: '{{name}}'
+          managed-by: argocd-applicationset
+        name: '{{name}}-cluster-autoscaler'
+      spec:
+        destination:
+          namespace: kube-system
+          server: '{{server}}'
+        project: idp-platform-dev
+        source:
+          chart: cluster-autoscaler
+          helm:
+            releaseName: cluster-autoscaler
+            values: |
+              autoDiscovery:
+                clusterName: "{{name}}"
+              awsRegion: "{{metadata.annotations.idp.platform.io/aws-region}}"
+              rbac:
+                serviceAccount:
+                  annotations:
+                    eks.amazonaws.com/role-arn: "{{metadata.annotations.idp.platform.io/autoscaler-role-arn}}"
+          repoURL: https://kubernetes.github.io/autoscaler
+          targetRevision: 9.37.0
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          retry:
+            backoff:
+              duration: 30s
+              factor: 2
+              maxDuration: 3m
+            limit: 3
+          syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "False"
+      type: ErrorOccurred
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: Successfully generated parameters for all Applications
+      reason: ParametersGenerated
+      status: "True"
+      type: ParametersGenerated
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "True"
+      type: ResourcesUpToDate
+    health:
+      message: All applications have been generated successfully
+      status: Healthy
+- apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: team-appsets:argoproj.io/ApplicationSet:argocd/eks-addon-external-dns
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"ApplicationSet","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"team-appsets:argoproj.io/ApplicationSet:argocd/eks-addon-external-dns"},"name":"eks-addon-external-dns","namespace":"argocd"},"spec":{"generators":[{"clusters":{"selector":{"matchLabels":{"enable-external-dns":"true","managed-by":"eks-cluster"}}}}],"template":{"metadata":{"labels":{"addon":"external-dns","cluster":"{{name}}","managed-by":"argocd-applicationset"},"name":"{{name}}-external-dns"},"spec":{"destination":{"namespace":"external-dns","server":"{{server}}"},"project":"idp-platform-dev","source":{"chart":"external-dns","helm":{"releaseName":"external-dns","values":"provider: aws\naws:\n  region: \"{{metadata.annotations.idp.platform.io/aws-region}}\"\nserviceAccount:\n  annotations:\n    eks.amazonaws.com/role-arn: \"{{metadata.annotations.idp.platform.io/external-dns-role-arn}}\"\npolicy: upsert-only\ntxtOwnerId: \"{{name}}\"\n"},"repoURL":"https://kubernetes-sigs.github.io/external-dns/","targetRevision":"1.15.2"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"retry":{"backoff":{"duration":"30s","factor":2,"maxDuration":"3m"},"limit":3},"syncOptions":["CreateNamespace=true","ServerSideApply=true"]}}}}}
+    creationTimestamp: "2026-06-18T06:40:54Z"
+    generation: 10
+    name: eks-addon-external-dns
+    namespace: argocd
+    resourceVersion: "674143"
+    uid: 11a05002-232d-41c7-8508-cdf97471143f
+  spec:
+    generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable-external-dns: "true"
+            managed-by: eks-cluster
+    template:
+      metadata:
+        labels:
+          addon: external-dns
+          cluster: '{{name}}'
+          managed-by: argocd-applicationset
+        name: '{{name}}-external-dns'
+      spec:
+        destination:
+          namespace: external-dns
+          server: '{{server}}'
+        project: idp-platform-dev
+        source:
+          chart: external-dns
+          helm:
+            releaseName: external-dns
+            values: |
+              provider: aws
+              aws:
+                region: "{{metadata.annotations.idp.platform.io/aws-region}}"
+              serviceAccount:
+                annotations:
+                  eks.amazonaws.com/role-arn: "{{metadata.annotations.idp.platform.io/external-dns-role-arn}}"
+              policy: upsert-only
+              txtOwnerId: "{{name}}"
+          repoURL: https://kubernetes-sigs.github.io/external-dns/
+          targetRevision: 1.15.2
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          retry:
+            backoff:
+              duration: 30s
+              factor: 2
+              maxDuration: 3m
+            limit: 3
+          syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "False"
+      type: ErrorOccurred
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: Successfully generated parameters for all Applications
+      reason: ParametersGenerated
+      status: "True"
+      type: ParametersGenerated
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "True"
+      type: ResourcesUpToDate
+    health:
+      message: All applications have been generated successfully
+      status: Healthy
+- apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: team-appsets:argoproj.io/ApplicationSet:argocd/eks-addon-velero
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"ApplicationSet","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"team-appsets:argoproj.io/ApplicationSet:argocd/eks-addon-velero"},"name":"eks-addon-velero","namespace":"argocd"},"spec":{"generators":[{"clusters":{"selector":{"matchLabels":{"enable-velero":"true","managed-by":"eks-cluster"}}}}],"template":{"metadata":{"labels":{"addon":"velero","cluster":"{{name}}","managed-by":"argocd-applicationset"},"name":"{{name}}-velero"},"spec":{"destination":{"namespace":"velero","server":"{{server}}"},"project":"idp-platform-dev","source":{"chart":"velero","helm":{"releaseName":"velero","values":"credentials:\n  useSecret: false\nconfiguration:\n  backupStorageLocation:\n    - name: default\n      provider: aws\n      bucket: \"{{name}}-velero-backups\"\n      config:\n        region: \"{{metadata.annotations.idp.platform.io/aws-region}}\"\n  volumeSnapshotLocation:\n    - name: default\n      provider: aws\n      config:\n        region: \"{{metadata.annotations.idp.platform.io/aws-region}}\"\nserviceAccount:\n  server:\n    annotations:\n      eks.amazonaws.com/role-arn: \"{{metadata.annotations.idp.platform.io/velero-role-arn}}\"\ninitContainers:\n  - name: velero-plugin-for-aws\n    image: velero/velero-plugin-for-aws:v1.13.1\n    volumeMounts:\n      - mountPath: /target\n        name: plugins\n"},"repoURL":"https://vmware-tanzu.github.io/helm-charts","targetRevision":"12.0.0"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"retry":{"backoff":{"duration":"30s","factor":2,"maxDuration":"3m"},"limit":3},"syncOptions":["CreateNamespace=true","ServerSideApply=true"]}}}}}
+    creationTimestamp: "2026-06-18T06:40:54Z"
+    generation: 13
+    name: eks-addon-velero
+    namespace: argocd
+    resourceVersion: "674146"
+    uid: 3d735dce-5803-4c42-b876-43f14978565f
+  spec:
+    generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable-velero: "true"
+            managed-by: eks-cluster
+    template:
+      metadata:
+        labels:
+          addon: velero
+          cluster: '{{name}}'
+          managed-by: argocd-applicationset
+        name: '{{name}}-velero'
+      spec:
+        destination:
+          namespace: velero
+          server: '{{server}}'
+        project: idp-platform-dev
+        source:
+          chart: velero
+          helm:
+            releaseName: velero
+            values: |
+              credentials:
+                useSecret: false
+              configuration:
+                backupStorageLocation:
+                  - name: default
+                    provider: aws
+                    bucket: "{{name}}-velero-backups"
+                    config:
+                      region: "{{metadata.annotations.idp.platform.io/aws-region}}"
+                volumeSnapshotLocation:
+                  - name: default
+                    provider: aws
+                    config:
+                      region: "{{metadata.annotations.idp.platform.io/aws-region}}"
+              serviceAccount:
+                server:
+                  annotations:
+                    eks.amazonaws.com/role-arn: "{{metadata.annotations.idp.platform.io/velero-role-arn}}"
+              initContainers:
+                - name: velero-plugin-for-aws
+                  image: velero/velero-plugin-for-aws:v1.13.1
+                  volumeMounts:
+                    - mountPath: /target
+                      name: plugins
+          repoURL: https://vmware-tanzu.github.io/helm-charts
+          targetRevision: 12.0.0
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          retry:
+            backoff:
+              duration: 30s
+              factor: 2
+              maxDuration: 3m
+            limit: 3
+          syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "False"
+      type: ErrorOccurred
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: Successfully generated parameters for all Applications
+      reason: ParametersGenerated
+      status: "True"
+      type: ParametersGenerated
+    - lastTransitionTime: "2026-06-18T06:40:54Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "True"
+      type: ResourcesUpToDate
+    health:
+      message: All applications have been generated successfully
+      status: Healthy
+- apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: team-appsets:argoproj.io/ApplicationSet:argocd/team-eks-clusters
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"ApplicationSet","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"team-appsets:argoproj.io/ApplicationSet:argocd/team-eks-clusters"},"name":"team-eks-clusters","namespace":"argocd"},"spec":{"generators":[{"list":{"elements":[{"repo":"https://github.com/nimishmehta8779/team-yamma-infra.git","team":"team-yamma"},{"repo":"team-alpha-infra","team":"team-alpha"},{"repo":"team-beta-infra","team":"team-beta"},{"repo":"team-gamma-infra","team":"team-gamma"}]}}],"template":{"metadata":{"labels":{"managed-by":"argocd-applicationset","team":"{{team}}"},"name":"{{team}}-eks-clusters"},"spec":{"destination":{"namespace":"clusters-dev","server":"https://kubernetes.default.svc"},"ignoreDifferences":[{"group":"platform.io","jsonPointers":["/status","/metadata/annotations/crossplane.io"],"kind":"XEKSCluster"}],"project":"idp-platform-dev","source":{"directory":{"exclude":"{.gitkeep,*-catalog.yaml}","include":"*.yaml","recurse":true},"path":"eks","repoURL":"https://github.com/nimishmehta8779/{{repo}}","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}}}
+    creationTimestamp: "2026-06-18T09:24:44Z"
+    generation: 2
+    name: team-eks-clusters
+    namespace: argocd
+    resourceVersion: "533405"
+    uid: 8027ecf9-795c-4b57-8964-c73467bebf33
+  spec:
+    generators:
+    - list:
+        elements:
+        - repo: https://github.com/nimishmehta8779/team-yamma-infra.git
+          team: team-yamma
+        - repo: team-alpha-infra
+          team: team-alpha
+        - repo: team-beta-infra
+          team: team-beta
+        - repo: team-gamma-infra
+          team: team-gamma
+    template:
+      metadata:
+        labels:
+          managed-by: argocd-applicationset
+          team: '{{team}}'
+        name: '{{team}}-eks-clusters'
+      spec:
+        destination:
+          namespace: clusters-dev
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        project: idp-platform-dev
+        source:
+          directory:
+            exclude: '{.gitkeep,*-catalog.yaml}'
+            include: '*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/{{repo}}
+          targetRevision: main
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+          - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-18T09:24:44Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "False"
+      type: ErrorOccurred
+    - lastTransitionTime: "2026-06-18T09:24:44Z"
+      message: Successfully generated parameters for all Applications
+      reason: ParametersGenerated
+      status: "True"
+      type: ParametersGenerated
+    - lastTransitionTime: "2026-06-18T09:24:44Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "True"
+      type: ResourcesUpToDate
+    health:
+      message: All applications have been generated successfully
+      status: Healthy
+    resources:
+    - group: argoproj.io
+      health:
+        status: Progressing
+      kind: Application
+      name: team-alpha-eks-clusters
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      health:
+        status: Healthy
+      kind: Application
+      name: team-beta-eks-clusters
+      namespace: argocd
+      status: Unknown
+      version: v1alpha1
+    - group: argoproj.io
+      health:
+        status: Healthy
+      kind: Application
+      name: team-gamma-eks-clusters
+      namespace: argocd
+      status: Unknown
+      version: v1alpha1
+    - group: argoproj.io
+      health:
+        status: Unknown
+      kind: Application
+      name: team-yamma-eks-clusters
+      namespace: argocd
+      status: Unknown
+      version: v1alpha1
+    resourcesCount: 4
+- apiVersion: argoproj.io/v1alpha1
+  kind: ApplicationSet
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: team-appsets:argoproj.io/ApplicationSet:argocd/team-eks-clusters-staging
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"ApplicationSet","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"team-appsets:argoproj.io/ApplicationSet:argocd/team-eks-clusters-staging"},"name":"team-eks-clusters-staging","namespace":"argocd"},"spec":{"generators":[{"list":{"elements":[{"repo":"team-alpha-infra","team":"team-alpha"},{"repo":"team-beta-infra","team":"team-beta"},{"repo":"team-gamma-infra","team":"team-gamma"}]}}],"template":{"metadata":{"labels":{"managed-by":"argocd-applicationset","team":"{{team}}"},"name":"{{team}}-eks-clusters-staging"},"spec":{"destination":{"namespace":"clusters-staging","server":"https://kubernetes.default.svc"},"ignoreDifferences":[{"group":"platform.io","jsonPointers":["/status","/metadata/annotations/crossplane.io"],"kind":"XEKSCluster"}],"project":"idp-platform-staging","source":{"directory":{"exclude":".gitkeep","include":"*-staging-*.yaml","recurse":true},"path":"eks","repoURL":"https://github.com/nimishmehta8779/{{repo}}","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":false},"syncOptions":["CreateNamespace=true"]}}}}}
+    creationTimestamp: "2026-06-16T10:22:38Z"
+    generation: 6
+    name: team-eks-clusters-staging
+    namespace: argocd
+    resourceVersion: "293471"
+    uid: ac93dfb3-8395-44fc-8787-392539f34831
+  spec:
+    generators:
+    - list:
+        elements:
+        - repo: team-alpha-infra
+          team: team-alpha
+        - repo: team-beta-infra
+          team: team-beta
+        - repo: team-gamma-infra
+          team: team-gamma
+    template:
+      metadata:
+        labels:
+          managed-by: argocd-applicationset
+          team: '{{team}}'
+        name: '{{team}}-eks-clusters-staging'
+      spec:
+        destination:
+          namespace: clusters-staging
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        project: idp-platform-staging
+        source:
+          directory:
+            exclude: .gitkeep
+            include: '*-staging-*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/{{repo}}
+          targetRevision: main
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: false
+          syncOptions:
+          - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-16T10:22:38Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "False"
+      type: ErrorOccurred
+    - lastTransitionTime: "2026-06-16T10:22:38Z"
+      message: Successfully generated parameters for all Applications
+      reason: ParametersGenerated
+      status: "True"
+      type: ParametersGenerated
+    - lastTransitionTime: "2026-06-16T10:22:38Z"
+      message: All applications have been generated successfully
+      reason: ApplicationSetUpToDate
+      status: "True"
+      type: ResourcesUpToDate
+    health:
+      message: All applications have been generated successfully
+      status: Healthy
+    resources:
+    - group: argoproj.io
+      health:
+        status: Healthy
+      kind: Application
+      name: team-alpha-eks-clusters-staging
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      health:
+        status: Healthy
+      kind: Application
+      name: team-beta-eks-clusters-staging
+      namespace: argocd
+      status: Unknown
+      version: v1alpha1
+    - group: argoproj.io
+      health:
+        status: Healthy
+      kind: Application
+      name: team-gamma-eks-clusters-staging
+      namespace: argocd
+      status: Unknown
+      version: v1alpha1
+    resourcesCount: 3
+kind: List
+metadata:
+  resourceVersion: ""

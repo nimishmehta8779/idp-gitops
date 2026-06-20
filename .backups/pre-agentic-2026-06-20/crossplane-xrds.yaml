@@ -1,0 +1,260 @@
+apiVersion: v1
+items:
+- apiVersion: apiextensions.crossplane.io/v2
+  kind: CompositeResourceDefinition
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: crossplane-compositions:apiextensions.crossplane.io/CompositeResourceDefinition:crossplane-system/xeksclusters.platform.io
+      config.crossplane.io/frozen: "true"
+      config.crossplane.io/stable-version: "2026-06-20"
+      description: 'FROZEN XRD - Complete EKS parameter set: access entries, addon
+        enables, IRSA roles, account ID derivation. No further parameter additions
+        needed.'
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apiextensions.crossplane.io/v1","kind":"CompositeResourceDefinition","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"crossplane-compositions:apiextensions.crossplane.io/CompositeResourceDefinition:crossplane-system/xeksclusters.platform.io","config.crossplane.io/frozen":"true","config.crossplane.io/stable-version":"2026-06-20","description":"FROZEN XRD - Complete EKS parameter set: access entries, addon enables, IRSA roles, account ID derivation. No further parameter additions needed."},"name":"xeksclusters.platform.io"},"spec":{"claimNames":{"kind":"EKSCluster","plural":"eksclusters"},"connectionSecretKeys":["kubeconfig","clusterEndpoint","clusterArn"],"group":"platform.io","names":{"kind":"XEKSCluster","plural":"xeksclusters"},"versions":[{"name":"v1alpha1","referenceable":true,"schema":{"openAPIV3Schema":{"properties":{"spec":{"properties":{"parameters":{"properties":{"adminRoleArn":{"description":"IAM role ARN that should receive cluster-admin access. E.g. arn:aws:iam::123456789012:role/my-admin-role\n","type":"string"},"clusterName":{"type":"string"},"costCenter":{"default":"default","type":"string"},"enableClusterAutoscaler":{"default":false,"type":"boolean"},"enableEbsCsi":{"default":true,"type":"boolean"},"enableExternalDNS":{"default":false,"type":"boolean"},"enableVelero":{"default":false,"type":"boolean"},"environment":{"enum":["dev","staging"],"type":"string"},"kubernetesVersion":{"default":"1.34","type":"string"},"networkRef":{"type":"string"},"nodeCount":{"default":2,"maximum":10,"minimum":1,"type":"integer"},"nodeInstanceType":{"default":"t3.medium","type":"string"},"region":{"default":"us-east-1","type":"string"},"teamName":{"type":"string"}},"required":["clusterName","teamName","networkRef"],"type":"object"},"writeConnectionSecretToRef":{"properties":{"name":{"type":"string"},"namespace":{"type":"string"}},"type":"object"}},"required":["parameters"],"type":"object"},"status":{"properties":{"accountId":{"description":"AWS account ID derived from the EKS cluster's own ARN","type":"string"},"autoscalerRoleArn":{"description":"IAM role ARN for cluster-autoscaler IRSA","type":"string"},"efsRoleArn":{"description":"IAM role ARN for EFS CSI driver IRSA","type":"string"},"externalDnsRoleArn":{"description":"IAM role ARN for external-dns IRSA","type":"string"},"oidcIssuer":{"description":"OIDC issuer URL for the EKS cluster","type":"string"},"oidcProviderArn":{"description":"ARN of the OIDC provider created for the cluster","type":"string"},"veleroRoleArn":{"description":"IAM role ARN for Velero IRSA","type":"string"}},"type":"object"}},"type":"object"}},"served":true}]}}
+    creationTimestamp: "2026-06-16T10:21:56Z"
+    finalizers:
+    - offered.apiextensions.crossplane.io
+    - defined.apiextensions.crossplane.io
+    generation: 8
+    name: xeksclusters.platform.io
+    resourceVersion: "680337"
+    uid: 5b18eb28-49d0-4dd4-a50a-cb60e15bb633
+  spec:
+    claimNames:
+      kind: EKSCluster
+      plural: eksclusters
+    connectionSecretKeys:
+    - kubeconfig
+    - clusterEndpoint
+    - clusterArn
+    defaultCompositeDeletePolicy: Background
+    defaultCompositionUpdatePolicy: Automatic
+    group: platform.io
+    names:
+      kind: XEKSCluster
+      plural: xeksclusters
+    scope: LegacyCluster
+    versions:
+    - name: v1alpha1
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          properties:
+            spec:
+              properties:
+                parameters:
+                  properties:
+                    adminRoleArn:
+                      description: |
+                        IAM role ARN that should receive cluster-admin access. E.g. arn:aws:iam::123456789012:role/my-admin-role
+                      type: string
+                    clusterName:
+                      type: string
+                    costCenter:
+                      default: default
+                      type: string
+                    enableClusterAutoscaler:
+                      default: false
+                      type: boolean
+                    enableEbsCsi:
+                      default: true
+                      type: boolean
+                    enableExternalDNS:
+                      default: false
+                      type: boolean
+                    enableVelero:
+                      default: false
+                      type: boolean
+                    environment:
+                      enum:
+                      - dev
+                      - staging
+                      type: string
+                    kubernetesVersion:
+                      default: "1.34"
+                      type: string
+                    networkRef:
+                      type: string
+                    nodeCount:
+                      default: 2
+                      maximum: 10
+                      minimum: 1
+                      type: integer
+                    nodeInstanceType:
+                      default: t3.medium
+                      type: string
+                    region:
+                      default: us-east-1
+                      type: string
+                    teamName:
+                      type: string
+                  required:
+                  - clusterName
+                  - teamName
+                  - networkRef
+                  type: object
+                writeConnectionSecretToRef:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+              required:
+              - parameters
+              type: object
+            status:
+              properties:
+                accountId:
+                  description: AWS account ID derived from the EKS cluster's own ARN
+                  type: string
+                autoscalerRoleArn:
+                  description: IAM role ARN for cluster-autoscaler IRSA
+                  type: string
+                efsRoleArn:
+                  description: IAM role ARN for EFS CSI driver IRSA
+                  type: string
+                externalDnsRoleArn:
+                  description: IAM role ARN for external-dns IRSA
+                  type: string
+                oidcIssuer:
+                  description: OIDC issuer URL for the EKS cluster
+                  type: string
+                oidcProviderArn:
+                  description: ARN of the OIDC provider created for the cluster
+                  type: string
+                veleroRoleArn:
+                  description: IAM role ARN for Velero IRSA
+                  type: string
+              type: object
+          type: object
+      served: true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-20T13:06:43Z"
+      observedGeneration: 8
+      reason: WatchingCompositeResourceClaim
+      status: "True"
+      type: Offered
+    - lastTransitionTime: "2026-06-20T13:06:43Z"
+      observedGeneration: 8
+      reason: WatchingCompositeResource
+      status: "True"
+      type: Established
+    controllers:
+      compositeResourceClaimType:
+        apiVersion: platform.io/v1alpha1
+        kind: EKSCluster
+      compositeResourceType:
+        apiVersion: platform.io/v1alpha1
+        kind: XEKSCluster
+- apiVersion: apiextensions.crossplane.io/v2
+  kind: CompositeResourceDefinition
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: network-infra:apiextensions.crossplane.io/CompositeResourceDefinition:crossplane-system/xnetworks.platform.io
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apiextensions.crossplane.io/v1","kind":"CompositeResourceDefinition","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"network-infra:apiextensions.crossplane.io/CompositeResourceDefinition:crossplane-system/xnetworks.platform.io"},"name":"xnetworks.platform.io"},"spec":{"claimNames":{"kind":"Network","plural":"networks"},"connectionSecretKeys":["vpcId","subnetAId","subnetBId","routeTableId","internetGatewayId"],"group":"platform.io","names":{"kind":"XNetwork","plural":"xnetworks"},"versions":[{"name":"v1alpha1","referenceable":true,"schema":{"openAPIV3Schema":{"properties":{"spec":{"properties":{"parameters":{"properties":{"enableNatGateway":{"default":false,"type":"boolean"},"environment":{"enum":["dev","staging"],"type":"string"},"region":{"default":"us-east-1","type":"string"},"subnetACidr":{"type":"string"},"subnetBCidr":{"type":"string"},"vpcCidr":{"type":"string"}},"required":["environment"],"type":"object"},"writeConnectionSecretToRef":{"properties":{"name":{"type":"string"},"namespace":{"type":"string"}},"type":"object"}},"required":["parameters"],"type":"object"},"status":{"properties":{"internetGatewayId":{"type":"string"},"routeTableId":{"type":"string"},"subnetAId":{"type":"string"},"subnetBId":{"type":"string"},"vpcId":{"type":"string"}},"type":"object"}},"type":"object"}},"served":true}]}}
+    creationTimestamp: "2026-06-16T10:21:56Z"
+    finalizers:
+    - offered.apiextensions.crossplane.io
+    - defined.apiextensions.crossplane.io
+    generation: 1
+    name: xnetworks.platform.io
+    resourceVersion: "3873"
+    uid: 7e3a8f1d-f77a-400f-bd3d-cb8c6d46d181
+  spec:
+    claimNames:
+      kind: Network
+      plural: networks
+    connectionSecretKeys:
+    - vpcId
+    - subnetAId
+    - subnetBId
+    - routeTableId
+    - internetGatewayId
+    defaultCompositeDeletePolicy: Background
+    defaultCompositionUpdatePolicy: Automatic
+    group: platform.io
+    names:
+      kind: XNetwork
+      plural: xnetworks
+    scope: LegacyCluster
+    versions:
+    - name: v1alpha1
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          properties:
+            spec:
+              properties:
+                parameters:
+                  properties:
+                    enableNatGateway:
+                      default: false
+                      type: boolean
+                    environment:
+                      enum:
+                      - dev
+                      - staging
+                      type: string
+                    region:
+                      default: us-east-1
+                      type: string
+                    subnetACidr:
+                      type: string
+                    subnetBCidr:
+                      type: string
+                    vpcCidr:
+                      type: string
+                  required:
+                  - environment
+                  type: object
+                writeConnectionSecretToRef:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+              required:
+              - parameters
+              type: object
+            status:
+              properties:
+                internetGatewayId:
+                  type: string
+                routeTableId:
+                  type: string
+                subnetAId:
+                  type: string
+                subnetBId:
+                  type: string
+                vpcId:
+                  type: string
+              type: object
+          type: object
+      served: true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-16T10:21:58Z"
+      observedGeneration: 1
+      reason: WatchingCompositeResourceClaim
+      status: "True"
+      type: Offered
+    - lastTransitionTime: "2026-06-16T10:21:58Z"
+      observedGeneration: 1
+      reason: WatchingCompositeResource
+      status: "True"
+      type: Established
+    controllers:
+      compositeResourceClaimType:
+        apiVersion: platform.io/v1alpha1
+        kind: Network
+      compositeResourceType:
+        apiVersion: platform.io/v1alpha1
+        kind: XNetwork
+kind: List
+metadata:
+  resourceVersion: ""

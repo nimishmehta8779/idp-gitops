@@ -1,0 +1,162 @@
+apiVersion: v1
+items:
+- apiVersion: argoproj.io/v1alpha1
+  kind: AppProject
+  metadata:
+    creationTimestamp: "2026-06-16T10:22:16Z"
+    generation: 1
+    name: default
+    namespace: argocd
+    resourceVersion: "3619"
+    uid: fc53b551-a517-4376-b2d5-8984ec97a45d
+  spec:
+    clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    destinations:
+    - namespace: '*'
+      server: '*'
+    sourceRepos:
+    - '*'
+  status: {}
+- apiVersion: argoproj.io/v1alpha1
+  kind: AppProject
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"annotations":{},"name":"idp-platform","namespace":"argocd"},"spec":{"clusterResourceWhitelist":[{"group":"*","kind":"*"}],"description":"IDP platform project — manages Crossplane claims and cluster resources via GitOps","destinations":[{"namespace":"*","server":"https://kubernetes.default.svc"}],"namespaceResourceWhitelist":[{"group":"*","kind":"*"}],"sourceRepos":["https://github.com/nimishmehta8779/idp-gitops.git","https://github.com/nimishmehta8779/*-infra.git"]}}
+    creationTimestamp: "2026-06-16T10:22:31Z"
+    generation: 1
+    name: idp-platform
+    namespace: argocd
+    resourceVersion: "3733"
+    uid: c50ccd74-d8a7-48bd-89ad-ca8b73080553
+  spec:
+    clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    description: IDP platform project — manages Crossplane claims and cluster resources
+      via GitOps
+    destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    sourceRepos:
+    - https://github.com/nimishmehta8779/idp-gitops.git
+    - https://github.com/nimishmehta8779/*-infra.git
+- apiVersion: argoproj.io/v1alpha1
+  kind: AppProject
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"annotations":{},"name":"idp-platform-dev","namespace":"argocd"},"spec":{"clusterResourceWhitelist":[{"group":"platform.io","kind":"XEKSCluster"},{"group":"platform.idp.io","kind":"EKSCluster"},{"group":"*","kind":"Namespace"},{"group":"rbac.authorization.k8s.io","kind":"ClusterRole"},{"group":"rbac.authorization.k8s.io","kind":"ClusterRoleBinding"},{"group":"apiextensions.k8s.io","kind":"CustomResourceDefinition"}],"description":"IDP platform — dev environment EKS cluster provisioning and addon management","destinations":[{"namespace":"clusters-dev","server":"https://kubernetes.default.svc"},{"namespace":"clusters","server":"https://kubernetes.default.svc"},{"namespace":"kube-system","server":"*"},{"namespace":"kube-system","server":"*"},{"namespace":"external-dns","server":"*"},{"namespace":"velero","server":"*"}],"namespaceResourceWhitelist":[{"group":"*","kind":"*"}],"sourceRepos":["https://github.com/nimishmehta8779/*-infra","https://github.com/nimishmehta8779/*-infra.git","https://kubernetes.github.io/autoscaler","https://kubernetes-sigs.github.io/aws-efs-csi-driver/","https://kubernetes-sigs.github.io/external-dns/","https://vmware-tanzu.github.io/helm-charts","https://kubernetes-sigs.github.io/cluster-proportional-autoscaler"]}}
+    creationTimestamp: "2026-06-16T10:22:31Z"
+    generation: 3
+    name: idp-platform-dev
+    namespace: argocd
+    resourceVersion: "608632"
+    uid: d51c0cf3-2e66-4989-b94d-9930f34f9498
+  spec:
+    clusterResourceWhitelist:
+    - group: platform.io
+      kind: XEKSCluster
+    - group: platform.idp.io
+      kind: EKSCluster
+    - group: '*'
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    description: IDP platform — dev environment EKS cluster provisioning and addon
+      management
+    destinations:
+    - namespace: clusters-dev
+      server: https://kubernetes.default.svc
+    - namespace: clusters
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: '*'
+    - namespace: kube-system
+      server: '*'
+    - namespace: external-dns
+      server: '*'
+    - namespace: velero
+      server: '*'
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    sourceRepos:
+    - https://github.com/nimishmehta8779/*-infra
+    - https://github.com/nimishmehta8779/*-infra.git
+    - https://kubernetes.github.io/autoscaler
+    - https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+    - https://kubernetes-sigs.github.io/external-dns/
+    - https://vmware-tanzu.github.io/helm-charts
+    - https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
+- apiVersion: argoproj.io/v1alpha1
+  kind: AppProject
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"annotations":{},"name":"idp-platform-infra","namespace":"argocd"},"spec":{"clusterResourceWhitelist":[{"group":"*","kind":"*"}],"description":"IDP platform infrastructure project — manages network resources and platform-wide configurations via GitOps","destinations":[{"namespace":"*","server":"https://kubernetes.default.svc"}],"namespaceResourceWhitelist":[{"group":"*","kind":"*"}],"sourceRepos":["https://github.com/nimishmehta8779/idp-gitops.git"]}}
+    creationTimestamp: "2026-06-16T10:22:31Z"
+    generation: 1
+    name: idp-platform-infra
+    namespace: argocd
+    resourceVersion: "3731"
+    uid: 0fa05fd8-c5f8-4776-8d0f-e9ffa140d644
+  spec:
+    clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    description: IDP platform infrastructure project — manages network resources and
+      platform-wide configurations via GitOps
+    destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    sourceRepos:
+    - https://github.com/nimishmehta8779/idp-gitops.git
+- apiVersion: argoproj.io/v1alpha1
+  kind: AppProject
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"annotations":{},"name":"idp-platform-staging","namespace":"argocd"},"spec":{"clusterResourceWhitelist":[{"group":"platform.io","kind":"XEKSCluster"},{"group":"platform.idp.io","kind":"EKSCluster"},{"group":"*","kind":"Namespace"}],"description":"IDP platform — staging environment EKS cluster provisioning via team infra repos","destinations":[{"namespace":"clusters-staging","server":"https://kubernetes.default.svc"},{"namespace":"clusters","server":"https://kubernetes.default.svc"}],"namespaceResourceWhitelist":[{"group":"*","kind":"*"}],"sourceRepos":["https://github.com/nimishmehta8779/*-infra","https://github.com/nimishmehta8779/*-infra.git"]}}
+    creationTimestamp: "2026-06-16T10:22:31Z"
+    generation: 1
+    name: idp-platform-staging
+    namespace: argocd
+    resourceVersion: "3732"
+    uid: ad397757-de67-48ba-a621-c8d5e5b048f2
+  spec:
+    clusterResourceWhitelist:
+    - group: platform.io
+      kind: XEKSCluster
+    - group: platform.idp.io
+      kind: EKSCluster
+    - group: '*'
+      kind: Namespace
+    description: IDP platform — staging environment EKS cluster provisioning via team
+      infra repos
+    destinations:
+    - namespace: clusters-staging
+      server: https://kubernetes.default.svc
+    - namespace: clusters
+      server: https://kubernetes.default.svc
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    sourceRepos:
+    - https://github.com/nimishmehta8779/*-infra
+    - https://github.com/nimishmehta8779/*-infra.git
+kind: List
+metadata:
+  resourceVersion: ""

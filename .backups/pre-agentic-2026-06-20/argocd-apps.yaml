@@ -1,0 +1,2315 @@
+apiVersion: v1
+items:
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/argocd-config
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/argocd-config"},"name":"argocd-config","namespace":"argocd"},"spec":{"destination":{"namespace":"argocd","server":"https://kubernetes.default.svc"},"project":"idp-platform","source":{"path":"infrastructure/argocd/config","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":false,"selfHeal":true},"syncOptions":["CreateNamespace=false"]}}}
+    creationTimestamp: "2026-06-19T06:49:33Z"
+    generation: 280
+    name: argocd-config
+    namespace: argocd
+    resourceVersion: "683844"
+    uid: 434b2dd8-5ecb-47af-b09a-f8b988feb2a9
+  spec:
+    destination:
+      namespace: argocd
+      server: https://kubernetes.default.svc
+    project: idp-platform
+    source:
+      path: infrastructure/argocd/config
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: false
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=false
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-19T06:49:34Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-19T06:49:34Z"
+      deployedAt: "2026-06-19T06:49:35Z"
+      id: 0
+      initiatedBy:
+        automated: true
+      revision: a77d5fbb288a779ef99c54ee64bb72664cf925bd
+      source:
+        path: infrastructure/argocd/config
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-19T06:49:35Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          revision: a77d5fbb288a779ef99c54ee64bb72664cf925bd
+          source:
+            path: infrastructure/argocd/config
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=false
+      phase: Succeeded
+      startedAt: "2026-06-19T06:49:34Z"
+      syncResult:
+        resources:
+        - group: ""
+          hookPhase: Running
+          kind: ConfigMap
+          message: configmap/argocd-cm configured
+          name: argocd-cm
+          namespace: argocd
+          status: Synced
+          syncPhase: Sync
+          version: v1
+        revision: a77d5fbb288a779ef99c54ee64bb72664cf925bd
+        source:
+          path: infrastructure/argocd/config
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:10Z"
+    resourceHealthSource: appTree
+    resources:
+    - kind: ConfigMap
+      name: argocd-cm
+      namespace: argocd
+      status: Synced
+      version: v1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: argocd
+          server: https://kubernetes.default.svc
+        source:
+          path: infrastructure/argocd/config
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/cluster-claims
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/cluster-claims"},"name":"cluster-claims","namespace":"argocd"},"spec":{"destination":{"namespace":"clusters","server":"https://kubernetes.default.svc"},"project":"idp-platform","source":{"directory":{"exclude":"**/catalog-info.yaml","recurse":true},"path":"gitops/cluster-claims","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true","ApplyOutOfSyncOnly=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:37Z"
+    generation: 764
+    name: cluster-claims
+    namespace: argocd
+    resourceVersion: "683816"
+    uid: 832074d8-1381-4779-8d1a-4fb9680d584b
+  spec:
+    destination:
+      namespace: clusters
+      server: https://kubernetes.default.svc
+    project: idp-platform
+    source:
+      directory:
+        exclude: '**/catalog-info.yaml'
+        recurse: true
+      path: gitops/cluster-claims
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-16T10:22:37Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-17T10:50:04Z"
+      deployedAt: "2026-06-17T10:50:04Z"
+      id: 0
+      initiatedBy: {}
+      revision: 711f554a233102e091ab4ba3e432421c4c178705
+      source:
+        directory:
+          exclude: '**/catalog-info.yaml'
+          recurse: true
+        path: gitops/cluster-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:51:33Z"
+      deployedAt: "2026-06-17T10:51:35Z"
+      id: 1
+      initiatedBy: {}
+      revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+      source:
+        directory:
+          exclude: '**/catalog-info.yaml'
+          recurse: true
+        path: gitops/cluster-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:52:00Z"
+      deployedAt: "2026-06-17T10:52:01Z"
+      id: 2
+      initiatedBy: {}
+      revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+      source:
+        directory:
+          exclude: '**/catalog-info.yaml'
+          recurse: true
+        path: gitops/cluster-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-17T10:52:01Z"
+      message: successfully synced (no more tasks)
+      operation:
+        initiatedBy: {}
+        retry: {}
+        sync:
+          revision: HEAD
+      phase: Succeeded
+      startedAt: "2026-06-17T10:52:00Z"
+      syncResult:
+        revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+        source:
+          directory:
+            exclude: '**/catalog-info.yaml'
+            recurse: true
+          path: gitops/cluster-claims
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:05Z"
+    resourceHealthSource: appTree
+    sourceType: Directory
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters
+          server: https://kubernetes.default.svc
+        source:
+          directory:
+            exclude: '**/catalog-info.yaml'
+            recurse: true
+          path: gitops/cluster-claims
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/crossplane-compositions
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/crossplane-compositions"},"name":"crossplane-compositions","namespace":"argocd"},"spec":{"destination":{"namespace":"crossplane-system","server":"https://kubernetes.default.svc"},"project":"idp-platform","source":{"directory":{"exclude":"claim-example.yaml","recurse":false},"path":"infrastructure/crossplane/eks","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":false,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:37Z"
+    generation: 933
+    name: crossplane-compositions
+    namespace: argocd
+    resourceVersion: "683884"
+    uid: 674c70d3-1a56-4df9-af82-96f32fa47b84
+  spec:
+    destination:
+      namespace: crossplane-system
+      server: https://kubernetes.default.svc
+    project: idp-platform
+    source:
+      directory:
+        exclude: claim-example.yaml
+        recurse: false
+      path: infrastructure/crossplane/eks
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: false
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-16T10:22:37Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-19T09:49:17Z"
+      deployedAt: "2026-06-19T09:49:18Z"
+      id: 10
+      initiatedBy:
+        username: admin
+      revision: 277a991c628957cd81c90e1e5d1ca566478678ea
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T16:25:12Z"
+      deployedAt: "2026-06-19T16:25:13Z"
+      id: 11
+      initiatedBy:
+        automated: true
+      revision: 6fc39007d0fe3c2cb99263cad137ccac46a09c4d
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T16:36:58Z"
+      deployedAt: "2026-06-19T16:36:58Z"
+      id: 12
+      initiatedBy:
+        automated: true
+      revision: 8bf603f5ed421b5ad931b803d76ed880acf1873d
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T10:39:54Z"
+      deployedAt: "2026-06-20T10:39:55Z"
+      id: 13
+      initiatedBy:
+        automated: true
+      revision: c6d374c04290e224eb202248d38b1d82069c3c44
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:08:48Z"
+      deployedAt: "2026-06-20T11:08:49Z"
+      id: 14
+      initiatedBy:
+        automated: true
+      revision: 608ed6c4f296322024284abd07a6232039ab9b4f
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:18:58Z"
+      deployedAt: "2026-06-20T11:18:58Z"
+      id: 15
+      initiatedBy:
+        automated: true
+      revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T13:06:43Z"
+      deployedAt: "2026-06-20T13:06:43Z"
+      id: 16
+      initiatedBy:
+        automated: true
+      revision: a61ace84c8bc91e3d38125ee32b95d66f9bdf7a6
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T16:33:12Z"
+      deployedAt: "2026-06-20T16:33:13Z"
+      id: 17
+      initiatedBy:
+        automated: true
+      revision: 0b3ba97a1fa5ee5619b94e8bdbfa54ff515799b3
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T16:37:20Z"
+      deployedAt: "2026-06-20T16:37:20Z"
+      id: 18
+      initiatedBy:
+        automated: true
+      revision: 2e23d68e4bfa6e6259338d08abb29fa88077a267
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T17:01:34Z"
+      deployedAt: "2026-06-20T17:01:34Z"
+      id: 19
+      initiatedBy:
+        automated: true
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      source:
+        directory:
+          exclude: claim-example.yaml
+        path: infrastructure/crossplane/eks
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-20T17:01:34Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          autoHealAttemptsCount: 1
+          resources:
+          - group: apiextensions.crossplane.io
+            kind: Composition
+            name: eks-cluster
+          revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+          source:
+            directory:
+              exclude: claim-example.yaml
+            path: infrastructure/crossplane/eks
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+      phase: Succeeded
+      startedAt: "2026-06-20T17:01:34Z"
+      syncResult:
+        resources:
+        - group: apiextensions.crossplane.io
+          hookPhase: Running
+          kind: Composition
+          message: composition.apiextensions.crossplane.io/eks-cluster unchanged
+          name: eks-cluster
+          namespace: crossplane-system
+          status: Synced
+          syncPhase: Sync
+          version: v1
+        revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+        source:
+          directory:
+            exclude: claim-example.yaml
+          path: infrastructure/crossplane/eks
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:18Z"
+    resourceHealthSource: appTree
+    resources:
+    - kind: Namespace
+      name: clusters
+      status: Synced
+      version: v1
+    - group: apiextensions.crossplane.io
+      kind: CompositeResourceDefinition
+      name: xeksclusters.platform.io
+      status: Synced
+      version: v1
+    - group: apiextensions.crossplane.io
+      kind: Composition
+      name: eks-cluster
+      status: Synced
+      version: v1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: crossplane-system
+          server: https://kubernetes.default.svc
+        source:
+          directory:
+            exclude: claim-example.yaml
+          path: infrastructure/crossplane/eks
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{},"name":"idp-root","namespace":"argocd"},"spec":{"destination":{"namespace":"argocd","server":"https://kubernetes.default.svc"},"project":"idp-platform","source":{"directory":{"recurse":false},"path":"gitops/apps","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:31Z"
+    generation: 1590
+    name: idp-root
+    namespace: argocd
+    resourceVersion: "683769"
+    uid: bd98fa9c-0b7e-4682-bbfb-79805a9cf9ed
+  spec:
+    destination:
+      namespace: argocd
+      server: https://kubernetes.default.svc
+    project: idp-platform
+    source:
+      path: gitops/apps
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-16T10:22:37Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-19T09:25:57Z"
+      deployedAt: "2026-06-19T09:25:57Z"
+      id: 18
+      initiatedBy:
+        automated: true
+      revision: d5081fb2017b8e2a78680fb41102a6ba86d476c3
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T16:25:12Z"
+      deployedAt: "2026-06-19T16:25:13Z"
+      id: 19
+      initiatedBy:
+        automated: true
+      revision: 6fc39007d0fe3c2cb99263cad137ccac46a09c4d
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T16:36:58Z"
+      deployedAt: "2026-06-19T16:36:58Z"
+      id: 20
+      initiatedBy:
+        automated: true
+      revision: 8bf603f5ed421b5ad931b803d76ed880acf1873d
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T10:39:54Z"
+      deployedAt: "2026-06-20T10:39:55Z"
+      id: 21
+      initiatedBy:
+        automated: true
+      revision: c6d374c04290e224eb202248d38b1d82069c3c44
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:08:48Z"
+      deployedAt: "2026-06-20T11:08:49Z"
+      id: 22
+      initiatedBy:
+        automated: true
+      revision: 608ed6c4f296322024284abd07a6232039ab9b4f
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:15:41Z"
+      deployedAt: "2026-06-20T11:15:41Z"
+      id: 23
+      initiatedBy:
+        automated: true
+      revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T13:04:11Z"
+      deployedAt: "2026-06-20T13:04:12Z"
+      id: 24
+      initiatedBy:
+        automated: true
+      revision: a61ace84c8bc91e3d38125ee32b95d66f9bdf7a6
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T16:27:46Z"
+      deployedAt: "2026-06-20T16:27:47Z"
+      id: 25
+      initiatedBy:
+        automated: true
+      revision: 0b3ba97a1fa5ee5619b94e8bdbfa54ff515799b3
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T16:37:20Z"
+      deployedAt: "2026-06-20T16:37:21Z"
+      id: 26
+      initiatedBy:
+        automated: true
+      revision: 2e23d68e4bfa6e6259338d08abb29fa88077a267
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T17:01:34Z"
+      deployedAt: "2026-06-20T17:01:34Z"
+      id: 27
+      initiatedBy:
+        automated: true
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      source:
+        path: gitops/apps
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-20T17:01:34Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          autoHealAttemptsCount: 1
+          prune: true
+          resources:
+          - group: argoproj.io
+            kind: Application
+            name: crossplane-compositions
+          revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+          source:
+            path: gitops/apps
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+      phase: Succeeded
+      startedAt: "2026-06-20T17:01:34Z"
+      syncResult:
+        resources:
+        - group: argoproj.io
+          hookPhase: Running
+          kind: Application
+          message: application.argoproj.io/crossplane-compositions configured
+          name: crossplane-compositions
+          namespace: argocd
+          status: Synced
+          syncPhase: Sync
+          version: v1alpha1
+        revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+        source:
+          path: gitops/apps
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:12:54Z"
+    resourceHealthSource: appTree
+    resources:
+    - group: argoproj.io
+      kind: Application
+      name: argocd-config
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: Application
+      name: cluster-claims
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: Application
+      name: crossplane-compositions
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: Application
+      name: kyverno-policies
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: Application
+      name: network-claims
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: Application
+      name: network-infra
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: Application
+      name: team-appsets
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: argocd
+          server: https://kubernetes.default.svc
+        source:
+          path: gitops/apps
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/kyverno-policies
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/kyverno-policies"},"name":"kyverno-policies","namespace":"argocd"},"spec":{"destination":{"namespace":"kyverno","server":"https://kubernetes.default.svc"},"project":"idp-platform","source":{"path":"infrastructure/kyverno/policies","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:37Z"
+    generation: 1217
+    name: kyverno-policies
+    namespace: argocd
+    resourceVersion: "683845"
+    uid: 7526fda8-bcd0-4cf8-83e3-a980f73391ab
+  spec:
+    destination:
+      namespace: kyverno
+      server: https://kubernetes.default.svc
+    project: idp-platform
+    source:
+      path: infrastructure/kyverno/policies
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-16T10:22:37Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-19T07:50:40Z"
+      deployedAt: "2026-06-19T07:50:41Z"
+      id: 4
+      initiatedBy:
+        automated: true
+      revision: c2cb613db9fcb2a0b16c4cc18105697ff75a7bb5
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T08:51:00Z"
+      deployedAt: "2026-06-19T08:51:00Z"
+      id: 5
+      initiatedBy:
+        automated: true
+      revision: de01734ee0cf54bf3d838bfab0688eb29e4a0236
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T09:39:15Z"
+      deployedAt: "2026-06-19T09:39:16Z"
+      id: 6
+      initiatedBy:
+        automated: true
+      revision: d5081fb2017b8e2a78680fb41102a6ba86d476c3
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T09:39:32Z"
+      deployedAt: "2026-06-19T09:39:33Z"
+      id: 7
+      initiatedBy:
+        automated: true
+      revision: e2721d7c4b5a2d02dd9920305cba4d7f297b42f8
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T09:53:21Z"
+      deployedAt: "2026-06-19T09:53:23Z"
+      id: 8
+      initiatedBy:
+        username: admin
+      revision: c3916d8f3cc5c274a9f958c48a3e06daad9b8fd0
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T10:44:16Z"
+      deployedAt: "2026-06-19T10:44:17Z"
+      id: 9
+      initiatedBy:
+        automated: true
+      revision: 0ee78b3b288da7daaaf660882ceb7f53448500ae
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T16:56:48Z"
+      deployedAt: "2026-06-19T16:56:49Z"
+      id: 10
+      initiatedBy:
+        automated: true
+      revision: 111bd7fe82b9c4ddd3987cb290a673a7293510c1
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T10:39:54Z"
+      deployedAt: "2026-06-20T10:39:55Z"
+      id: 11
+      initiatedBy:
+        automated: true
+      revision: c6d374c04290e224eb202248d38b1d82069c3c44
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T10:51:03Z"
+      deployedAt: "2026-06-20T10:51:03Z"
+      id: 12
+      initiatedBy:
+        automated: true
+      revision: 608ed6c4f296322024284abd07a6232039ab9b4f
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:17:00Z"
+      deployedAt: "2026-06-20T11:17:00Z"
+      id: 13
+      initiatedBy:
+        automated: true
+      revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+      source:
+        path: infrastructure/kyverno/policies
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-20T11:17:00Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          autoHealAttemptsCount: 1
+          prune: true
+          resources:
+          - group: kyverno.io
+            kind: ClusterPolicy
+            name: register-eks-cluster-argocd
+          revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+          source:
+            path: infrastructure/kyverno/policies
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+      phase: Succeeded
+      startedAt: "2026-06-20T11:17:00Z"
+      syncResult:
+        resources:
+        - group: kyverno.io
+          hookPhase: Running
+          kind: ClusterPolicy
+          message: clusterpolicy.kyverno.io/register-eks-cluster-argocd configured
+          name: register-eks-cluster-argocd
+          namespace: kyverno
+          status: Synced
+          syncPhase: Sync
+          version: v1
+        revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+        source:
+          path: infrastructure/kyverno/policies
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:11Z"
+    resourceHealthSource: appTree
+    resources:
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: approved-instance-types
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: approved-regions
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: deregister-eks-cluster-argocd
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: node-count-limits
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: register-eks-cluster-argocd
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: require-cost-acknowledgment
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: require-mandatory-labels
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: staging-requires-approval
+      status: Synced
+      version: v1
+    - group: kyverno.io
+      kind: ClusterPolicy
+      name: sync-eks-addon-labels-to-argocd
+      status: Synced
+      version: v1
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: argocd-cluster-registration
+      status: Synced
+      version: v1
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: kyverno-argocd-secret-manager
+      status: Synced
+      version: v1
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+      name: argocd-cluster-registration
+      status: Synced
+      version: v1
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+      name: kyverno-argocd-secret-manager
+      status: Synced
+      version: v1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: kyverno
+          server: https://kubernetes.default.svc
+        source:
+          path: infrastructure/kyverno/policies
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/network-claims
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/network-claims"},"name":"network-claims","namespace":"argocd"},"spec":{"destination":{"namespace":"platform-network","server":"https://kubernetes.default.svc"},"project":"idp-platform-infra","source":{"directory":{"recurse":true},"path":"gitops/network-claims","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":false,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:37Z"
+    generation: 822
+    name: network-claims
+    namespace: argocd
+    resourceVersion: "683388"
+    uid: 5d046b0c-c001-40cf-8632-86526d8f95ab
+  spec:
+    destination:
+      namespace: platform-network
+      server: https://kubernetes.default.svc
+    project: idp-platform-infra
+    source:
+      directory:
+        recurse: true
+      path: gitops/network-claims
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: false
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-16T10:22:37Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-17T10:50:04Z"
+      deployedAt: "2026-06-17T10:50:04Z"
+      id: 0
+      initiatedBy: {}
+      revision: 711f554a233102e091ab4ba3e432421c4c178705
+      source:
+        directory:
+          recurse: true
+        path: gitops/network-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:51:34Z"
+      deployedAt: "2026-06-17T10:51:35Z"
+      id: 1
+      initiatedBy: {}
+      revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+      source:
+        directory:
+          recurse: true
+        path: gitops/network-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:52:01Z"
+      deployedAt: "2026-06-17T10:52:01Z"
+      id: 2
+      initiatedBy: {}
+      revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+      source:
+        directory:
+          recurse: true
+        path: gitops/network-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-18T05:51:18Z"
+      deployedAt: "2026-06-18T05:51:18Z"
+      id: 3
+      initiatedBy:
+        automated: true
+      revision: 613c1f29a4cd63c621c214d1a5de39c0ea90d445
+      source:
+        directory:
+          recurse: true
+        path: gitops/network-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-18T05:51:37Z"
+      deployedAt: "2026-06-18T05:51:37Z"
+      id: 4
+      initiatedBy:
+        username: admin
+      revision: 2ac529ca9113c702fe4e06d42c75eeecb7434d71
+      source:
+        directory:
+          recurse: true
+        path: gitops/network-claims
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-18T05:51:37Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          username: admin
+        retry: {}
+        sync:
+          prune: true
+          revision: 2ac529ca9113c702fe4e06d42c75eeecb7434d71
+          source:
+            directory:
+              recurse: true
+            path: gitops/network-claims
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+          syncStrategy:
+            hook: {}
+      phase: Succeeded
+      startedAt: "2026-06-18T05:51:37Z"
+      syncResult:
+        resources:
+        - group: platform.io
+          hookPhase: Running
+          kind: Network
+          message: network.platform.io/staging-network created
+          name: staging-network
+          namespace: clusters-staging
+          status: Synced
+          syncPhase: Sync
+          version: v1alpha1
+        - group: platform.io
+          hookPhase: Running
+          kind: Network
+          message: network.platform.io/dev-network unchanged
+          name: dev-network
+          namespace: clusters-dev
+          status: Synced
+          syncPhase: Sync
+          version: v1alpha1
+        revision: 2ac529ca9113c702fe4e06d42c75eeecb7434d71
+        source:
+          directory:
+            recurse: true
+          path: gitops/network-claims
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:11:31Z"
+    resourceHealthSource: appTree
+    resources:
+    - group: platform.io
+      kind: Network
+      name: dev-network
+      namespace: clusters-dev
+      status: Synced
+      version: v1alpha1
+    - group: platform.io
+      kind: Network
+      name: staging-network
+      namespace: clusters-staging
+      status: Synced
+      version: v1alpha1
+    - group: platform.io
+      kind: XNetwork
+      name: dev-network-fvktj
+      version: v1alpha1
+    - group: platform.io
+      kind: XNetwork
+      name: staging-network-t2r9s
+      version: v1alpha1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: platform-network
+          server: https://kubernetes.default.svc
+        source:
+          directory:
+            recurse: true
+          path: gitops/network-claims
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/network-infra
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/network-infra"},"name":"network-infra","namespace":"argocd"},"spec":{"destination":{"namespace":"crossplane-system","server":"https://kubernetes.default.svc"},"project":"idp-platform-infra","source":{"directory":{"exclude":"*claim*.yaml","recurse":false},"path":"infrastructure/crossplane/network","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":false,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:37Z"
+    generation: 768
+    name: network-infra
+    namespace: argocd
+    resourceVersion: "683814"
+    uid: ea867169-7ac1-4004-ab30-dd07ca1b2073
+  spec:
+    destination:
+      namespace: crossplane-system
+      server: https://kubernetes.default.svc
+    project: idp-platform-infra
+    source:
+      directory:
+        exclude: '*claim*.yaml'
+        recurse: false
+      path: infrastructure/crossplane/network
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: false
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-16T10:22:37Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-16T10:22:37Z"
+      deployedAt: "2026-06-16T10:22:38Z"
+      id: 0
+      initiatedBy:
+        automated: true
+      revision: 0b21654bbfc31b1efbbe75744b5cabab0fc886b4
+      source:
+        directory:
+          exclude: '*claim*.yaml'
+        path: infrastructure/crossplane/network
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:50:04Z"
+      deployedAt: "2026-06-17T10:50:05Z"
+      id: 1
+      initiatedBy: {}
+      revision: 711f554a233102e091ab4ba3e432421c4c178705
+      source:
+        directory:
+          exclude: '*claim*.yaml'
+        path: infrastructure/crossplane/network
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:51:34Z"
+      deployedAt: "2026-06-17T10:51:35Z"
+      id: 2
+      initiatedBy: {}
+      revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+      source:
+        directory:
+          exclude: '*claim*.yaml'
+        path: infrastructure/crossplane/network
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-17T10:52:01Z"
+      deployedAt: "2026-06-17T10:52:02Z"
+      id: 3
+      initiatedBy: {}
+      revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+      source:
+        directory:
+          exclude: '*claim*.yaml'
+        path: infrastructure/crossplane/network
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-17T10:52:02Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          revision: HEAD
+          source:
+            directory:
+              exclude: '*claim*.yaml'
+            path: infrastructure/crossplane/network
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+      phase: Succeeded
+      startedAt: "2026-06-17T10:52:01Z"
+      syncResult:
+        resources:
+        - group: ""
+          hookPhase: Running
+          kind: Namespace
+          message: namespace/platform-network unchanged
+          name: platform-network
+          namespace: crossplane-system
+          status: Synced
+          syncPhase: Sync
+          version: v1
+        - group: apiextensions.crossplane.io
+          hookPhase: Running
+          kind: EnvironmentConfig
+          message: environmentconfig.apiextensions.crossplane.io/idp-staging-network
+            unchanged
+          name: idp-staging-network
+          namespace: crossplane-system
+          status: Synced
+          syncPhase: Sync
+          version: v1beta1
+        - group: apiextensions.crossplane.io
+          hookPhase: Running
+          kind: EnvironmentConfig
+          message: environmentconfig.apiextensions.crossplane.io/idp-dev-network unchanged
+          name: idp-dev-network
+          namespace: crossplane-system
+          status: Synced
+          syncPhase: Sync
+          version: v1beta1
+        - group: apiextensions.crossplane.io
+          hookPhase: Running
+          kind: Composition
+          message: composition.apiextensions.crossplane.io/network-composition unchanged
+          name: network-composition
+          namespace: crossplane-system
+          status: Synced
+          syncPhase: Sync
+          version: v1
+        - group: apiextensions.crossplane.io
+          hookPhase: Running
+          kind: CompositeResourceDefinition
+          message: compositeresourcedefinition.apiextensions.crossplane.io/xnetworks.platform.io
+            unchanged
+          name: xnetworks.platform.io
+          namespace: crossplane-system
+          status: Synced
+          syncPhase: Sync
+          version: v1
+        revision: 6a05a5fd1a93c9aa6f933213efc282f41a39ecb7
+        source:
+          directory:
+            exclude: '*claim*.yaml'
+          path: infrastructure/crossplane/network
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:04Z"
+    resourceHealthSource: appTree
+    resources:
+    - kind: Namespace
+      name: platform-network
+      status: Synced
+      version: v1
+    - group: apiextensions.crossplane.io
+      kind: CompositeResourceDefinition
+      name: xnetworks.platform.io
+      status: Synced
+      version: v1
+    - group: apiextensions.crossplane.io
+      kind: Composition
+      name: network-composition
+      status: Synced
+      version: v1
+    - group: apiextensions.crossplane.io
+      kind: EnvironmentConfig
+      name: idp-dev-network
+      status: Synced
+      version: v1beta1
+    - group: apiextensions.crossplane.io
+      kind: EnvironmentConfig
+      name: idp-staging-network
+      status: Synced
+      version: v1beta1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: crossplane-system
+          server: https://kubernetes.default.svc
+        source:
+          directory:
+            exclude: '*claim*.yaml'
+          path: infrastructure/crossplane/network
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:24:44Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 625
+    labels:
+      managed-by: argocd-applicationset
+      team: team-alpha
+    name: team-alpha-eks-clusters
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters
+      uid: 8027ecf9-795c-4b57-8964-c73467bebf33
+    resourceVersion: "684003"
+    uid: fa0d7e3f-fd1a-4923-a53c-0f7f25690302
+  spec:
+    destination:
+      namespace: clusters-dev
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-dev
+    source:
+      directory:
+        exclude: '{.gitkeep,*-catalog.yaml}'
+        include: '*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-20T16:57:38Z"
+      message: 'Failed to load target state: failed to generate manifest for source
+        1 of 1: rpc error: code = Unknown desc = failed to list refs: authentication
+        required: Repository not found.'
+      type: ComparisonError
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-20T16:39:52Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-19T09:18:55Z"
+      deployedAt: "2026-06-19T09:18:55Z"
+      id: 6
+      initiatedBy:
+        automated: true
+      revision: b257867c267c5227b22cca6084019a1a5a1ab9e7
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T10:21:22Z"
+      deployedAt: "2026-06-19T10:21:23Z"
+      id: 7
+      initiatedBy:
+        automated: true
+      revision: e48e5363a0449641d651619c0523b71734c959de
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T15:57:30Z"
+      deployedAt: "2026-06-19T15:57:30Z"
+      id: 8
+      initiatedBy:
+        automated: true
+      revision: 2c9715f0a63e71d34b1558e3122935e8373a3b8f
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T17:30:07Z"
+      deployedAt: "2026-06-19T17:30:08Z"
+      id: 9
+      initiatedBy:
+        automated: true
+      revision: 1b3d961ef886cd936aed4175adfb358b36db6e97
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T18:07:37Z"
+      deployedAt: "2026-06-19T18:07:38Z"
+      id: 10
+      initiatedBy:
+        username: admin
+      revision: 2e9bff8de91deb7052c795cb819115ed11c8521c
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T18:15:41Z"
+      deployedAt: "2026-06-19T18:15:42Z"
+      id: 11
+      initiatedBy:
+        username: admin
+      revision: faf5ccfd3a459554502f43e03be27cfd165af036
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T10:14:30Z"
+      deployedAt: "2026-06-20T10:14:30Z"
+      id: 12
+      initiatedBy:
+        automated: true
+      revision: cd92a772d80e999e4afa09862879ac781a226ffb
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:47:39Z"
+      deployedAt: "2026-06-20T11:47:39Z"
+      id: 13
+      initiatedBy:
+        automated: true
+      revision: 79aff852e12af9aa42b847c4a42fc7afc8310c89
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:58:56Z"
+      deployedAt: "2026-06-20T11:58:57Z"
+      id: 14
+      initiatedBy:
+        automated: true
+      revision: 70928f6448f8498b903cd41c57b94d1f9c046c8d
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T16:39:51Z"
+      deployedAt: "2026-06-20T16:39:51Z"
+      id: 15
+      initiatedBy:
+        automated: true
+      revision: ee453b156d046059e9ed5d7f61dc42ef5328c715
+      source:
+        directory:
+          exclude: '{.gitkeep,*-catalog.yaml}'
+          include: '*.yaml'
+          recurse: true
+        path: eks
+        repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-20T16:39:51Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          autoHealAttemptsCount: 1
+          prune: true
+          resources:
+          - group: platform.io
+            kind: XEKSCluster
+            name: alpha-dev-general-1-4f7rq
+          - group: platform.io
+            kind: EKSCluster
+            name: alpha-dev-general-1
+          revision: ee453b156d046059e9ed5d7f61dc42ef5328c715
+          source:
+            directory:
+              exclude: '{.gitkeep,*-catalog.yaml}'
+              include: '*.yaml'
+              recurse: true
+            path: eks
+            repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+      phase: Succeeded
+      startedAt: "2026-06-20T16:39:51Z"
+      syncResult:
+        resources:
+        - group: platform.io
+          hookPhase: Succeeded
+          kind: EKSCluster
+          message: pruned
+          name: alpha-dev-general-1
+          namespace: clusters-dev
+          status: Pruned
+          syncPhase: Sync
+          version: v1alpha1
+        revision: ee453b156d046059e9ed5d7f61dc42ef5328c715
+        source:
+          directory:
+            exclude: '{.gitkeep,*-catalog.yaml}'
+            include: '*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:43Z"
+    resourceHealthSource: appTree
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters-dev
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        source:
+          directory:
+            exclude: '{.gitkeep,*-catalog.yaml}'
+            include: '*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+          targetRevision: main
+      revision: main
+      status: Unknown
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:20:58Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 420
+    labels:
+      managed-by: argocd-applicationset
+      team: team-alpha
+    name: team-alpha-eks-clusters-staging
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters-staging
+      uid: ac93dfb3-8395-44fc-8787-392539f34831
+    resourceVersion: "683835"
+    uid: 97d342f7-1948-4061-ab9e-6fabafa1892e
+  spec:
+    destination:
+      namespace: clusters-staging
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-staging
+    source:
+      directory:
+        exclude: .gitkeep
+        include: '*-staging-*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: false
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-20T16:57:44Z"
+      message: 'Failed to load target state: failed to generate manifest for source
+        1 of 1: rpc error: code = Unknown desc = failed to list refs: authentication
+        required: Repository not found.'
+      type: ComparisonError
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-18T09:20:58Z"
+      status: Healthy
+    reconciledAt: "2026-06-20T17:13:08Z"
+    resourceHealthSource: appTree
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters-staging
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        source:
+          directory:
+            exclude: .gitkeep
+            include: '*-staging-*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-alpha-infra
+          targetRevision: main
+      revision: main
+      status: Unknown
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    annotations:
+      argocd.argoproj.io/tracking-id: idp-root:argoproj.io/Application:argocd/team-appsets
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"idp-root:argoproj.io/Application:argocd/team-appsets"},"name":"team-appsets","namespace":"argocd"},"spec":{"destination":{"namespace":"argocd","server":"https://kubernetes.default.svc"},"project":"idp-platform","source":{"directory":{"include":"*.yaml","recurse":false},"path":"infrastructure/argocd/appsets","repoURL":"https://github.com/nimishmehta8779/idp-gitops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    creationTimestamp: "2026-06-16T10:22:37Z"
+    generation: 1397
+    name: team-appsets
+    namespace: argocd
+    resourceVersion: "683985"
+    uid: 9654f057-138c-41d1-80f4-5ff1172b5b35
+  spec:
+    destination:
+      namespace: argocd
+      server: https://kubernetes.default.svc
+    project: idp-platform
+    source:
+      directory:
+        include: '*.yaml'
+        recurse: false
+      path: infrastructure/argocd/appsets
+      repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-20T11:18:42Z"
+      status: Healthy
+    history:
+    - deployStartedAt: "2026-06-18T09:22:37Z"
+      deployedAt: "2026-06-18T09:22:38Z"
+      id: 10
+      initiatedBy:
+        username: admin
+      revision: 3ba5a348840f5758e0904326af9f5499915b13ba
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-18T09:24:46Z"
+      deployedAt: "2026-06-18T09:24:46Z"
+      id: 11
+      initiatedBy:
+        automated: true
+      revision: 0e9cbf80206cdfbc23aca185c498d7cbfedf37c1
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T07:21:23Z"
+      deployedAt: "2026-06-19T07:21:23Z"
+      id: 12
+      initiatedBy:
+        automated: true
+      revision: 073873b0fd8a366636b0eb4a7b956c6f003a249c
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T07:26:13Z"
+      deployedAt: "2026-06-19T07:26:14Z"
+      id: 13
+      initiatedBy:
+        automated: true
+      revision: 720934c29266563fc0b34a082b8677f9882b6440
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-19T08:50:39Z"
+      deployedAt: "2026-06-19T08:50:40Z"
+      id: 14
+      initiatedBy:
+        automated: true
+      revision: de01734ee0cf54bf3d838bfab0688eb29e4a0236
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:08:48Z"
+      deployedAt: "2026-06-20T11:08:49Z"
+      id: 15
+      initiatedBy:
+        automated: true
+      revision: 608ed6c4f296322024284abd07a6232039ab9b4f
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:15:39Z"
+      deployedAt: "2026-06-20T11:15:40Z"
+      id: 16
+      initiatedBy:
+        username: admin
+      revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T11:16:58Z"
+      deployedAt: "2026-06-20T11:16:59Z"
+      id: 17
+      initiatedBy:
+        username: admin
+      revision: 9f945d919f73acc273f43f18f5811d48f75ea23f
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T13:04:11Z"
+      deployedAt: "2026-06-20T13:04:12Z"
+      id: 18
+      initiatedBy:
+        automated: true
+      revision: a61ace84c8bc91e3d38125ee32b95d66f9bdf7a6
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    - deployStartedAt: "2026-06-20T16:27:46Z"
+      deployedAt: "2026-06-20T16:27:46Z"
+      id: 19
+      initiatedBy:
+        automated: true
+      revision: 0b3ba97a1fa5ee5619b94e8bdbfa54ff515799b3
+      source:
+        directory:
+          include: '*.yaml'
+        path: infrastructure/argocd/appsets
+        repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+        targetRevision: main
+    operationState:
+      finishedAt: "2026-06-20T16:27:47Z"
+      message: successfully synced (all tasks run)
+      operation:
+        initiatedBy:
+          automated: true
+        retry:
+          limit: 5
+        sync:
+          autoHealAttemptsCount: 1
+          prune: true
+          resources:
+          - group: argoproj.io
+            kind: ApplicationSet
+            name: eks-addon-velero
+          revision: 0b3ba97a1fa5ee5619b94e8bdbfa54ff515799b3
+          source:
+            directory:
+              include: '*.yaml'
+            path: infrastructure/argocd/appsets
+            repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+            targetRevision: main
+          syncOptions:
+          - CreateNamespace=true
+      phase: Succeeded
+      startedAt: "2026-06-20T16:27:46Z"
+      syncResult:
+        resources:
+        - group: argoproj.io
+          hookPhase: Running
+          kind: ApplicationSet
+          message: applicationset.argoproj.io/eks-addon-velero unchanged
+          name: eks-addon-velero
+          namespace: argocd
+          status: Synced
+          syncPhase: Sync
+          version: v1alpha1
+        revision: 0b3ba97a1fa5ee5619b94e8bdbfa54ff515799b3
+        source:
+          directory:
+            include: '*.yaml'
+          path: infrastructure/argocd/appsets
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+    reconciledAt: "2026-06-20T17:13:40Z"
+    resourceHealthSource: appTree
+    resources:
+    - group: argoproj.io
+      kind: ApplicationSet
+      name: eks-addon-cluster-autoscaler
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: ApplicationSet
+      name: eks-addon-external-dns
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: ApplicationSet
+      name: eks-addon-velero
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: ApplicationSet
+      name: team-eks-clusters
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    - group: argoproj.io
+      kind: ApplicationSet
+      name: team-eks-clusters-staging
+      namespace: argocd
+      status: Synced
+      version: v1alpha1
+    sourceHydrator: {}
+    sourceType: Directory
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: argocd
+          server: https://kubernetes.default.svc
+        source:
+          directory:
+            include: '*.yaml'
+          path: infrastructure/argocd/appsets
+          repoURL: https://github.com/nimishmehta8779/idp-gitops.git
+          targetRevision: main
+      revision: dd2273d0c7f52c885ae77ae13ce9376dffc0287a
+      status: Synced
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:24:44Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 411
+    labels:
+      managed-by: argocd-applicationset
+      team: team-beta
+    name: team-beta-eks-clusters
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters
+      uid: 8027ecf9-795c-4b57-8964-c73467bebf33
+    resourceVersion: "683368"
+    uid: 397cfc49-4c7e-4a8d-ab28-32244d4b262a
+  spec:
+    destination:
+      namespace: clusters-dev
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-dev
+    source:
+      directory:
+        exclude: '{.gitkeep,*-catalog.yaml}'
+        include: '*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/team-beta-infra
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-19T16:40:31Z"
+      message: 'Failed to load target state: failed to generate manifest for source
+        1 of 1: rpc error: code = Unknown desc = failed to list refs: authentication
+        required: Repository not found.'
+      type: ComparisonError
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-18T09:24:44Z"
+      status: Healthy
+    reconciledAt: "2026-06-20T17:11:25Z"
+    resourceHealthSource: appTree
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters-dev
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        source:
+          directory:
+            exclude: '{.gitkeep,*-catalog.yaml}'
+            include: '*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-beta-infra
+          targetRevision: main
+      revision: main
+      status: Unknown
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:20:58Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 420
+    labels:
+      managed-by: argocd-applicationset
+      team: team-beta
+    name: team-beta-eks-clusters-staging
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters-staging
+      uid: ac93dfb3-8395-44fc-8787-392539f34831
+    resourceVersion: "683855"
+    uid: 58ed25d9-4fba-4336-885e-5f32ee913fc6
+  spec:
+    destination:
+      namespace: clusters-staging
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-staging
+    source:
+      directory:
+        exclude: .gitkeep
+        include: '*-staging-*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/team-beta-infra
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: false
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-20T09:24:40Z"
+      message: 'Failed to load target state: failed to generate manifest for source
+        1 of 1: rpc error: code = Unknown desc = failed to list refs: authentication
+        required: Repository not found.'
+      type: ComparisonError
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-18T09:20:58Z"
+      status: Healthy
+    reconciledAt: "2026-06-20T17:13:13Z"
+    resourceHealthSource: appTree
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters-staging
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        source:
+          directory:
+            exclude: .gitkeep
+            include: '*-staging-*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-beta-infra
+          targetRevision: main
+      revision: main
+      status: Unknown
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:24:44Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 426
+    labels:
+      managed-by: argocd-applicationset
+      team: team-gamma
+    name: team-gamma-eks-clusters
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters
+      uid: 8027ecf9-795c-4b57-8964-c73467bebf33
+    resourceVersion: "683910"
+    uid: 27793eac-b3c6-4488-b934-4ef6651c670c
+  spec:
+    destination:
+      namespace: clusters-dev
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-dev
+    source:
+      directory:
+        exclude: '{.gitkeep,*-catalog.yaml}'
+        include: '*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/team-gamma-infra
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-20T09:57:49Z"
+      message: 'Failed to load target state: failed to generate manifest for source
+        1 of 1: rpc error: code = Unknown desc = failed to list refs: authentication
+        required: Repository not found.'
+      type: ComparisonError
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-18T09:24:44Z"
+      status: Healthy
+    reconciledAt: "2026-06-20T17:13:24Z"
+    resourceHealthSource: appTree
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters-dev
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        source:
+          directory:
+            exclude: '{.gitkeep,*-catalog.yaml}'
+            include: '*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-gamma-infra
+          targetRevision: main
+      revision: main
+      status: Unknown
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:20:58Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 427
+    labels:
+      managed-by: argocd-applicationset
+      team: team-gamma
+    name: team-gamma-eks-clusters-staging
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters-staging
+      uid: ac93dfb3-8395-44fc-8787-392539f34831
+    resourceVersion: "683912"
+    uid: 7c649c4b-a500-476a-a6b9-d34ae90ba2d5
+  spec:
+    destination:
+      namespace: clusters-staging
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-staging
+    source:
+      directory:
+        exclude: .gitkeep
+        include: '*-staging-*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/team-gamma-infra
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: false
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-20T01:48:16Z"
+      message: 'Failed to load target state: failed to generate manifest for source
+        1 of 1: rpc error: code = Unknown desc = failed to list refs: authentication
+        required: Repository not found.'
+      type: ComparisonError
+    controllerNamespace: argocd
+    health:
+      lastTransitionTime: "2026-06-18T09:20:58Z"
+      status: Healthy
+    reconciledAt: "2026-06-20T17:13:25Z"
+    resourceHealthSource: appTree
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination:
+          namespace: clusters-staging
+          server: https://kubernetes.default.svc
+        ignoreDifferences:
+        - group: platform.io
+          jsonPointers:
+          - /status
+          - /metadata/annotations/crossplane.io
+          kind: XEKSCluster
+        source:
+          directory:
+            exclude: .gitkeep
+            include: '*-staging-*.yaml'
+            recurse: true
+          path: eks
+          repoURL: https://github.com/nimishmehta8779/team-gamma-infra
+          targetRevision: main
+      revision: main
+      status: Unknown
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    creationTimestamp: "2026-06-18T09:24:44Z"
+    finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    generation: 3
+    labels:
+      managed-by: argocd-applicationset
+      team: team-yamma
+    name: team-yamma-eks-clusters
+    namespace: argocd
+    ownerReferences:
+    - apiVersion: argoproj.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ApplicationSet
+      name: team-eks-clusters
+      uid: 8027ecf9-795c-4b57-8964-c73467bebf33
+    resourceVersion: "293483"
+    uid: 9d575406-7460-4f7f-a623-d08c82abb8e2
+  spec:
+    destination:
+      namespace: clusters-dev
+      server: https://kubernetes.default.svc
+    ignoreDifferences:
+    - group: platform.io
+      jsonPointers:
+      - /status
+      - /metadata/annotations/crossplane.io
+      kind: XEKSCluster
+    project: idp-platform-dev
+    source:
+      directory:
+        exclude: '{.gitkeep,*-catalog.yaml}'
+        include: '*.yaml'
+        recurse: true
+      path: eks
+      repoURL: https://github.com/nimishmehta8779/https://github.com/nimishmehta8779/team-yamma-infra.git
+      targetRevision: main
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+      - CreateNamespace=true
+  status:
+    conditions:
+    - lastTransitionTime: "2026-06-18T09:24:44Z"
+      message: application repo https://github.com/nimishmehta8779/https://github.com/nimishmehta8779/team-yamma-infra.git
+        is not permitted in project 'idp-platform-dev'
+      type: InvalidSpecError
+    health:
+      lastTransitionTime: "2026-06-18T09:24:44Z"
+      status: Unknown
+    sourceHydrator: {}
+    summary: {}
+    sync:
+      comparedTo:
+        destination: {}
+        source:
+          repoURL: ""
+      status: Unknown
+kind: List
+metadata:
+  resourceVersion: ""
