@@ -184,6 +184,11 @@ spec:
                   bucket: "{{name}}-velero-backups"
                   config:
                     region: "{{metadata.annotations.idp.platform.io/aws-region}}"
+              volumeSnapshotLocation:
+                - name: default
+                  provider: aws
+                  config:
+                    region: "{{metadata.annotations.idp.platform.io/aws-region}}"
             serviceAccount:
               server:
                 annotations:
