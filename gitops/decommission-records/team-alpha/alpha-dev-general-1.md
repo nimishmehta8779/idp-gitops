@@ -8,7 +8,7 @@
 | Region | us-east-1 |
 | Instance type | t3.medium |
 | Node count | 2 |
-| Reason | Testing end to end decommision of EKS cluster |
+| Reason | Test decommission of EKS cluster  |
 | Date | ${{ now() }} |
 | Monthly saving | $300 |
 
