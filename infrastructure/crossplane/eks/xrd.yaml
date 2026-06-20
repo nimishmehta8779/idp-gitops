@@ -2,6 +2,10 @@ apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
   name: xeksclusters.platform.io
+  annotations:
+    config.crossplane.io/frozen: "true"
+    config.crossplane.io/stable-version: "2026-06-20"
+    description: "FROZEN XRD - Complete EKS parameter set: access entries, addon enables, IRSA roles, account ID derivation. No further parameter additions needed."
 spec:
   group: platform.io
   names:

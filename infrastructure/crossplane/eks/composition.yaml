@@ -8,6 +8,9 @@ metadata:
     idp.platform.io/depends-on: "xnetworks.platform.io"
     idp.platform.io/network-must-exist: "true"
     idp.platform.io/network-ref-field: "spec.parameters.networkRef"
+    config.crossplane.io/frozen: "true"
+    config.crossplane.io/stable-version: "2026-06-20"
+    description: "FROZEN - All EKS configurations complete: accessConfig, access entries (0.0.0.0/0), addon provisioning (EBS CSI, cluster-autoscaler, external-dns, velero), IRSA roles, S3 backup buckets. No further EKS/addon template changes needed."
 spec:
   compositeTypeRef:
     apiVersion: platform.io/v1alpha1

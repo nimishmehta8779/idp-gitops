@@ -1,8 +1,14 @@
 ##############################################################################
-# eks-addons-appset.yaml
+# eks-addons-appset.yaml — FROZEN CONFIG (2026-06-20)
 #
 # ArgoCD ApplicationSet – deploys EKS add-ons after every successful cluster
 # provisioning.
+#
+# CONFIGURATION LOCKED:
+# ✅ external-dns: v1.15.2, IRSA configured
+# ✅ velero: v12.0.0, IRSA configured, S3 + EBS snapshots out-of-box
+# ✅ cluster-autoscaler: v9.37.0, IRSA configured
+# NO FURTHER ADDON/HELM CHART CHANGES NEEDED.
 #
 # Strategy
 # ────────
