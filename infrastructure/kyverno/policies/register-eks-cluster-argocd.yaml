@@ -100,7 +100,7 @@ spec:
                         CLUSTER_NAME="{{ request.object.spec.parameters.clusterName }}"
                         REGION="{{ request.object.spec.parameters.region }}"
                         ENVIRONMENT="{{ request.object.spec.parameters.environment }}"
-                        ACCOUNT_ID="415703161648"
+                        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
                         IDP_ROLE="arn:aws:iam::${ACCOUNT_ID}:role/idp-dev-role"
 
                         echo "==> Assuming idp-dev-role..."
@@ -139,6 +139,31 @@ spec:
                         done
 
                         ADMIN_ROLE_ARN="{{ request.object.spec.parameters.adminRoleArn || '' }}"
+
+                        echo "==> Enabling EKS access entries (API_AND_CONFIG_MAP)..."
+                        CURRENT_AUTH_MODE=$(aws eks describe-cluster --name "${CLUSTER_NAME}" --region "${REGION}" \
+                          --query 'cluster.accessConfig.authenticationMode' --output text 2>/dev/null || echo "")
+                        if [ "${CURRENT_AUTH_MODE}" != "API_AND_CONFIG_MAP" ] && [ "${CURRENT_AUTH_MODE}" != "API" ]; then
+                          UPDATE_ID=$(aws eks update-cluster-config \
+                            --name "${CLUSTER_NAME}" \
+                            --region "${REGION}" \
+                            --access-config authenticationMode=API_AND_CONFIG_MAP \
+                            --query 'update.id' --output text 2>/dev/null || echo "")
+                          if [ -n "${UPDATE_ID}" ]; then
+                            echo "==> Waiting for auth-mode update ${UPDATE_ID} to complete..."
+                            for i in $(seq 1 30); do
+                              UPDATE_STATUS=$(aws eks describe-update --name "${CLUSTER_NAME}" --update-id "${UPDATE_ID}" \
+                                --region "${REGION}" --query 'update.status' --output text 2>/dev/null || echo "")
+                              if [ "${UPDATE_STATUS}" = "Successful" ] || [ "${UPDATE_STATUS}" = "Failed" ]; then
+                                echo "Auth-mode update status: ${UPDATE_STATUS}"
+                                break
+                              fi
+                              sleep 10
+                            done
+                          fi
+                        else
+                          echo "Auth mode already ${CURRENT_AUTH_MODE}, skipping update."
+                        fi
 
                         if [ -n "${ADMIN_ROLE_ARN}" ]; then
                           echo "==> Creating EKS Access Entry for ${ADMIN_ROLE_ARN}..."
@@ -249,7 +274,7 @@ spec:
                         # Fetch IRSA role ARNs from AWS directly (roles are named deterministically)
                         # This is more reliable than reading from XEKSCluster status since
                         # the status may not be populated yet when this job runs.
-                        ACCOUNT_ID_FOR_ARNS="415703161648"
+                        ACCOUNT_ID_FOR_ARNS="${ACCOUNT_ID}"
                         AUTOSCALER_ARN=$(aws iam get-role \
                           --role-name "idp-${ENVIRONMENT}-${CLUSTER_NAME}-autoscaler-role" \
                           --query 'Role.Arn' --output text 2>/dev/null || echo "")
