@@ -29,7 +29,6 @@ spec:
           type: string
           description: Select the owner group for the EKS cluster.
           enum:
-            - platform-team
             - team-alpha
             - team-beta
             - team-gamma
