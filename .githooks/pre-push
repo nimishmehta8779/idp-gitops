@@ -1,0 +1,19 @@
+#!/bin/sh
+# Lints GitHub Actions workflow files before allowing a push.
+# Catches invalid YAML / workflow syntax errors locally instead of
+# discovering them as a phantom failed run on GitHub.
+
+if [ -d .github/workflows ]; then
+  if command -v actionlint >/dev/null 2>&1; then
+    echo "Running actionlint on .github/workflows..."
+    actionlint -shellcheck= -ignore 'too old to run'
+    if [ $? -ne 0 ]; then
+      echo "actionlint found issues. Fix them before pushing (or run 'git push --no-verify' to bypass)."
+      exit 1
+    fi
+  else
+    echo "actionlint not installed, skipping workflow lint. Install with: brew install actionlint"
+  fi
+fi
+
+exit 0
