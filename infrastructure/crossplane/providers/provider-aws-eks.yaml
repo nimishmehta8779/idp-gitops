@@ -5,4 +5,4 @@ metadata:
   name: provider-aws-eks
   namespace: crossplane-system
 spec:
-  package: xpkg.upbound.io/upbound/provider-aws-eks:v0.47.0
+  package: xpkg.upbound.io/upbound/provider-aws-eks:v1.13.0
