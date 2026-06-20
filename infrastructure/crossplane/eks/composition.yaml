@@ -545,6 +545,9 @@ spec:
                 forProvider:
                   clusterName: ''
                   type: STANDARD
+                  accessScope:
+                    - type: ipv4
+                      source: 0.0.0.0/0
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
