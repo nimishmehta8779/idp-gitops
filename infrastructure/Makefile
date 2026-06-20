@@ -109,9 +109,10 @@ install-crossplane-providers:
 	kubectl apply -f crossplane/providers/provider-aws-eks.yaml
 	kubectl apply -f crossplane/providers/provider-aws-ec2.yaml
 	kubectl apply -f crossplane/providers/provider-aws-iam.yaml
+	kubectl apply -f crossplane/providers/provider-aws-s3.yaml
 	@echo "Waiting for providers to become healthy..."
 	# Wait loop for each provider
-	for prov in provider-aws-eks provider-aws-ec2 provider-aws-iam; do \
+	for prov in provider-aws-eks provider-aws-ec2 provider-aws-iam provider-aws-s3; do \
 	  echo "Checking $$prov..."; \
 	  kubectl wait --namespace crossplane-system --for=condition=Healthy provider $$prov --timeout=300s || echo "Warning: $$prov not healthy after timeout"; \
 	done
@@ -119,6 +120,14 @@ install-crossplane-providers:
 aws-creds:
 	@echo "Running AWS credentials setup script..."
 	bash scripts/setup-aws-creds.sh
+
+setup-platform-admins-role:
+	@echo "Setting up idp-platform-admins break-glass IAM role..."
+	bash scripts/setup-platform-admins-role.sh
+
+migrate-cluster-access:
+	@if [ -z "$(CLUSTER)" ]; then echo "Usage: make migrate-cluster-access CLUSTER=<cluster-name> [REGION=us-east-1]"; exit 1; fi
+	bash scripts/migrate-cluster-access.sh "$(CLUSTER)" "$(or $(REGION),us-east-1)"
 
 check-crossplane:
 	@echo "Crossplane providers status:"; \

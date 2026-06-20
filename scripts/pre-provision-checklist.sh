@@ -106,7 +106,7 @@ echo ""
 # 4. Crossplane Providers Check
 echo -e "${BOLD}[4/7] Checking Crossplane providers health...${NC}"
 PROVIDERS_OK=true
-for p in provider-aws-ec2 provider-aws-eks provider-aws-iam; do
+for p in provider-aws-ec2 provider-aws-eks provider-aws-iam provider-aws-s3; do
   STATUS=$(kubectl get provider "$p" -o jsonpath='{.status.conditions[?(@.type=="Healthy")].status}' 2>/dev/null || echo "False")
   if [ "$STATUS" = "True" ]; then
     echo -e "- $p: ${GREEN}Healthy${NC}"

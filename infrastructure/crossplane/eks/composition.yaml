@@ -47,6 +47,9 @@ spec:
               spec:
                 forProvider:
                   version: '1.34'
+                  accessConfig:
+                    - authenticationMode: "API"
+                      bootstrapClusterCreatorAdminPermissions: true
                   vpcConfig:
                     - subnetIdSelector:
                         matchLabels:
@@ -83,6 +86,16 @@ spec:
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
                 toFieldPath: status.oidcIssuer
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.accountId
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: 'arn:aws:eks:[^:]+:([0-9]+):'
+                        group: 1
               - type: PatchSet
                 patchSetName: mandatory-tags
               - type: PatchSet
@@ -522,6 +535,85 @@ spec:
                 patchSetName: provider-config-ref
               - type: PatchSet
                 patchSetName: regional-resource
+          - name: platform-admins-access-entry
+            readinessChecks:
+              - type: None
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: AccessEntry
+              spec:
+                forProvider:
+                  clusterName: ''
+                  type: STANDARD
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-platform-admins-access-entry'
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.clusterName
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.accountId
+                toFieldPath: spec.forProvider.principalArn
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: 'arn:aws:iam::%s:role/idp-platform-admins'
+                policy:
+                  fromFieldPath: Required
+              - type: PatchSet
+                patchSetName: mandatory-tags
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+              - type: PatchSet
+                patchSetName: regional-resource
+          - name: platform-admins-access-policy-association
+            readinessChecks:
+              - type: None
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: AccessPolicyAssociation
+              spec:
+                forProvider:
+                  clusterName: ''
+                  policyArn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+                  accessScope:
+                    - type: cluster
+            patches:
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: '%s-platform-admins-access-policy'
+              - fromFieldPath: spec.parameters.clusterName
+                toFieldPath: spec.forProvider.clusterName
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.accountId
+                toFieldPath: spec.forProvider.principalArn
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: 'arn:aws:iam::%s:role/idp-platform-admins'
+                policy:
+                  fromFieldPath: Required
+              - type: PatchSet
+                patchSetName: deletion-policy
+              - type: PatchSet
+                patchSetName: provider-config-ref
+              - type: PatchSet
+                patchSetName: regional-resource
         patchSets:
           - name: regional-resource
             patches:
@@ -811,6 +903,60 @@ spec:
             {{- end }}
 
             {{- if and $p.enableVelero $ready }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: Bucket
+            metadata:
+              name: {{ $cluster }}-velero-backups
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                region: {{ $p.region }}
+                tags:
+                  managed-by: crossplane
+                  provisioned-by: backstage-idp
+                  environment: {{ $env }}
+                  team: {{ $p.teamName }}
+                  cluster-name: {{ $cluster }}
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: BucketServerSideEncryptionConfiguration
+            metadata:
+              name: {{ $cluster }}-velero-backups-sse
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket-sse
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                region: {{ $p.region }}
+                bucket: {{ $cluster }}-velero-backups
+                rule:
+                  - applyServerSideEncryptionByDefault:
+                      - sseAlgorithm: AES256
+            ---
+            apiVersion: s3.aws.upbound.io/v1beta1
+            kind: BucketPublicAccessBlock
+            metadata:
+              name: {{ $cluster }}-velero-backups-pab
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: velero-backups-bucket-pab
+            spec:
+              providerConfigRef:
+                name: aws-{{ $env }}
+              deletionPolicy: {{ if eq $env "dev" }}Delete{{ else }}Orphan{{ end }}
+              forProvider:
+                region: {{ $p.region }}
+                bucket: {{ $cluster }}-velero-backups
+                blockPublicAcls: true
+                blockPublicPolicy: true
+                ignorePublicAcls: true
+                restrictPublicBuckets: true
             ---
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role

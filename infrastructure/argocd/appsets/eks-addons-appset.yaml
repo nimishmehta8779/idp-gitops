@@ -113,7 +113,7 @@ spec:
       source:
         chart: external-dns
         repoURL: https://kubernetes-sigs.github.io/external-dns/
-        targetRevision: "1.15.0"
+        targetRevision: "1.15.2"
         helm:
           releaseName: external-dns
           values: |
@@ -171,10 +171,12 @@ spec:
       source:
         chart: velero
         repoURL: https://vmware-tanzu.github.io/helm-charts
-        targetRevision: "7.2.1"
+        targetRevision: "12.0.0"
         helm:
           releaseName: velero
           values: |
+            credentials:
+              useSecret: false
             configuration:
               backupStorageLocation:
                 - name: default
@@ -188,7 +190,7 @@ spec:
                   eks.amazonaws.com/role-arn: "{{metadata.annotations.idp.platform.io/velero-role-arn}}"
             initContainers:
               - name: velero-plugin-for-aws
-                image: velero/velero-plugin-for-aws:v1.10.0
+                image: velero/velero-plugin-for-aws:v1.13.1
                 volumeMounts:
                   - mountPath: /target
                     name: plugins

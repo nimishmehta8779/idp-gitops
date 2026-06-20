@@ -85,6 +85,9 @@ spec:
                 oidcProviderArn:
                   type: string
                   description: ARN of the OIDC provider created for the cluster
+                accountId:
+                  type: string
+                  description: AWS account ID derived from the EKS cluster's own ARN
                 autoscalerRoleArn:
                   type: string
                   description: IAM role ARN for cluster-autoscaler IRSA

@@ -8,6 +8,30 @@
       "Resource": "*"
     },
     {
+      "Sid": "AllowS3Operations",
+      "Effect": "Allow",
+      "Action": ["s3:*"],
+      "Resource": [
+        "arn:aws:s3:::*-velero-backups",
+        "arn:aws:s3:::*-velero-backups/*"
+      ]
+    },
+    {
+      "Sid": "AllowEKSAccessEntryOperations",
+      "Effect": "Allow",
+      "Action": [
+        "eks:CreateAccessEntry",
+        "eks:DeleteAccessEntry",
+        "eks:DescribeAccessEntry",
+        "eks:ListAccessEntries",
+        "eks:UpdateAccessEntry",
+        "eks:AssociateAccessPolicy",
+        "eks:DisassociateAccessPolicy",
+        "eks:ListAssociatedAccessPolicies"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "AllowEC2Operations",
       "Effect": "Allow",
       "Action": ["ec2:*"],
