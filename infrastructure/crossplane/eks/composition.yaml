@@ -548,9 +548,6 @@ spec:
                 forProvider:
                   clusterName: ''
                   type: STANDARD
-                  accessScope:
-                    - type: ipv4
-                      source: 0.0.0.0/0
                   tags:
                     managed-by: crossplane
                     provisioned-by: backstage-idp
@@ -593,7 +590,7 @@ spec:
                   clusterName: ''
                   policyArn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
                   accessScope:
-                    - type: cluster
+                    type: cluster
             patches:
               - fromFieldPath: spec.parameters.clusterName
                 toFieldPath: metadata.name
