@@ -2,17 +2,17 @@ apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: team-gamma
-  title: Gamma Dev Team
+  title: Gamma Team
   annotations:
     backstage.io/source-location: url:https://github.com/nimishmehta8779/team-gamma-infra
-    idp.platform.io/cost-center: "401"
+    idp.platform.io/cost-center: "CC-GAMMA"
     idp.platform.io/primary-region: "us-east-1"
     idp.platform.io/onboarded-at: "${{ now() }}"
 spec:
   type: team
   profile:
-    displayName: Gamma Dev Team
-    email: teama.gemma@gmail.com
+    displayName: Gamma Team
+    email: team-gamma@platform.io
   parent: engineering
   members:
     - nimishmehta8779
