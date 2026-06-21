@@ -63,6 +63,7 @@ services:
       KUBERNETES_AGENT_ENABLED: "true"
       KUBECONFIG_BASE64: ${KUBECONFIG_BASE64}
       JIRA_AGENT_ENABLED: "false"
+      ENABLE_STREAMING: "false"
     volumes:
       - ./backstage/secrets:/app/secrets:ro
     env_file:
