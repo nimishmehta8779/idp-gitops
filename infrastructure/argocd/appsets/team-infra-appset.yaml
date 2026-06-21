@@ -5,25 +5,27 @@ metadata:
   namespace: argocd
 spec:
   generators:
-    - scmProvider:
-        github:
-          organization: nimishmehta8779
-          tokenRef:
-            secretName: org-github-creds
-            key: password
-        filters:
-          - repositoryMatch: '^team-.*-infra$'
+    - list:
+        elements:
+          - repo: team-alpha-infra
+            team: team-alpha
+          - repo: team-beta-infra
+            team: team-beta
+          - repo: team-gamma-infra
+            team: team-gamma
+          - repo: team-yamma-infra
+            team: team-yamma
 
   template:
     metadata:
-      name: '{{repository | replace "-infra" ""}}-eks-clusters'
+      name: '{{team}}-eks-clusters'
       labels:
-        team: '{{repository | replace "-infra" ""}}'
+        team: '{{team}}'
         managed-by: argocd-applicationset
     spec:
       project: idp-platform-dev
       source:
-        repoURL: '{{url}}'
+        repoURL: 'https://github.com/nimishmehta8779/{{repo}}'
         targetRevision: main
         path: eks
         directory:
