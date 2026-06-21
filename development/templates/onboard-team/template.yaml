@@ -98,19 +98,6 @@ spec:
         repoVisibility: private
         description: "Infrastructure claims for ${{ parameters.displayName }}"
 
-    # 5. Protect main branch
-    - id: protect_main_branch
-      name: Apply Branch Protection to Main Branch
-      action: github:branch-protection:create
-      input:
-        repoUrl: github.com?owner=nimishmehta8779&repo=${{ parameters.teamName }}-infra
-        branch: main
-        enforceAdmins: false
-        requiredApprovingReviewCount: 1
-        requireCodeOwnerReviews: true
-        requiredStatusCheckContexts:
-          - validate-claims
-
     # 7. Register Group catalog-info.yaml in Backstage
     - id: register_catalog
       name: Register in Backstage Catalog
