@@ -5,6 +5,7 @@ metadata:
   title: ${{ values.displayName }}
   annotations:
     backstage.io/source-location: url:https://github.com/nimishmehta8779/${{ values.teamName }}-infra
+    backstage.io/techdocs-ref: dir:.
     idp.platform.io/cost-center: "${{ values.costCenter }}"
     idp.platform.io/primary-region: "${{ values.primaryRegion }}"
     idp.platform.io/onboarded-at: "${{ values.currentDate }}"

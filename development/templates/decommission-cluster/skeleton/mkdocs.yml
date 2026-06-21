@@ -1,0 +1,5 @@
+site_name: EKS Cluster ${{ values.clusterName }} Decommission Record
+plugins:
+  - techdocs-core
+nav:
+  - Home: index.md
