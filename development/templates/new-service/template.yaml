@@ -33,6 +33,7 @@ spec:
             - platform-team
             - team-alpha
             - team-beta
+            - team-gamma
         language:
           title: Programming Language
           type: string

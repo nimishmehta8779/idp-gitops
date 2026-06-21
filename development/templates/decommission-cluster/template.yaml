@@ -30,6 +30,7 @@ spec:
             - platform-team
             - team-alpha
             - team-beta
+            - team-gamma
         clusterName:
           title: Cluster Name
           type: string
