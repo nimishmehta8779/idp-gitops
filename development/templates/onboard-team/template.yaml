@@ -111,14 +111,6 @@ spec:
         requiredStatusCheckContexts:
           - validate-claims
 
-    # 6. Register team repository in central ArgoCD ApplicationSet
-    - id: register_appset
-      name: Register in central ArgoCD ApplicationSet
-      action: idp:gitops:register-team-appset
-      input:
-        teamName: ${{ parameters.teamName }}
-        repoUrl: "https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra.git"
-
     # 7. Register Group catalog-info.yaml in Backstage
     - id: register_catalog
       name: Register in Backstage Catalog
