@@ -135,7 +135,7 @@ spec:
       name: Register in Catalog
       action: idp:catalog:register
       input:
-        catalogInfoUrl: ${{ steps.publish.output.repoContentsUrl }}/catalog-info.yaml
+        catalogInfoUrl: ${{ steps.publish.output.remoteUrl }}/blob/main/catalog-info.yaml
 
 
   output:
