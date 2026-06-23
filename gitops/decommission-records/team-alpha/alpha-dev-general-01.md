@@ -8,7 +8,7 @@
 | Region | us-east-1 |
 | Instance type | t3.medium |
 | Node count | 2 |
-| Reason | alpha-dev-general-01 decommissioning of the eks cluster  |
+| Reason | alpha-dev-general-01 decommission |
 | Date | ${{ now() }} |
 | Monthly saving | $300 |
 
