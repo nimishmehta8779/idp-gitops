@@ -11,8 +11,8 @@ git status --short
 echo ""
 
 echo "=== Backstage runtime: file list diff vs frozen snapshot ==="
-diff <(tar -tzf "$LATEST_FROZEN" | sort) \
-     <(cd infrastructure/backstage && find . -type f 2>/dev/null | sed 's|^\./|infrastructure/backstage/|' | sort) \
+diff <(tar -tzf "$LATEST_FROZEN" | grep -v '/$' | grep -v 'node_modules/' | grep -v '\.git/' | grep -v 'dist-types/' | grep -v '\.yarn/' | sort) \
+     <(cd infrastructure/backstage && find . -type f ! -path '*/node_modules/*' ! -path '*/.git/*' ! -path '*/dist-types/*' ! -path '*/.yarn/*' 2>/dev/null | sed 's|^\./|infrastructure/backstage/|' | sort) \
   && echo "✅ No files added/removed in infrastructure/backstage since freeze" \
   || echo "⚠️  File list differs — review above output"
 echo ""
@@ -20,7 +20,7 @@ echo ""
 echo "=== Specific critical files: content diff ==="
 for f in app-config.yaml packages/backend/src/plugins/permission-policy.ts; do
   echo "--- $f ---"
-  diff <(tar -xzf "$LATEST_FROZEN" "infrastructure/backstage/$f" -O 2>/dev/null) \
+  diff <(tar -xOzf "$LATEST_FROZEN" "infrastructure/backstage/$f" 2>/dev/null) \
        "infrastructure/backstage/$f" \
     && echo "✅ unchanged" || echo "⚠️  CHANGED — review diff above"
 done
