@@ -33,3 +33,5 @@
 - [x] Updated decommission-cluster template validation to check platform-team override and cluster ownership.
 - [x] Enriched catalog with Component/Resource interactive navigable relations graph cards with a max depth of 2.
 - [x] Integrated MultiEntityPicker into new-service and eks-cluster templates to allow optional multi-select dependencies and APIs.
+- [x] Configured and verified CAIPE AWS mock script to dynamically query and route real EKS cluster status (alpha-dev-general-10) vs local kind clusters.
+
