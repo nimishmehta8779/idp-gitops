@@ -46,3 +46,40 @@ authentication; anything else falls back to the local kind cluster's
 kubeconfig. This check currently only sees clusters visible to
 whatever single credential set is active in the container — it is
 NOT yet account-aware (see Dormant section above).
+
+## Resolved: False-Positive Cluster Status for Decommissioned Clusters
+**Found & fixed:** 2026-06-24. aws-mock previously hardcoded
+"alpha-dev-general-01" as a permanently simulated-ACTIVE cluster,
+causing false ACTIVE/DEGRADED reports for this decommissioned
+cluster. Fixed by removing all hardcoded cluster-name exceptions —
+mock now always checks real AWS first; ResourceNotFoundException
+passes through honestly with no local fallback substitution.
+**Verified:** Direct grep confirms zero hardcoded names remain.
+Conversational test confirms honest "not found" response.
+
+## New: Native Full-Page CAIPE UI
+**Added:** 2026-06-24. Replaced third-party
+@backstage-community/plugin-agent-forge ChatAssistantPage (hardcoded
+floating-overlay popup, zero configurable props, no embed mode) with
+a custom full-page component at
+packages/app/src/components/agent-forge/, using Backstage's native
+<Page>/<Header>/<Content> primitives and theme system. Talks directly
+to CAIPE's A2A JSON-RPC endpoint. Renders final_result as markdown,
+tool_notification events as status lines, and UserInputMetaData as
+real input forms.
+
+## Open Items (Known, Not Blocking)
+- Real-cluster query path was validated extensively earlier on
+  2026-06-24 (multiple independent kubectl cross-checks against
+  alpha-dev-general-10) but NOT re-confirmed after the false-positive
+  fix above, since no live cluster was available at fix time. The
+  fix only touched the not-found branch of aws-mock; the real-cluster
+  passthrough branch was not modified. Low risk, but worth a fresh
+  end-to-end check next time a real cluster is provisioned.
+- Orchestrator occasionally routes cluster-status questions to the
+  Komodor agent (which has no configured credentials) instead of the
+  AWS agent for certain phrasings, producing a confusing "I don't
+  have a tool for that" response instead of the AWS agent's cleaner
+  not-found/clarification flow. Workaround: explicitly say "use the
+  AWS agent" in the query. Not yet root-caused.
+
