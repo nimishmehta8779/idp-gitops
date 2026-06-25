@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  caipe:
+    environment:
+      KUBECONFIG: /app/secrets/kubeconfig.yaml
+      AWS_CLI_ALLOW_WRITE: "true"
+      # Route ArgoCD calls to HTTPS and bypass self-signed SSL verification
+      ARGOCD_URL: https://backstage-dev-control-plane:30080
+      ARGOCD_API_URL: https://backstage-dev-control-plane:30080
+      VERIFY_SSL: "false"
+      # Prepend the mock AWS CLI directory to PATH to override default aws command
+      PATH: /usr/local/aws-mock:/app/.venv/bin:/home/appuser/go/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    volumes:
+      - ~/.aws:/home/appuser/.aws:ro
+      - ./caipe/aws-mock:/usr/local/aws-mock/aws:ro
