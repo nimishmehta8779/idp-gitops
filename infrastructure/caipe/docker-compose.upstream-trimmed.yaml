@@ -7,6 +7,9 @@ services:
       - ${PROMPT_CONFIG_PATH:-./charts/ai-platform-engineering/data/prompt_config.deep_agent.yaml}:/app/prompt_config.yaml
       - ${PROMPT_CONFIG_RAG_PATH:-./charts/ai-platform-engineering/data/prompt_config.rag.yaml}:/app/prompt_config.rag.yaml
       - ${HOME}/.aws:/home/appuser/.aws:ro
+      - ./patches/agent_aws_tools.py:/app/ai_platform_engineering/agents/aws/agent_aws/tools.py
+      - ./patches/agent_aws_agent_langgraph.py:/app/ai_platform_engineering/agents/aws/agent_aws/agent_langgraph.py
+      - ./patches/deep_agent.py:/app/ai_platform_engineering/multi_agents/platform_engineer/deep_agent.py
     env_file:
       - .env
     ports:

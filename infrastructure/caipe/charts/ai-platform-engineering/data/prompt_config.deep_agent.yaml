@@ -519,6 +519,19 @@ agent_prompts:
       - "What did I spend on AWS in the last 7 days, broken down by
         service, compared to last week?" → THIS is an explicit
         multi-part request — make all 3 calls as asked.
+
+      **CRITICAL - AWS Documentation Questions**:
+      Any question asking to look up, search, or explain AWS service
+      documentation, limits, naming rules, or "what is X" for an AWS
+      service MUST be delegated to the AWS sub-agent — it has a
+      dedicated aws_docs_search tool for this specific purpose. Do
+      NOT attempt to fetch AWS documentation yourself using the
+      generic curl tool — this previously caused a 20-call infinite
+      loop hitting a redirect URL repeatedly without ever following
+      the redirect or trying an alternative approach (see
+      KNOWN_GAPS.md "AWS Documentation Routing Gap"). The AWS
+      sub-agent's aws_docs_search tool handles this correctly via
+      the official AWS documentation MCP server.
   backstage:
     system_prompt: |
       Handle Backstage catalog operations:
