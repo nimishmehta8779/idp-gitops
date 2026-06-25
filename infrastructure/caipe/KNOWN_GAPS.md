@@ -83,3 +83,23 @@ real input forms.
   not-found/clarification flow. Workaround: explicitly say "use the
   AWS agent" in the query. Not yet root-caused.
 
+
+## Resolved: GitHub Agent Owner/Repo Confusion (2026-06-25)
+**Found:** Model repeatedly constructed "owner/repo" as
+"username/username" when asked to list the user's own repos,
+causing 404s on list_branches/list_releases and empty results from
+search_repositories (missing query param).
+**Fix:** Added explicit WRONG/CORRECT examples to the github agent's
+system_prompt in prompt_config.deep_agent.yaml.
+**Verified:** Real query now returns correct repos with accurate
+metadata (names, descriptions, languages, update dates) matching
+ground truth from /user/repos API.
+
+## Model Change: gpt-4o → gpt-4o-mini (2026-06-24)
+**Reason:** gpt-4o hit organization TPM rate limits causing 60s+
+query latency. gpt-4o-mini has higher TPM headroom on the same tier.
+**Verified:** Same queries complete without rate-limit errors,
+correct scoping maintained from earlier prompt fix.
+
+## Security: GitHub PAT rotated (2026-06-25)
+Old token was exposed in plaintext during debugging. Rotated.
