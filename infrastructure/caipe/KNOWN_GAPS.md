@@ -142,9 +142,10 @@ a `curl` fallback). Memory footprint unchanged (~310-340MB).
 remote-only feature. (A separate "fully managed EKS MCP Server" is
 in AWS preview and is a different, console-managed thing — not what
 was investigated here.) Its `search_eks_troubleshoot_guide` tool
-exposes a knowledge base of runbooks bundled into the package itself
-(built from AWS's own operational experience), not an external
-Bedrock KB requiring setup.
+exposes a knowledge base of runbooks. **[CORRECTED below — see 'Added:
+EKS Troubleshoot Guide MCP Tool' entry: this is actually a LIVE
+AWS-managed API call, not a bundled local KB, and the beta endpoint
+currently returns HTTP 500.]**
 **Recommendation:** Go, not defer — same low-effort integration path
 as the docs server above. Not implemented in this session (kept
 scope to the AWS Documentation MCP server); follow the same patch
@@ -187,3 +188,219 @@ the AWS sub-agent's `aws_docs_search` tool instead of using `curl`.
 - Regression check: "List all EKS clusters in my account" still
   correctly uses `aws_cli_execute`, not misrouted to
   `aws_docs_search`.
+
+## Added: EKS Troubleshoot Guide MCP Tool for AWS Agent (2026-06-25)
+**CURRENT STATUS (as of 2026-06-25): NOT FUNCTIONAL.** Tool is correctly
+built, correctly routed, fails loudly and honestly as designed — but
+returns zero real content because AWS's own beta backend
+(`mcpserver.eks-beta.us-west-2.api.aws`) currently returns HTTP 500.
+Re-test when AWS's beta service is confirmed healthy.
+
+**What:** Added `search_eks_troubleshoot_guide` tool to the AWS
+subagent, backed by the official `awslabs.eks-mcp-server`, as a
+sibling to the `aws_docs_search` tool added earlier today. Lets the
+agent consult AWS's own EKS troubleshooting runbooks (CrashLoopBackOff,
+ImagePullBackOff, node group failures, etc.) instead of generic
+ad-hoc diagnosis.
+**Correction to earlier investigation note:** The "Investigated"
+entry above stated the knowledge base was "bundled into the package
+itself ... not an external Bedrock KB requiring setup." Reading the
+installed package source (`eks_kb_handler.py`) during implementation
+showed this was wrong — the tool's own docstring requires "Internet
+connectivity to access the EKS Knowledge Base API" and IAM permission
+`eks-mcpserver:QueryKnowledgeBase`. It is a live AWS-side managed API
+call (`https://mcpserver.eks-beta.us-west-2.api.aws/`), not a static
+bundled KB.
+**How:** Same pattern as `aws_docs_search` — `EKSTroubleshootTool` in
+`patches/agent_aws_tools.py` spawns `awslabs.eks-mcp-server` as a
+short-lived stdio subprocess per call via
+`uv run --with awslabs.eks-mcp-server awslabs.eks-mcp-server
+--no-allow-write --no-allow-sensitive-data-access`. Wired into both
+`patches/deep_agent.py` (all-in-one mode, actually used) and
+`patches/agent_aws_agent_langgraph.py` (multi-node mode, kept in
+sync), via `get_eks_troubleshoot_tool()`.
+**Proactive routing rule (added in the same change, not as a
+follow-up fix):** Added a "CRITICAL - EKS/Kubernetes Troubleshooting
+Questions" rule to the `agent_prompts.aws` block in
+`prompt_config.deep_agent.yaml`, instructing the supervisor to
+delegate any "why is this failing/unhealthy" EKS/Kubernetes question
+to the AWS sub-agent so it checks `search_eks_troubleshoot_guide`
+before ad-hoc kubectl diagnosis — applying the lesson from the
+AWS-docs routing-gap fix above before shipping, not after a failure
+was observed.
+**Verified — explicit delegation phrasing:** "Delegate to the AWS
+sub-agent: search the EKS troubleshoot guide once for guidance on a
+pod stuck in CrashLoopBackOff. Do not retry." → fired
+`search_eks_troubleshoot_guide` exactly once.
+**Verified — natural/unprompted phrasing (the exact test that caught
+the curl-loop bug last time; not skipped):** "Why is my pod stuck in
+CrashLoopBackOff?" → fired `search_eks_troubleshoot_guide` directly,
+with zero generic-tool fallback. Confirms the proactive routing rule
+worked without needing a reactive fix.
+**Finding — external beta endpoint returns 500:** Both verification
+calls above received `❌ Error searching EKS troubleshoot guide: ...`
+from the live AWS API. Isolated root cause with a standalone
+diagnostic script run directly inside the container (bypassing the
+LLM/agent stack) calling the MCP tool via the stdio client directly:
+the AWS-managed beta endpoint itself
+(`https://mcpserver.eks-beta.us-west-2.api.aws/`) returns a genuine
+HTTP 500 Internal Server Error, reproducible independent of
+`AWS_REGION`/`AWS_DEFAULT_REGION` (`.env` has `us-east-1`; the beta
+endpoint URL is hardcoded `us-west-2` regardless). This is an external
+AWS-side service issue (the EKS MCP Server's hosted KB API is in
+beta), not a defect in our integration, IAM permissions, or prompt
+wiring — same "fail loudly, not silently" pattern as other unconfigured
+gaps in this file: the tool surfaces the real error rather than
+fabricating guide content, and the supervisor correctly explained the
+failure to the user and offered clearly-labeled general (non-guide)
+troubleshooting steps instead of inventing guide content.
+**Regression checks:**
+- `aws_cli_execute` ("List all EKS clusters in my account") — still
+  correct, single tool call.
+- `eks_kubectl_execute` — see "Known Gap: AWS Docs Routing
+  Non-Determinism" entry below for the full regression matrix, and
+  the kubectl result specifically.
+- `aws_docs_search` — **not fully deterministic.** See dedicated entry
+  below.
+**Memory footprint:** unchanged from prior phases (~310-340MB,
+`docker stats --no-stream caipe-supervisor`), well within the 32GB
+budget.
+
+## Known Gap: AWS Documentation Routing Non-Determinism (2026-06-25)
+**Symptom:** The supervisor does not consistently delegate AWS
+documentation lookups to the AWS sub-agent's `aws_docs_search` tool.
+Re-running identical documentation queries across sessions:
+- 2026-06-25 (4 runs of "Search AWS documentation for S3 bucket naming
+  rules"): 2/4 correctly fired `aws_docs_search`, 2/4 fell back to
+  supervisor's `curl` tool (single call, returned correct content).
+- 2026-06-26 (2 runs of "What is Amazon S3 Vectors?"): both misrouted
+  to `curl`, both triggered additional `read_file` calls against
+  `/large_tool_results/call_XXX` paths.
+**What the read_file calls actually are (investigated 2026-06-26):**
+The `read_file` calls are NOT "searching local knowledge" or a separate
+issue. They are a direct consequence of the curl fallback: when curl
+fetches a large AWS HTML page, the `tool_result_to_file` utility writes
+the output to an in-memory filesystem path like
+`/large_tool_results/call_GOcaUTeA8oI78CJjGqgv9MmA`. The model then
+calls `read_file` repeatedly to paginate through the HTML looking for
+the requested information — which it never finds on a product listing
+page. Same root cause (non-delegation), different downstream symptom
+(pagination spiral instead of single clean curl response).
+**Severity:** COST/LATENCY/TOKEN gap, not a correctness gap. The 20×
+curl loop from the original routing bug has not recurred. However the
+pagination spiral is a meaningfully worse fallback than the 2/4 single-
+curl cases: more model calls, more tokens, and no useful output since
+HTML product pages don't contain the information the model is seeking.
+**Root cause:** The `agent_prompts.aws` routing rule triggers delegation
+for explicit "search AWS documentation" phrasing but not for "What is
+X?" questions, which the supervisor LLM interprets as general knowledge.
+**Fix attempts (2026-06-26) — both failed, reverted:**
+1. Advisory guard text ("Never make more than one read_file call
+   against a single large curl result") — text reached the model in
+   every request payload but was ignored. Advisory prompts cannot
+   enforce hard stops once the model is in a paginating loop.
+2. Enumerated "What is X?" routing rule replacing the original
+   delegation instruction — caused complete regression: "Search AWS
+   documentation for..." hit the 20-call curl loop again, and "What
+   is X?" queries started routing to the Hello World self-service
+   workflow. Both worse than the original 2/4 delegation baseline.
+   Reverted to original text.
+**Actual fix path:** Requires code-level enforcement, not prompting:
+- Option A: Tool wrapper for `tool_result_to_file` / `read_file` that
+  tracks calls per large_tool_results path and errors after N=1,
+  forcing the model to try a different approach.
+- Option B: Fix the routing by preventing curl from being invoked at
+  all — requires the routing rule to fire reliably for "What is X?"
+  phrasing, which is a separate problem with the Hello World workflow
+  interference (see below).
+**Do not attempt prompt-only fixes for the read_file pagination
+spiral.** Two attempts failed; escalate to code-level enforcement
+before trying again.
+
+## Known Gap: "What is X?" → Hello World Self-Service Workflow Misroute (2026-06-26)
+**Symptom:** Queries phrased as "What is [AWS service]?" are routed to
+the Hello World self-service workflow's user_input subagent ("Collect
+greeting details") instead of the AWS sub-agent. Reproducible across
+multiple clean requests.
+**Root cause:** `tool_choice: "required"` in the OpenAI request forces
+the model to always call a tool. The system prompt's MANDATORY BEHAVIOR
+section says "when a user's request matches one of these workflows, call
+invoke_self_service_task immediately." The only configured workflow is
+"Hello World." When the model interprets "What is X?" as potentially
+matching a self-service workflow (it shouldn't, but gpt-4o-mini at
+temperature 0 is inconsistent), it picks the only available option.
+**Not a prompt regression** — this misroute was present before any
+changes in this session (it was a named "pending item" in the
+investigation spec before this fix attempt began).
+**Fix path:** Either remove the Hello World stub workflow from
+task_config.yaml (it exists only for local dev/testing and actively
+confuses routing), or add an explicit SCOPE comment to the MANDATORY
+BEHAVIOR section stating that general knowledge questions ("What is X?")
+never match self-service workflows and should not invoke
+invoke_self_service_task.
+
+## Resolved: AWS Documentation Routing Non-Determinism (2026-06-26)
+**Previous symptom:** `aws_docs_search` fired 2/4 runs with prompt-based routing;
+remaining runs fell back to the supervisor's `curl` tool, triggering
+`read_file` pagination spirals on large HTML responses. Two prompt-fix
+attempts both failed or caused regressions and were reverted.
+**Fix (2026-06-26):** Deterministic code-level pre-router added to
+`agent_executor.py` (`AIPlatformEngineerA2AExecutor.execute()`). A
+module-level `_matches_aws_docs_pattern()` function checks the incoming
+query against a narrow regex list before the LangGraph graph is invoked.
+On match, `AWSDocsSearchTool()._arun(query)` is called directly and its
+result is returned via the same `_send_artifact` + `_send_completion`
+path as the normal graph exit — the LLM never runs for these queries.
+Prompt-based routing is kept as fallback for phrasings the regex doesn't
+catch.
+**Safety guards verified:**
+- `resume_cmd is None` — skips mid-flow HITL resume messages
+- `_task_state != TaskState.input_required` — skips follow-up messages
+  while a clarification form is pending (confirmed via `task_manager.py`
+  source: framework persists `input_required` to `task_store` via
+  `save_task_event()` on every `final=True` status event, so
+  `context.current_task.status.state` is authoritative for the next call)
+- Graceful degradation: tool failure falls through to the graph
+**Verified (2026-06-26):**
+- 4/4 runs of "What is Amazon S3 Vectors?" routed via pre-router,
+  zero LLM graph invocations (log: `Pre-router: matched AWS docs pattern`)
+- Multi-turn regression: follow-up message "aws-docs-test-cluster"
+  (contains "aws" substring) sent while task in `input_required` state
+  → pre-router correctly skipped, graph ran normally (tool_notification +
+  final_result in response, log shows `Starting stream with query:
+  aws-docs-test-cluster` bypassing pre-router)
+**Files changed:**
+- `infrastructure/caipe/patches/agent_executor.py` (new bind-mount)
+- `infrastructure/caipe/docker-compose.upstream-trimmed.yaml` (new volume entry)
+
+**NEW GAP: aws_docs_search MCP tool cold-call latency / timeout rate**
+**Symptom:** 2/4 pre-routed calls returned `❌ AWS documentation search
+timed out after 30s`. The `uv run` process itself is warm (0.19s import,
+0.38s subprocess launch — uv cache at `/home/appuser/.cache/uv` is
+populated and survives within a container run). The 30s timeout is
+consumed entirely by the HTTP network round-trip from the MCP server to
+`docs.aws.amazon.com`. Timed directly inside the container: a full
+`stdio_client` → `initialize()` → `call_tool()` cycle takes **51 seconds**
+end-to-end on a slow network path.
+**Root cause:** `AWS_DOCS_MCP_TIMEOUT = 30` (in `patches/agent_aws_tools.py`,
+from env `AWS_DOCS_MCP_MAX_EXECUTION_TIME`) is too short for the actual
+AWS docs search API latency, which is 30–51s on this network. This is
+NOT a uv package resolution issue.
+**Fix path:** Raise `AWS_DOCS_MCP_MAX_EXECUTION_TIME` in `.env` to 60–90s,
+or set it per-query in the tool. Note: this will extend the user-visible
+response time for pre-routed docs queries accordingly. A connection-reuse
+or persistent sidecar approach (pre-warming the MCP server process) would
+eliminate the per-call startup overhead but requires a more significant
+refactor.
+**Do not investigate uv cache invalidation** — confirmed not the cause.
+
+## Regression Close-Out: eks_kubectl_execute (2026-06-26)
+**Test:** "Run kubectl get nodes on EKS cluster alpha-dev-general-10"
+(clean run, no prior context, no Ctrl-C)
+**Result:** PENDING — query submitted 2026-06-26, timed out waiting for
+response during this edit session (EKS kubeconfig update is slow on
+cold auth). No regression signal observed; the tool initialization log
+confirms `eks_kubectl_execute` registered successfully at container
+startup. Recommend re-running this test independently with a longer
+wait budget before treating `eks_kubectl_execute` regression as
+confirmed-clean.

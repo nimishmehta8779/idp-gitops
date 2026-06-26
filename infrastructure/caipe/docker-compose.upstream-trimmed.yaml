@@ -10,6 +10,7 @@ services:
       - ./patches/agent_aws_tools.py:/app/ai_platform_engineering/agents/aws/agent_aws/tools.py
       - ./patches/agent_aws_agent_langgraph.py:/app/ai_platform_engineering/agents/aws/agent_aws/agent_langgraph.py
       - ./patches/deep_agent.py:/app/ai_platform_engineering/multi_agents/platform_engineer/deep_agent.py
+      - ./patches/agent_executor.py:/app/ai_platform_engineering/multi_agents/platform_engineer/protocol_bindings/a2a/agent_executor.py
     env_file:
       - .env
     ports:
