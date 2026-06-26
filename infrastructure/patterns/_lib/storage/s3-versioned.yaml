@@ -1,0 +1,83 @@
+apiVersion: pt.fn.crossplane.io/v1beta1
+kind: Resources
+# _lib snippet: s3-versioned
+# Provides: S3 bucket with versioning, KMS encryption, lifecycle rules
+# Injected params: PARAM_TEAM, PARAM_ENV, PARAM_PURPOSE, PARAM_REGION
+resources:
+  - name: s3-bucket
+    base:
+      apiVersion: s3.aws.upbound.io/v1beta1
+      kind: Bucket
+      spec:
+        forProvider:
+          tags:
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.teamName
+        toFieldPath: spec.forProvider.tags[team]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.environment
+        toFieldPath: spec.forProvider.tags[environment]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.costCenter
+        toFieldPath: spec.forProvider.tags[cost-center]
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.bucketName
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.arn
+        toFieldPath: status.bucketArn
+
+  - name: s3-versioning
+    base:
+      apiVersion: s3.aws.upbound.io/v1beta1
+      kind: BucketVersioning
+      spec:
+        forProvider:
+          versioningConfiguration:
+            - status: Enabled
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+
+  - name: s3-encryption
+    base:
+      apiVersion: s3.aws.upbound.io/v1beta1
+      kind: BucketServerSideEncryptionConfiguration
+      spec:
+        forProvider:
+          rule:
+            - applyServerSideEncryptionByDefault:
+                - sseAlgorithm: aws:kms
+              bucketKeyEnabled: true
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+
+  - name: s3-lifecycle
+    base:
+      apiVersion: s3.aws.upbound.io/v1beta1
+      kind: BucketLifecycleConfiguration
+      spec:
+        forProvider:
+          rule:
+            - id: transition-to-ia
+              status: Enabled
+              transition:
+                - days: 30
+                  storageClass: STANDARD_IA
+            - id: transition-to-glacier
+              status: Enabled
+              transition:
+                - days: 90
+                  storageClass: GLACIER
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region

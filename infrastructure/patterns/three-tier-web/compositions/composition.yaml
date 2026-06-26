@@ -1,0 +1,593 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: three-tier-web
+  labels:
+    pattern: three-tier-web
+  annotations:
+    idp.platform.io/pattern: three-tier-web
+    idp.platform.io/pattern-version: "1.0.0"
+    idp.platform.io/depends-on: "xnetworks.platform.io"
+    idp.platform.io/network-must-exist: "true"
+    idp.platform.io/lib-refs: >-
+      _lib/iam/task-role-base.yaml,
+      _lib/observability/cloudwatch-base.yaml
+spec:
+  compositeTypeRef:
+    apiVersion: platform.io/v1alpha1
+    kind: XThreeTierApp
+  mode: Pipeline
+  pipeline:
+    - step: environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Selector
+              selector:
+                mode: Single
+                matchLabels:
+                  - key: environment
+                    type: FromCompositeFieldPath
+                    valueFromFieldPath: spec.parameters.environment
+
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+
+          # No VPC provisioning. Subnets are selected from the enterprise network
+          # via subnetIdSelector matchLabels (same pattern as EKS composition).
+          # dev environment -> subnets labelled environment=dev (dev-network)
+          # staging environment -> subnets labelled environment=staging (staging-network)
+
+          # SECURITY GROUPS
+          - name: sg-alb
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroup
+              spec:
+                forProvider:
+                  description: "ALB security group - allows 80/443 from internet"
+                  ingress:
+                    - fromPort: 80
+                      toPort: 80
+                      ipProtocol: tcp
+                      ipRanges:
+                        - cidrIp: "0.0.0.0/0"
+                    - fromPort: 443
+                      toPort: 443
+                      ipProtocol: tcp
+                      ipRanges:
+                        - cidrIp: "0.0.0.0/0"
+                  egress:
+                    - fromPort: 0
+                      toPort: 0
+                      ipProtocol: "-1"
+                      ipRanges:
+                        - cidrIp: "0.0.0.0/0"
+                  tags:
+                    tier: web
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkRef
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[network]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.albSgId
+
+          - name: sg-app
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroup
+              spec:
+                forProvider:
+                  description: "App tier SG - ingress from ALB SG only"
+                  egress:
+                    - fromPort: 0
+                      toPort: 0
+                      ipProtocol: "-1"
+                      ipRanges:
+                        - cidrIp: "0.0.0.0/0"
+                  tags:
+                    tier: app
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkRef
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[network]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.appSgId
+
+          - name: sg-data
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroup
+              spec:
+                forProvider:
+                  description: "Data tier SG - allows 5432 from app SG only"
+                  ingress:
+                    - fromPort: 5432
+                      toPort: 5432
+                      ipProtocol: tcp
+                  tags:
+                    tier: data
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkRef
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[network]
+
+          # IAM
+          - name: ecs-task-execution-role
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: Role
+              spec:
+                forProvider:
+                  assumeRolePolicy: |
+                    {
+                      "Version": "2012-10-17",
+                      "Statement": [{
+                        "Effect": "Allow",
+                        "Principal": { "Service": "ecs-tasks.amazonaws.com" },
+                        "Action": "sts:AssumeRole"
+                      }]
+                    }
+                  tags:
+                    managed-by: crossplane
+                    iam-type: ecs-task-execution
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.taskExecutionRoleArn
+
+          - name: ecs-task-execution-policy
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+          - name: ecs-task-role
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: Role
+              spec:
+                forProvider:
+                  assumeRolePolicy: |
+                    {
+                      "Version": "2012-10-17",
+                      "Statement": [{
+                        "Effect": "Allow",
+                        "Principal": { "Service": "ecs-tasks.amazonaws.com" },
+                        "Action": "sts:AssumeRole"
+                      }]
+                    }
+                  tags:
+                    managed-by: crossplane
+                    iam-type: ecs-task
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.taskRoleArn
+
+          # OBSERVABILITY
+          - name: log-group
+            base:
+              apiVersion: cloudwatchlogs.aws.upbound.io/v1beta1
+              kind: Group
+              spec:
+                forProvider:
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.parameters.appName
+                    - fromFieldPath: spec.parameters.environment
+                  strategy: string
+                  string:
+                    fmt: "/ecs/%s-%s"
+                toFieldPath: spec.forProvider.logGroupName
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.retentionInDays
+                transforms:
+                  - type: map
+                    map:
+                      dev: 7
+                      staging: 30
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.logGroupArn
+
+          # DATA TIER: RDS
+          - name: db-subnet-group
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta1
+              kind: SubnetGroup
+              spec:
+                forProvider:
+                  description: "DB subnet group - data tier subnets from enterprise network"
+                  subnetIdSelector:
+                    matchLabels:
+                      tier: data
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+
+          - name: rds-instance
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta1
+              kind: Instance
+              spec:
+                forProvider:
+                  engine: postgres
+                  engineVersion: "15.4"
+                  username: appuser
+                  allocatedStorage: 20
+                  storageType: gp3
+                  storageEncrypted: true
+                  publiclyAccessible: false
+                  autoMinorVersionUpgrade: true
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dbInstanceClass
+                toFieldPath: spec.forProvider.instanceClass
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.multiAz
+                transforms:
+                  - type: map
+                    map:
+                      dev: false
+                      staging: true
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.deletionProtection
+                transforms:
+                  - type: map
+                    map:
+                      dev: false
+                      staging: true
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.backupRetentionPeriod
+                transforms:
+                  - type: map
+                    map:
+                      dev: 0
+                      staging: 7
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.endpoint
+                toFieldPath: status.rdsEndpoint
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.port
+                toFieldPath: status.rdsPort
+            readinessChecks:
+              - type: MatchString
+                fieldPath: status.atProvider.dbInstanceStatus
+                matchString: available
+
+          # APP TIER: ECS
+          - name: ecs-cluster
+            base:
+              apiVersion: ecs.aws.upbound.io/v1beta1
+              kind: Cluster
+              spec:
+                forProvider:
+                  setting:
+                    - name: containerInsights
+                      value: enabled
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.ecsClusterArn
+
+          - name: ecs-task-definition
+            base:
+              apiVersion: ecs.aws.upbound.io/v1beta1
+              kind: TaskDefinition
+              spec:
+                forProvider:
+                  networkMode: awsvpc
+                  requiresCompatibilities: [FARGATE]
+                  tags:
+                    managed-by: crossplane
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ecsTaskCpu
+                toFieldPath: spec.forProvider.cpu
+                transforms:
+                  - type: convert
+                    convert:
+                      toType: string
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.ecsTaskMemory
+                toFieldPath: spec.forProvider.memory
+                transforms:
+                  - type: convert
+                    convert:
+                      toType: string
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+
+          - name: ecs-service
+            base:
+              apiVersion: ecs.aws.upbound.io/v1beta1
+              kind: Service
+              spec:
+                forProvider:
+                  launchType: FARGATE
+                  networkConfiguration:
+                    - assignPublicIp: DISABLED
+                      subnetIdSelector:
+                        matchLabels:
+                          tier: private
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.networkConfiguration[0].subnetIdSelector.matchLabels[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.desiredCount
+                toFieldPath: spec.forProvider.desiredCount
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.ecsServiceArn
+
+          # WEB TIER: ALB
+          - name: alb
+            base:
+              apiVersion: elbv2.aws.upbound.io/v1beta1
+              kind: LB
+              spec:
+                forProvider:
+                  loadBalancerType: application
+                  internal: false
+                  subnetIdSelector:
+                    matchLabels:
+                      tier: public
+                  tags:
+                    managed-by: crossplane
+                    provisioned-by: backstage-idp
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.costCenter
+                toFieldPath: spec.forProvider.tags[cost-center]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.enableDeletionProtection
+                transforms:
+                  - type: map
+                    map:
+                      dev: false
+                      staging: true
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.dnsName
+                toFieldPath: status.albDnsName
+
+          - name: alb-target-group
+            base:
+              apiVersion: elbv2.aws.upbound.io/v1beta1
+              kind: LBTargetGroup
+              spec:
+                forProvider:
+                  protocol: HTTP
+                  targetType: ip
+                  vpcIdSelector:
+                    matchLabels: {}
+                  healthCheck:
+                    - healthyThreshold: 3
+                      unhealthyThreshold: 3
+                      intervalSeconds: 30
+                      timeoutSeconds: 5
+                  tags:
+                    managed-by: crossplane
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.containerPort
+                toFieldPath: spec.forProvider.port
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.healthCheckPath
+                toFieldPath: spec.forProvider.healthCheck[0].path
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.networkRef
+                toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[network]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.teamName
+                toFieldPath: spec.forProvider.tags[team]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.environment
+                toFieldPath: spec.forProvider.tags[environment]
+
+          - name: alb-listener-http
+            base:
+              apiVersion: elbv2.aws.upbound.io/v1beta1
+              kind: LBListener
+              spec:
+                forProvider:
+                  port: 80
+                  protocol: HTTP
+                  defaultAction:
+                    - type: redirect
+                      redirect:
+                        - port: "443"
+                          protocol: HTTPS
+                          statusCode: HTTP_301
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+
+          - name: alb-listener-https
+            base:
+              apiVersion: elbv2.aws.upbound.io/v1beta1
+              kind: LBListener
+              spec:
+                forProvider:
+                  port: 443
+                  protocol: HTTPS
+                  defaultAction:
+                    - type: forward
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region

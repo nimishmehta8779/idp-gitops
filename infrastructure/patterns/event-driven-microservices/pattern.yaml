@@ -1,0 +1,111 @@
+apiVersion: platform.io/v1
+kind: InfraPattern
+metadata:
+  name: event-driven-microservices
+  version: 0.1.0
+  description: "Event-driven microservices: EventBridge + SQS + Lambda + DynamoDB + API Gateway"
+  owner: group:platform-team
+  tags: [eventbridge, sqs, lambda, dynamodb, apigw, serverless, event-driven]
+spec:
+  title: "Event-Driven Microservices"
+  complexity: medium
+  estimatedProvisioningTime: "10-15 minutes"
+
+  components:
+    - name: event-bus
+      type: eventbridge
+      xrd: XEventBridgeBus
+      description: "Custom EventBridge event bus for domain events"
+      dependsOn: []
+
+    - name: command-queue
+      type: sqs
+      xrd: XSQSQueue
+      description: "SQS FIFO queue for command messages with DLQ"
+      dependsOn: []
+
+    - name: event-queue
+      type: sqs
+      xrd: XSQSQueue
+      description: "SQS standard queue for event fan-out consumers with DLQ"
+      dependsOn: [event-bus]
+
+    - name: data-store
+      type: dynamodb
+      xrd: XDynamoDBTable
+      description: "DynamoDB table with on-demand capacity and PITR enabled"
+      dependsOn: []
+
+    - name: processor
+      type: lambda
+      xrd: XLambdaFunction
+      description: "Lambda function triggered by SQS for event processing"
+      dependsOn: [command-queue, data-store]
+
+    - name: secrets
+      type: secrets-manager
+      xrd: XSecretsManagerSecret
+      description: "Secrets Manager secret for external API credentials"
+      dependsOn: []
+
+    - name: service-iam
+      type: iam-role
+      xrd: XIAMRole
+      libRef: _lib/iam/irsa-base.yaml
+      description: "Lambda execution role with least-privilege SQS + DynamoDB + Secrets access"
+      dependsOn: []
+
+    - name: observability
+      type: cloudwatch
+      libRef: _lib/observability/cloudwatch-base.yaml
+      description: "CloudWatch log group for Lambda function"
+      dependsOn: []
+
+  dependencyOrder:
+    - service-iam
+    - secrets
+    - data-store
+    - event-bus
+    - command-queue
+    - event-queue
+    - observability
+    - processor
+
+  parameters:
+    required:
+      - teamName
+      - environment
+      - serviceName
+      - region
+      - costCenter
+    optional:
+      - sqsVisibilityTimeoutSeconds  # default: 300
+      - lambdaMemoryMb               # default: 512
+      - lambdaTimeoutSeconds         # default: 30
+      - dynamodbBillingMode          # default: PAY_PER_REQUEST
+      - enableXRayTracing            # default: true
+
+  enterpriseGuardrails:
+    encryption:
+      sqs: kms
+      dynamodb: true
+      secretsManager: true
+      lambdaEnvVars: true
+    deletionProtection:
+      dynamodb:
+        dev: false
+        staging: true
+        prod: true
+    backupRetention:
+      dynamodbPitr:
+        dev: false
+        staging: true
+        prod: true
+    mandatoryTags: [team, environment, cost-center, managed-by, service]
+
+  backstage:
+    templateRef: development/templates/event-driven-microservices/template.yaml
+    catalogKind: System
+    locationRef: infrastructure/patterns/event-driven-microservices/backstage/location.yaml
+
+  maturity: alpha

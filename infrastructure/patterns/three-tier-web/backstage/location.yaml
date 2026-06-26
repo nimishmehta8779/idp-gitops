@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: three-tier-web-template
+  description: "Platform pattern: Three-Tier Web Application (ALB + ECS Fargate + RDS)"
+  annotations:
+    idp.platform.io/pattern: three-tier-web
+    idp.platform.io/maturity: beta
+spec:
+  targets:
+    - ../../../../development/templates/three-tier-web/template.yaml

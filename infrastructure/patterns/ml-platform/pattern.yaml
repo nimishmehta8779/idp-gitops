@@ -1,0 +1,96 @@
+apiVersion: platform.io/v1
+kind: InfraPattern
+metadata:
+  name: ml-platform
+  version: 0.1.0
+  description: "ML Platform: SageMaker Domain + S3 data lake + ECR model registry + Step Functions pipeline"
+  owner: group:platform-team
+  tags: [ml, sagemaker, s3, ecr, stepfunctions, data-science]
+spec:
+  title: "ML Platform"
+  complexity: complex
+  estimatedProvisioningTime: "25-35 minutes"
+
+  components:
+    - name: networking
+      type: vpc
+      xrd: XVPCNetwork
+      libRef: _lib/networking/vpc-private-public.yaml
+      description: "Private VPC — SageMaker requires private subnets with VPC endpoints"
+
+    - name: data-storage
+      type: s3
+      xrd: XS3Bucket
+      libRef: _lib/storage/s3-versioned.yaml
+      description: "S3 data lake bucket: versioning + KMS + lifecycle"
+      dependsOn: []
+
+    - name: model-registry
+      type: ecr
+      xrd: XECRRepository
+      description: "ECR private repository for model container images"
+      dependsOn: []
+
+    - name: sagemaker-domain
+      type: sagemaker
+      xrd: XSageMakerDomain
+      description: "SageMaker Domain with Studio for notebook/training/deployment"
+      dependsOn: [networking, data-storage]
+
+    - name: pipeline-orchestration
+      type: stepfunctions
+      description: "Step Functions state machine for ML training pipeline"
+      dependsOn: [sagemaker-domain]
+
+    - name: ml-iam
+      type: iam-role
+      xrd: XIAMRole
+      libRef: _lib/iam/irsa-base.yaml
+      description: "SageMaker execution role with least-privilege S3 + ECR access"
+      dependsOn: []
+
+    - name: observability
+      type: cloudwatch
+      libRef: _lib/observability/cloudwatch-base.yaml
+      description: "CloudWatch log groups for training jobs and pipeline executions"
+      dependsOn: []
+
+  dependencyOrder:
+    - networking
+    - ml-iam
+    - data-storage
+    - model-registry
+    - observability
+    - sagemaker-domain
+    - pipeline-orchestration
+
+  parameters:
+    required:
+      - teamName
+      - environment
+      - projectName
+      - region
+      - costCenter
+    optional:
+      - sagemakerInstanceType   # default: ml.t3.medium
+      - enableSpotTraining      # default: true (saves cost)
+      - dataRetentionDays       # default: 365
+      - vpcCidr                 # default: 10.1.0.0/16
+
+  enterpriseGuardrails:
+    encryption:
+      s3: kms
+      sagemakerVolume: true
+      sagemakerInterContainer: true
+    networkIsolation:
+      sagemakerTrainingJobs: true
+    deletionProtection:
+      s3BucketVersioning: true
+    mandatoryTags: [team, environment, cost-center, managed-by, project]
+
+  backstage:
+    templateRef: development/templates/ml-platform/template.yaml
+    catalogKind: System
+    locationRef: infrastructure/patterns/ml-platform/backstage/location.yaml
+
+  maturity: alpha

@@ -1,0 +1,53 @@
+apiVersion: pt.fn.crossplane.io/v1beta1
+kind: Resources
+# _lib snippet: irsa-base
+# Provides: IRSA IAM Role + trust policy for a Kubernetes service account
+# Injected params: PARAM_TEAM, PARAM_ENV, PARAM_SA_NAME, PARAM_NAMESPACE, PARAM_AWS_ACCOUNT_ID, PARAM_OIDC_PROVIDER
+resources:
+  - name: irsa-role
+    base:
+      apiVersion: iam.aws.upbound.io/v1beta1
+      kind: Role
+      spec:
+        forProvider:
+          tags:
+            managed-by: crossplane
+            iam-type: irsa
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.teamName
+        toFieldPath: spec.forProvider.tags[team]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.environment
+        toFieldPath: spec.forProvider.tags[environment]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.costCenter
+        toFieldPath: spec.forProvider.tags[cost-center]
+      - type: CombineFromComposite
+        combine:
+          variables:
+            - fromFieldPath: spec.parameters.teamName
+            - fromFieldPath: spec.parameters.environment
+            - fromFieldPath: metadata.name
+          strategy: string
+          string:
+            fmt: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [{
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/OIDC_PROVIDER"
+                  },
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "OIDC_PROVIDER:sub": "system:serviceaccount:%s-%s:%s-sa"
+                    }
+                  }
+                }]
+              }
+        toFieldPath: spec.forProvider.assumeRolePolicy
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.arn
+        toFieldPath: status.irsaRoleArn

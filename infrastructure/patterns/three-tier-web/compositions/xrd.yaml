@@ -1,0 +1,137 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xthretierapps.platform.io
+  annotations:
+    description: "Three-tier web application: ALB + ECS Fargate + RDS PostgreSQL on enterprise VPC"
+    idp.platform.io/depends-on: "xnetworks.platform.io"
+    idp.platform.io/network-must-exist: "true"
+    idp.platform.io/network-ref-field: "spec.parameters.networkRef"
+    idp.platform.io/pattern: three-tier-web
+    idp.platform.io/pattern-version: "1.0.0"
+spec:
+  group: platform.io
+  names:
+    kind: XThreeTierApp
+    plural: xthretierapps
+  claimNames:
+    kind: ThreeTierApp
+    plural: threetierapps
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  required:
+                    - appName
+                    - teamName
+                    - environment
+                    - region
+                    - costCenter
+                    - networkRef
+                  properties:
+                    appName:
+                      type: string
+                      description: "Application name. Used as prefix for all resources."
+                      pattern: '^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$'
+                    teamName:
+                      type: string
+                      description: "Owning team. Must match a registered team in the catalog."
+                    environment:
+                      type: string
+                      enum: [dev, staging]
+                    region:
+                      type: string
+                      default: us-east-1
+                    costCenter:
+                      type: string
+                      default: default
+                    networkRef:
+                      type: string
+                      description: "Enterprise network reference. dev → dev-network, staging → staging-network."
+                      enum: [dev-network, staging-network]
+                    containerPort:
+                      type: integer
+                      default: 8080
+                      minimum: 1
+                      maximum: 65535
+                    healthCheckPath:
+                      type: string
+                      default: "/health"
+                    ecsTaskCpu:
+                      type: integer
+                      default: 512
+                      enum: [256, 512, 1024, 2048, 4096]
+                    ecsTaskMemory:
+                      type: integer
+                      default: 1024
+                      enum: [512, 1024, 2048, 4096, 8192]
+                    desiredCount:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                      maximum: 20
+                    dbInstanceClass:
+                      type: string
+                      default: db.t3.medium
+                      enum:
+                        - db.t3.medium
+                        - db.t3.large
+                        - db.r6g.large
+                        - db.r6g.xlarge
+                        - db.r6g.2xlarge
+                    enableWaf:
+                      type: boolean
+                      default: false
+                    enableRoute53:
+                      type: boolean
+                      default: false
+                    domainName:
+                      type: string
+                      description: "Required when enableRoute53 is true"
+            status:
+              type: object
+              properties:
+                albDnsName:
+                  type: string
+                  description: "ALB DNS name — use as the application endpoint"
+                ecsClusterArn:
+                  type: string
+                  description: "ECS Cluster ARN"
+                ecsServiceArn:
+                  type: string
+                  description: "ECS Service ARN"
+                rdsEndpoint:
+                  type: string
+                  description: "RDS instance endpoint hostname"
+                rdsPort:
+                  type: string
+                  description: "RDS instance port"
+                taskRoleArn:
+                  type: string
+                  description: "ECS task IAM role ARN"
+                taskExecutionRoleArn:
+                  type: string
+                  description: "ECS task execution IAM role ARN"
+                logGroupArn:
+                  type: string
+                  description: "CloudWatch log group ARN"
+                appSgId:
+                  type: string
+                  description: "App tier security group ID"
+  connectionSecretKeys:
+    - albDnsName
+    - rdsEndpoint
+    - rdsPort
+    - ecsClusterArn
+    - ecsServiceArn
+    - taskRoleArn
+    - logGroupArn

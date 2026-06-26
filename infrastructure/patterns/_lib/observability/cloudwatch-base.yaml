@@ -1,0 +1,36 @@
+apiVersion: pt.fn.crossplane.io/v1beta1
+kind: Resources
+# _lib snippet: cloudwatch-base
+# Provides: CloudWatch Log Group per service with retention per environment
+# dev=7d, staging=30d, prod=90d
+resources:
+  - name: log-group
+    base:
+      apiVersion: cloudwatchlogs.aws.upbound.io/v1beta1
+      kind: Group
+      spec:
+        forProvider:
+          tags:
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.teamName
+        toFieldPath: spec.forProvider.tags[team]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.environment
+        toFieldPath: spec.forProvider.tags[environment]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.environment
+        toFieldPath: spec.forProvider.retentionInDays
+        transforms:
+          - type: map
+            map:
+              dev: "7"
+              staging: "30"
+              prod: "90"
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.arn
+        toFieldPath: status.logGroupArn

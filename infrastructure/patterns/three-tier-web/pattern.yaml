@@ -1,0 +1,102 @@
+apiVersion: platform.io/v1
+kind: InfraPattern
+metadata:
+  name: three-tier-web
+  version: 1.0.0
+  description: "Classic three-tier web application: ALB (web) + ECS Fargate (app) + RDS Aurora (data) on a private VPC"
+  owner: group:platform-team
+  tags: [web, ecs, rds, alb, vpc, fargate]
+spec:
+  title: "Three-Tier Web Application"
+  complexity: medium
+  estimatedProvisioningTime: "15-20 minutes"
+
+  components:
+    - name: networking
+      type: vpc
+      xrd: XVPCNetwork
+      libRef: _lib/networking/vpc-private-public.yaml
+      description: "VPC with public/private/data subnets across 2 AZs"
+
+    - name: web-tier
+      type: alb
+      xrd: XALBIngress
+      description: "Application Load Balancer in public subnets with HTTPS listener"
+      dependsOn: [networking]
+
+    - name: app-tier
+      type: ecs-service
+      xrd: XECSService
+      description: "ECS Fargate service in private subnets"
+      dependsOn: [networking, web-tier]
+
+    - name: data-tier
+      type: rds
+      xrd: XRDSInstance
+      description: "RDS Aurora PostgreSQL in data subnets, Multi-AZ for staging/prod"
+      dependsOn: [networking]
+
+    - name: app-iam
+      type: iam-role
+      xrd: XIAMRole
+      libRef: _lib/iam/task-role-base.yaml
+      description: "ECS task role and execution role"
+      dependsOn: []
+
+    - name: observability
+      type: cloudwatch
+      libRef: _lib/observability/cloudwatch-base.yaml
+      description: "CloudWatch log group with environment-scoped retention"
+      dependsOn: []
+
+  dependencyOrder:
+    - networking
+    - app-iam
+    - observability
+    - data-tier
+    - app-tier
+    - web-tier
+
+  parameters:
+    required:
+      - teamName
+      - environment
+      - appName
+      - region
+      - costCenter
+    optional:
+      - vpcCidr          # default: 10.0.0.0/16
+      - dbInstanceClass  # default: db.t3.medium (dev), db.r6g.large (staging/prod)
+      - ecsTaskCpu       # default: 512
+      - ecsTaskMemory    # default: 1024
+      - desiredCount     # default: 1 (dev), 2 (staging/prod)
+      - enableWaf        # default: false
+      - enableRoute53    # default: false
+      - containerPort    # default: 8080
+      - healthCheckPath  # default: /health
+
+  enterpriseGuardrails:
+    encryption:
+      rdsAtRest: true
+      rdsInTransit: true
+      s3: kms
+    multiAz:
+      dev: false
+      staging: true
+      prod: true
+    deletionProtection:
+      dev: false
+      staging: true
+      prod: true
+    backupRetentionDays:
+      dev: 0
+      staging: 7
+      prod: 30
+    mandatoryTags: [team, environment, cost-center, managed-by, provisioned-by]
+
+  backstage:
+    templateRef: development/templates/three-tier-web/template.yaml
+    catalogKind: System
+    locationRef: infrastructure/patterns/three-tier-web/backstage/location.yaml
+
+  maturity: beta

@@ -77,3 +77,13 @@ spec:
   type: file
   target: ../templates/request-rds/template.yaml
 
+---
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: three-tier-web-template-location
+  namespace: default
+spec:
+  type: file
+  target: ../templates/three-tier-web/template.yaml
+

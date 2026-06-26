@@ -1,0 +1,175 @@
+apiVersion: pt.fn.crossplane.io/v1beta1
+kind: Resources
+# _lib snippet: vpc-private-public
+# Provides: VPC + public/private/data subnets across 2 AZs, NAT Gateway, IGW
+# Consumed by: three-tier-web, ml-platform, data-lakehouse
+# Injected params: PARAM_TEAM, PARAM_ENV, PARAM_REGION, PARAM_CIDR
+resources:
+  - name: vpc
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: VPC
+      spec:
+        forProvider:
+          enableDnsHostnames: true
+          enableDnsSupport: true
+          tags:
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.vpcCidr
+        toFieldPath: spec.forProvider.cidrBlock
+        policy:
+          fromFieldPath: Optional
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.teamName
+        toFieldPath: spec.forProvider.tags[team]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.environment
+        toFieldPath: spec.forProvider.tags[environment]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.costCenter
+        toFieldPath: spec.forProvider.tags[cost-center]
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.vpcId
+
+  - name: internet-gateway
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: InternetGateway
+      spec:
+        forProvider:
+          tags:
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.internetGatewayId
+
+  - name: subnet-public-a
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      spec:
+        forProvider:
+          mapPublicIpOnLaunch: true
+          tags:
+            tier: public
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.publicSubnetAId
+
+  - name: subnet-public-b
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      spec:
+        forProvider:
+          mapPublicIpOnLaunch: true
+          tags:
+            tier: public
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.publicSubnetBId
+
+  - name: subnet-private-a
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      spec:
+        forProvider:
+          tags:
+            tier: private
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.privateSubnetAId
+
+  - name: subnet-private-b
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      spec:
+        forProvider:
+          tags:
+            tier: private
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.privateSubnetBId
+
+  - name: subnet-data-a
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      spec:
+        forProvider:
+          tags:
+            tier: data
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.dataSubnetAId
+
+  - name: subnet-data-b
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      spec:
+        forProvider:
+          tags:
+            tier: data
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.dataSubnetBId
+
+  - name: nat-gateway
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: NATGateway
+      spec:
+        forProvider:
+          connectivityType: public
+          tags:
+            managed-by: crossplane
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.id
+        toFieldPath: status.natGatewayId

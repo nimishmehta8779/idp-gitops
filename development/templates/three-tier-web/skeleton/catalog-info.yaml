@@ -1,0 +1,101 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ${{ values.appName }}-${{ values.environment }}
+  title: "${{ values.appName }} (${{ values.environment }})"
+  description: "Three-tier web app: ALB + ECS Fargate + RDS PostgreSQL on ${{ values.networkRef }}"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    # Identity
+    idp.platform.io/pattern: three-tier-web
+    idp.platform.io/pattern-version: "1.0.0"
+    idp.platform.io/environment: ${{ values.environment }}
+    idp.platform.io/aws-region: ${{ values.region }}
+    idp.platform.io/network-ref: ${{ values.networkRef }}
+    idp.platform.io/created-by: ${{ values.teamName }}
+    # Provisioning status — Crossplane updates these after reconcile
+    idp.platform.io/provision-status: provisioning
+    # Outputs — populated by Crossplane after resources are READY
+    # These annotation keys are watched by the IDP catalog sync job which
+    # reads the connection secret and patches the entity.
+    idp.platform.io/alb-dns: ""
+    idp.platform.io/rds-endpoint: ""
+    idp.platform.io/rds-port: ""
+    idp.platform.io/ecs-cluster-arn: ""
+    idp.platform.io/ecs-service-arn: ""
+    idp.platform.io/log-group-arn: ""
+    idp.platform.io/task-role-arn: ""
+    # Kubernetes entity wiring
+    backstage.io/kubernetes-id: ${{ values.appName }}-${{ values.environment }}
+    backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}apps-dev{% else %}apps-staging{% endif %}
+  tags:
+    - aws
+    - three-tier
+    - ecs
+    - rds
+    - ${{ values.environment }}
+  links:
+    - title: Application URL
+      url: "https://provisioning-pending"
+      icon: web
+    - title: ECS Service Console
+      url: "https://console.aws.amazon.com/ecs/v2/clusters/${{ values.appName }}-${{ values.environment }}/services"
+      icon: dashboard
+    - title: RDS Console
+      url: "https://console.aws.amazon.com/rds/home?region=${{ values.region }}#databases:"
+      icon: storage
+    - title: CloudWatch Logs
+      url: "https://console.aws.amazon.com/cloudwatch/home?region=${{ values.region }}#logsV2:log-groups/log-group/%2Fecs%2F${{ values.appName }}-${{ values.environment }}"
+      icon: search
+    - title: ALB Console
+      url: "https://console.aws.amazon.com/ec2/v2/home?region=${{ values.region }}#LoadBalancers"
+      icon: cloud
+spec:
+  owner: group:default/${{ values.teamName }}
+  domain: platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.appName }}-${{ values.environment }}-alb
+  description: "ALB (web tier) for ${{ values.appName }}-${{ values.environment }}"
+  annotations:
+    idp.platform.io/tier: web
+    idp.platform.io/aws-resource-type: alb
+    idp.platform.io/alb-dns: ""
+spec:
+  type: aws-alb
+  owner: group:default/${{ values.teamName }}
+  system: ${{ values.appName }}-${{ values.environment }}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.appName }}-${{ values.environment }}-ecs
+  description: "ECS Fargate service (app tier) for ${{ values.appName }}-${{ values.environment }}"
+  annotations:
+    idp.platform.io/tier: app
+    idp.platform.io/aws-resource-type: ecs-service
+    idp.platform.io/ecs-cluster-arn: ""
+    idp.platform.io/ecs-service-arn: ""
+    backstage.io/kubernetes-id: ${{ values.appName }}-${{ values.environment }}
+    backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}apps-dev{% else %}apps-staging{% endif %}
+spec:
+  type: aws-ecs-service
+  owner: group:default/${{ values.teamName }}
+  system: ${{ values.appName }}-${{ values.environment }}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.appName }}-${{ values.environment }}-rds
+  description: "RDS PostgreSQL (data tier) for ${{ values.appName }}-${{ values.environment }}"
+  annotations:
+    idp.platform.io/tier: data
+    idp.platform.io/aws-resource-type: rds-instance
+    idp.platform.io/rds-endpoint: ""
+    idp.platform.io/rds-port: ""
+spec:
+  type: database
+  owner: group:default/${{ values.teamName }}
+  system: ${{ values.appName }}-${{ values.environment }}

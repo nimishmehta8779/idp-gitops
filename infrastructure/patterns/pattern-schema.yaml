@@ -1,0 +1,52 @@
+apiVersion: platform.io/v1
+kind: InfraPatternSchema
+metadata:
+  name: pattern-schema
+  description: Schema contract every pattern.yaml must satisfy
+spec:
+  # Required fields in every pattern.yaml
+  required:
+    - apiVersion
+    - kind
+    - metadata.name
+    - metadata.version
+    - spec.title
+    - spec.complexity
+    - spec.components
+    - spec.dependencyOrder
+    - spec.parameters.required
+    - spec.backstage.templateRef
+    - spec.backstage.catalogKind
+    - spec.maturity
+
+  # complexity values
+  complexityEnum: [simple, medium, complex, enterprise]
+
+  # catalogKind values (Backstage entity kinds)
+  catalogKindEnum: [Component, System, Resource, API]
+
+  # maturity values
+  maturityEnum: [alpha, beta, ga, deprecated]
+
+  # component type registry — known XRD kinds
+  componentTypeRegistry:
+    vpc:              XVPCNetwork
+    rds:              XRDSInstance
+    s3:               XS3Bucket
+    ecs-service:      XECSService
+    alb:              XALBIngress
+    iam-role:         XIAMRole
+    ecr:              XECRRepository
+    sqs:              XSQSQueue
+    elasticache:      XElastiCacheCluster
+    eks:              XEKSCluster
+    lambda:           XLambdaFunction
+    kinesis:          XKinesisStream
+    glue:             XGlueJob
+    sagemaker:        XSageMakerDomain
+    eventbridge:      XEventBridgeBus
+    dynamodb:         XDynamoDBTable
+    secrets-manager:  XSecretsManagerSecret
+    acm:              XACMCertificate
+    route53:          XRoute53Record
+    waf:              XWAFWebACL

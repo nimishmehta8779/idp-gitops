@@ -1,0 +1,226 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: request-three-tier-web
+  title: Deploy Three-Tier Web Application
+  description: |
+    Provision a production-ready three-tier web application on AWS:
+    ALB (web) + ECS Fargate (app) + RDS Aurora PostgreSQL (data)
+    on a private VPC with Multi-AZ for staging/prod.
+
+    Dev environments provision immediately.
+    Staging and prod require platform team approval via Pull Request.
+  tags:
+    - aws
+    - ecs
+    - rds
+    - alb
+    - fargate
+    - three-tier
+    - platform-pattern
+spec:
+  owner: group:platform-team
+  type: infrastructure-pattern
+
+  parameters:
+    - title: Application Identity
+      required:
+        - teamName
+        - appName
+        - environment
+        - costCenter
+      properties:
+        teamName:
+          title: Team Name
+          type: string
+          description: Owning team. Must match your registered team in the catalog.
+          enum:
+            - team-alpha
+            - team-beta
+            - team-gamma
+          ui:autofocus: true
+        appName:
+          title: Application Name
+          type: string
+          description: "Short name for your app. Used as prefix for all resources."
+          pattern: '^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$'
+          ui:help: "Lowercase letters, numbers, and hyphens only. e.g. payments-api"
+        environment:
+          title: Environment
+          type: string
+          description: "Target environment. Staging/prod requires approval."
+          enum:
+            - dev
+            - staging
+          enumNames:
+            - "Dev (immediate)"
+            - "Staging (requires approval)"
+        costCenter:
+          title: Cost Center
+          type: string
+          description: "Cost center code for tagging and billing attribution."
+          default: default
+
+    - title: Infrastructure Configuration
+      properties:
+        region:
+          title: AWS Region
+          type: string
+          default: us-east-1
+          enum:
+            - us-east-1
+            - us-west-2
+            - eu-west-1
+        dbInstanceClass:
+          title: Database Instance Class
+          type: string
+          default: db.t3.medium
+          enum:
+            - db.t3.medium
+            - db.t3.large
+            - db.r6g.large
+            - db.r6g.xlarge
+          enumNames:
+            - "t3.medium — Dev/Test (2 vCPU, 4 GiB)"
+            - "t3.large — Small workloads (2 vCPU, 8 GiB)"
+            - "r6g.large — Production (2 vCPU, 16 GiB)"
+            - "r6g.xlarge — High-memory prod (4 vCPU, 32 GiB)"
+        ecsTaskCpu:
+          title: ECS Task CPU (units)
+          type: integer
+          default: 512
+          enum: [256, 512, 1024, 2048, 4096]
+          ui:help: "256 = 0.25 vCPU, 1024 = 1 vCPU"
+        ecsTaskMemory:
+          title: ECS Task Memory (MiB)
+          type: integer
+          default: 1024
+          enum: [512, 1024, 2048, 4096, 8192]
+        desiredCount:
+          title: Desired ECS Task Count
+          type: integer
+          default: 1
+          minimum: 1
+          maximum: 20
+          ui:help: "Minimum 2 recommended for staging/prod high availability."
+        containerPort:
+          title: Container Port
+          type: integer
+          default: 8080
+          ui:help: "Port your container listens on."
+        healthCheckPath:
+          title: Health Check Path
+          type: string
+          default: "/health"
+          ui:help: "ALB target group health check path. Must return HTTP 200."
+
+    - title: Optional Features
+      properties:
+        enableWaf:
+          title: Enable WAF
+          type: boolean
+          default: false
+          description: Attach AWS WAF Web ACL to the ALB (recommended for prod).
+        enableRoute53:
+          title: Enable Route53 DNS
+          type: boolean
+          default: false
+          description: Create a Route53 A record pointing to the ALB.
+        domainName:
+          title: Domain Name
+          type: string
+          description: "Required when Enable Route53 is true. e.g. myapp.internal.example.com"
+          ui:widget: "hidden"
+
+  steps:
+    - id: fetch-template
+      name: Render claim and catalog files
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          teamName: ${{ parameters.teamName }}
+          appName: ${{ parameters.appName }}
+          environment: ${{ parameters.environment }}
+          costCenter: ${{ parameters.costCenter }}
+          region: ${{ parameters.region }}
+          networkRef: "${{ parameters.environment }}-network"
+          dbInstanceClass: ${{ parameters.dbInstanceClass }}
+          ecsTaskCpu: ${{ parameters.ecsTaskCpu }}
+          ecsTaskMemory: ${{ parameters.ecsTaskMemory }}
+          desiredCount: ${{ parameters.desiredCount }}
+          containerPort: ${{ parameters.containerPort }}
+          healthCheckPath: ${{ parameters.healthCheckPath }}
+          enableWaf: ${{ parameters.enableWaf }}
+          enableRoute53: ${{ parameters.enableRoute53 }}
+          domainName: ${{ parameters.domainName }}
+
+    - id: publish
+      name: Commit to team infra repo
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=${{ parameters.teamName }}-infra&owner=nimishmehta8779
+        title: "feat(infra): provision three-tier-web ${{ parameters.appName }}-${{ parameters.environment }}"
+        description: |
+          ## Three-Tier Web Application Request
+
+          **App:** `${{ parameters.appName }}`
+          **Team:** `${{ parameters.teamName }}`
+          **Environment:** `${{ parameters.environment }}`
+          **Region:** `${{ parameters.region }}`
+
+          ### Resources to be provisioned
+          - Application Load Balancer (HTTPS, redirect from HTTP) on enterprise `${{ parameters.environment }}-network`
+          - ECS Fargate service (${{ parameters.ecsTaskCpu }} CPU / ${{ parameters.ecsTaskMemory }} MiB)
+          - RDS PostgreSQL `${{ parameters.dbInstanceClass }}`${{ ' (Multi-AZ)' if parameters.environment != 'dev' else '' }}
+
+          > This PR was generated by the IDP Platform. ArgoCD will sync after merge.
+        branchName: "idp/three-tier-${{ parameters.appName }}-${{ parameters.environment }}"
+        targetBranchName: main
+
+    - id: register
+      name: Register in software catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.remoteUrl }}
+        catalogInfoPath: catalog-info.yaml
+
+  output:
+    links:
+      - title: Pull Request
+        url: ${{ steps.publish.output.remoteUrl }}
+        icon: github
+      - title: View in Catalog
+        url: ${{ steps.register.output.entityRef }}
+        icon: catalog
+    text:
+      - title: What happens next?
+        content: |
+          ## Your app is being provisioned
+
+          **Step 1 — PR review** *(now)*
+          The PR `idp/three-tier-${{ parameters.appName }}-${{ parameters.environment }}` has been opened.
+          For **dev**: merge it to trigger immediate ArgoCD sync.
+          For **staging**: platform team reviews before merging.
+
+          **Step 2 — Crossplane reconciles** *(~10–15 min after merge)*
+          ArgoCD applies the claim. Crossplane provisions:
+          - Security groups (ALB / App / Data tiers)
+          - ECS Cluster + Task Definition + Fargate Service
+          - RDS PostgreSQL (Multi-AZ for staging)
+          - ALB with HTTPS listener + HTTP→HTTPS redirect
+          - CloudWatch log group `/ecs/${{ parameters.appName }}-${{ parameters.environment }}`
+
+          **Step 3 — Outputs appear in catalog** *(auto, after provisioning)*
+          Visit your catalog entity. The following will populate once Crossplane reports `READY`:
+          | Output | Where to find it |
+          |---|---|
+          | ALB DNS name | Entity overview → **Links** |
+          | RDS endpoint + port | Entity overview → **About** annotations |
+          | ECS Cluster ARN | Entity overview → **About** annotations |
+          | CloudWatch log group | Entity overview → **Links** |
+          | AWS Console links | Entity overview → **Links** |
+
+          All outputs are also written to the Kubernetes Secret:
+          `${{ parameters.appName }}-${{ parameters.environment }}-connection`
+          in namespace `apps-${{ parameters.environment }}`.

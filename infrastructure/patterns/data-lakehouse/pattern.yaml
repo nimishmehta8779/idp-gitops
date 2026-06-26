@@ -1,0 +1,106 @@
+apiVersion: platform.io/v1
+kind: InfraPattern
+metadata:
+  name: data-lakehouse
+  version: 0.1.0
+  description: "Data Lakehouse: S3 + Glue Catalog + Athena + Kinesis Firehose + Redshift Serverless"
+  owner: group:platform-team
+  tags: [data, s3, glue, athena, kinesis, redshift, lakehouse, analytics]
+spec:
+  title: "Data Lakehouse"
+  complexity: complex
+  estimatedProvisioningTime: "20-30 minutes"
+
+  components:
+    - name: networking
+      type: vpc
+      xrd: XVPCNetwork
+      libRef: _lib/networking/vpc-private-public.yaml
+      description: "Private VPC for Redshift Serverless and Glue connections"
+
+    - name: raw-storage
+      type: s3
+      xrd: XS3Bucket
+      libRef: _lib/storage/s3-versioned.yaml
+      description: "Raw/landing zone S3 bucket with KMS encryption"
+      dependsOn: []
+
+    - name: curated-storage
+      type: s3
+      xrd: XS3Bucket
+      libRef: _lib/storage/s3-versioned.yaml
+      description: "Curated/processed zone S3 bucket"
+      dependsOn: []
+
+    - name: ingestion
+      type: kinesis
+      xrd: XKinesisStream
+      description: "Kinesis Data Firehose delivery stream to raw S3 bucket"
+      dependsOn: [raw-storage]
+
+    - name: catalog
+      type: glue
+      xrd: XGlueJob
+      description: "Glue Data Catalog database + crawlers for raw and curated zones"
+      dependsOn: [raw-storage, curated-storage]
+
+    - name: warehouse
+      type: redshift
+      description: "Redshift Serverless namespace + workgroup in private subnets"
+      dependsOn: [networking, curated-storage]
+
+    - name: data-iam
+      type: iam-role
+      xrd: XIAMRole
+      libRef: _lib/iam/irsa-base.yaml
+      description: "Glue job role + Redshift S3 access role with least-privilege"
+      dependsOn: []
+
+    - name: observability
+      type: cloudwatch
+      libRef: _lib/observability/cloudwatch-base.yaml
+      description: "CloudWatch log groups for Glue jobs and Firehose delivery"
+      dependsOn: []
+
+  dependencyOrder:
+    - networking
+    - data-iam
+    - raw-storage
+    - curated-storage
+    - observability
+    - ingestion
+    - catalog
+    - warehouse
+
+  parameters:
+    required:
+      - teamName
+      - environment
+      - datasetName
+      - region
+      - costCenter
+    optional:
+      - redshiftBaseCapacity     # default: 8 RPUs
+      - firehoseBufferingSeconds # default: 300
+      - glueCrawlerSchedule      # default: cron(0 * * * ? *)
+      - vpcCidr                  # default: 10.2.0.0/16
+
+  enterpriseGuardrails:
+    encryption:
+      s3: kms
+      redshift: true
+      glue: true
+    deletionProtection:
+      s3: true
+      redshift:
+        dev: false
+        staging: true
+        prod: true
+    mandatoryTags: [team, environment, cost-center, managed-by, dataset]
+
+  backstage:
+    templateRef: development/templates/data-lakehouse/template.yaml
+    catalogKind: System
+    locationRef: infrastructure/patterns/data-lakehouse/backstage/location.yaml
+
+  maturity: alpha

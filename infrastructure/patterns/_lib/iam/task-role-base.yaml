@@ -1,0 +1,64 @@
+apiVersion: pt.fn.crossplane.io/v1beta1
+kind: Resources
+# _lib snippet: task-role-base
+# Provides: ECS Task IAM Role with trust policy for ecs-tasks.amazonaws.com
+# Injected params: PARAM_TEAM, PARAM_ENV, PARAM_ROLE_SUFFIX
+resources:
+  - name: ecs-task-role
+    base:
+      apiVersion: iam.aws.upbound.io/v1beta1
+      kind: Role
+      spec:
+        forProvider:
+          assumeRolePolicy: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": "ecs-tasks.amazonaws.com" },
+                "Action": "sts:AssumeRole"
+              }]
+            }
+          tags:
+            managed-by: crossplane
+            iam-type: ecs-task
+    patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.teamName
+        toFieldPath: spec.forProvider.tags[team]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.environment
+        toFieldPath: spec.forProvider.tags[environment]
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.parameters.costCenter
+        toFieldPath: spec.forProvider.tags[cost-center]
+      - type: ToCompositeFieldPath
+        fromFieldPath: status.atProvider.arn
+        toFieldPath: status.taskRoleArn
+
+  - name: ecs-task-execution-role
+    base:
+      apiVersion: iam.aws.upbound.io/v1beta1
+      kind: Role
+      spec:
+        forProvider:
+          assumeRolePolicy: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": "ecs-tasks.amazonaws.com" },
+                "Action": "sts:AssumeRole"
+              }]
+            }
+          tags:
+            managed-by: crossplane
+            iam-type: ecs-task-execution
+
+  - name: ecs-task-execution-policy-attachment
+    base:
+      apiVersion: iam.aws.upbound.io/v1beta1
+      kind: RolePolicyAttachment
+      spec:
+        forProvider:
+          policyArn: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
