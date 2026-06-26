@@ -373,26 +373,37 @@ catch.
 - `infrastructure/caipe/patches/agent_executor.py` (new bind-mount)
 - `infrastructure/caipe/docker-compose.upstream-trimmed.yaml` (new volume entry)
 
-**NEW GAP: aws_docs_search MCP tool cold-call latency / timeout rate**
+**NEW GAP: aws_docs_search per-call subprocess latency (stopgap applied, architectural fix pending)**
 **Symptom:** 2/4 pre-routed calls returned `❌ AWS documentation search
 timed out after 30s`. The `uv run` process itself is warm (0.19s import,
 0.38s subprocess launch — uv cache at `/home/appuser/.cache/uv` is
 populated and survives within a container run). The 30s timeout is
-consumed entirely by the HTTP network round-trip from the MCP server to
-`docs.aws.amazon.com`. Timed directly inside the container: a full
-`stdio_client` → `initialize()` → `call_tool()` cycle takes **51 seconds**
-end-to-end on a slow network path.
-**Root cause:** `AWS_DOCS_MCP_TIMEOUT = 30` (in `patches/agent_aws_tools.py`,
-from env `AWS_DOCS_MCP_MAX_EXECUTION_TIME`) is too short for the actual
-AWS docs search API latency, which is 30–51s on this network. This is
-NOT a uv package resolution issue.
-**Fix path:** Raise `AWS_DOCS_MCP_MAX_EXECUTION_TIME` in `.env` to 60–90s,
-or set it per-query in the tool. Note: this will extend the user-visible
-response time for pre-routed docs queries accordingly. A connection-reuse
-or persistent sidecar approach (pre-warming the MCP server process) would
-eliminate the per-call startup overhead but requires a more significant
-refactor.
-**Do not investigate uv cache invalidation** — confirmed not the cause.
+consumed entirely by the HTTP network round-trip from the MCP server
+process to `docs.aws.amazon.com`. Timed directly inside the container:
+a full `stdio_client` → `initialize()` → `call_tool()` cycle takes
+**51 seconds** end-to-end. **Do not investigate uv cache invalidation —
+confirmed not the cause.**
+**Stopgap applied (2026-06-26):** `AWS_DOCS_MCP_MAX_EXECUTION_TIME=90`
+set in `.env`. This raises the timeout ceiling so slow-but-successful
+calls complete rather than being cut off. It does NOT fix the underlying
+cause — user-visible latency for docs queries remains up to 51s+.
+**Root cause (not yet fixed):** Every call to `AWSDocsSearchTool._arun()`
+spawns a fresh `uv run ... python3 -m awslabs.aws_documentation_mcp_server.server`
+subprocess, which must: start a new Python interpreter, import the MCP
+server module, open a new TCP connection to `docs.aws.amazon.com`, and
+then make the search API call — all within the timeout window. This
+happens on every single invocation, even when queries are seconds apart.
+**Architectural fix (not yet started):** Keep the stdio MCP subprocess
+alive between calls — a persistent process the tool reuses via a
+long-lived `stdio_client` session rather than spawning fresh on every
+`_arun()`. This is structurally similar to how `mcp-argocd` and
+`github-mcp-server` already run as persistent sidecars; the difference
+is they use HTTP transport while `awslabs.aws-documentation-mcp-server`
+only supports stdio. The fix would be a module-level or class-level
+held `ClientSession` with reconnect-on-failure, eliminating the
+subprocess spawn + TCP handshake cost from the hot path.
+This is a separate, not-yet-started item — do not conflate with the
+routing determinism fix above.
 
 ## Regression Close-Out: eks_kubectl_execute (2026-06-26)
 **Test:** "Run kubectl get nodes on EKS cluster alpha-dev-general-10"
