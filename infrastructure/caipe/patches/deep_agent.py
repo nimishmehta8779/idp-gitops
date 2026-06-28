@@ -186,6 +186,65 @@ def _build_llm_from_prefixed_env(env_prefix: str) -> Optional[LanguageModelLike]
                 del os.environ[key]
 
 
+def _sanitize_schema_for_gemini(schema: dict) -> dict:
+    """Recursively strip JSON Schema fields Gemini's restricted OpenAPI subset rejects.
+
+    Removes additionalProperties at all nesting levels (Gemini ignores them at
+    the top level but rejects nested ones with INVALID_ARGUMENT) and flattens
+    anyOf: [T, {type:null}] produced by Optional[T] annotations into just T.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    result = {}
+    for key, val in schema.items():
+        if key == "additionalProperties":
+            continue
+        if key == "anyOf":
+            non_null = [s for s in val if isinstance(s, dict) and s.get("type") != "null"]
+            if len(non_null) == 1:
+                result.update(_sanitize_schema_for_gemini(non_null[0]))
+            # drop anyOf entirely if we can't reduce it to a single type
+            continue
+        if key == "items":
+            # Gemini requires items to have a type; empty {} is rejected
+            sanitized_items = _sanitize_schema_for_gemini(val) if isinstance(val, dict) else val
+            if isinstance(sanitized_items, dict) and "type" not in sanitized_items and "$ref" not in sanitized_items:
+                sanitized_items = {"type": "object"}
+            result[key] = sanitized_items
+            continue
+        if isinstance(val, dict):
+            result[key] = _sanitize_schema_for_gemini(val)
+        elif isinstance(val, list):
+            result[key] = [_sanitize_schema_for_gemini(i) if isinstance(i, dict) else i for i in val]
+        else:
+            result[key] = val
+    return result
+
+
+def _sanitize_mcp_tools_for_gemini(tools: list) -> list:
+    """Patch args_schema.model_json_schema on each StructuredTool to return a
+    Gemini-compatible schema. Operates in-place on the class so no new tool
+    objects need to be constructed.
+    """
+    from langchain_core.tools import StructuredTool
+    for tool in tools:
+        if not isinstance(tool, StructuredTool):
+            continue
+        schema_cls = getattr(tool, "args_schema", None)
+        if schema_cls is None:
+            continue
+        try:
+            if isinstance(schema_cls, dict):
+                # Some MCP adapters store the raw JSON schema as a dict directly
+                tool.args_schema = _sanitize_schema_for_gemini(schema_cls)
+            else:
+                sanitized = _sanitize_schema_for_gemini(schema_cls.model_json_schema())
+                schema_cls.model_json_schema = classmethod(lambda cls, _s=sanitized, **kw: _s)
+        except Exception as exc:
+            logger.warning(f"Schema sanitization failed for tool {tool.name}: {exc}")
+    return tools
+
+
 def _get_subagent_model(name: str) -> Optional[Union[str, LanguageModelLike]]:
     """Resolve a per-subagent LLM model override from environment variables.
 
@@ -780,6 +839,7 @@ async def create_subagent_def(agent_instance, name: str, description: str, promp
 
     if tools:
         logger.info(f"{name}: {len(tools)} MCP tools loaded")
+        _sanitize_mcp_tools_for_gemini(tools)
     else:
         logger.warning(f"{name}: MCP tools unavailable — subagent will have no domain tools (MCP-only mode)")
 

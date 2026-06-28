@@ -102,7 +102,27 @@ prompt_config.deep_agent.yaml` (agent_prompts.pagerduty.system_prompt);
 - Cross-agent: "Who is on call in PagerDuty, and what ArgoCD apps are out of
   sync?" → supervisor delegated to both agents in sequence. PagerDuty leg
   succeeded (real data). ArgoCD leg returned INVALID_ARGUMENT error —
-  pre-existing ArgoCD tool config issue, not a regression from this change.
+  pre-existing ArgoCD tool config issue, fixed 2026-06-28 (see below).
+- ArgoCD standalone: "List all ArgoCD applications" → 6 real applications
+  returned (argocd-config, cluster-claims, crossplane-compositions, idp-root,
+  kyverno-policies, network-claims). Verified 2026-06-28.
+
+## Fixed: ArgoCD Subagent INVALID_ARGUMENT (Gemini Schema Incompatibility) (2026-06-28)
+**Root cause:** Gemini's restricted OpenAPI subset rejects three JSON Schema
+patterns that FastMCP generates from Python type annotations:
+1. `"additionalProperties": false` at any nesting level (not just top-level —
+   langchain_google_genai only stripped top-level ones)
+2. `anyOf: [T, {type: null}]` from `Optional[T]` annotations — Gemini doesn't
+   support `anyOf`
+3. `"items": {}` (empty, no `type` field) from `List[Dict[str, Any]]` — Gemini
+   requires `items.type` to be specified
+**Fix:** `_sanitize_schema_for_gemini()` + `_sanitize_mcp_tools_for_gemini()`
+added to `patches/deep_agent.py`. Called after MCP tools are loaded in
+`create_subagent_def()`. Recursively strips `additionalProperties`, flattens
+`anyOf` Optional patterns, and replaces typeless `items: {}` with
+`items: {type: object}`.
+**Verified:** "List all ArgoCD applications" → `list_applications
+outcome=success` in audit log, 6 real applications returned.
 
 ## Added: Cost Insights Plugin with Real AWS Cost Explorer Data (2026-06-28)
 **What:** Backstage Cost Insights page at `/cost-insights` now shows real AWS
