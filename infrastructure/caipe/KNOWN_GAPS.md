@@ -425,12 +425,11 @@ confirmed or plausible but deferred from immediate fix pass.
   strip the Phase 3 validation block from `_get_system_instruction_with_date()` when called
   from `create_aws_subagent_def`.
 
-**#6 setup_aws_profiles() race condition (UNVERIFIED — rate limit hit before Phase 2 verify)**
-- `agent_aws_tools.py:132`: `_aws_profiles_configured` flag checked and set without a lock.
-  Two concurrent requests at container startup could both see `False` and both write `~/.aws/config`
-  simultaneously, producing a corrupted config.
-- Finder confidence: HIGH (async function, module-level flag, no lock).
-- Fix: wrap the check+set in `asyncio.Lock()` at module level.
+**#6 setup_aws_profiles() race condition — FIXED (2026-06-28, commit 27e83a3)**
+- Added `_aws_profiles_lock` (asyncio.Lock), `setup_aws_profiles_async()` wrapper, and
+  `get_configured_profiles_async()`. Async callers (`AWSCLITool._arun`) now go through the
+  locked wrapper; module-import-time call keeps the sync path (no event loop at import time).
+- Smoke-tested: clean startup + pre-router docs query still completes successfully post-fix.
 
 **#7 _safe_enqueue_event silent drain (finder-only, no verifier run)**
 - `agent_executor.py:178`: Once the event queue closes, all subsequent events (including task
@@ -458,13 +457,18 @@ confirmed or plausible but deferred from immediate fix pass.
 
 ---
 
-## Regression Close-Out: eks_kubectl_execute (2026-06-26)
+## Regression Close-Out: eks_kubectl_execute (2026-06-28)
 **Test:** "Run kubectl get nodes on EKS cluster alpha-dev-general-10"
-(clean run, no prior context, no Ctrl-C)
-**Result:** PENDING — query submitted 2026-06-26, timed out waiting for
-response during this edit session (EKS kubeconfig update is slow on
-cold auth). No regression signal observed; the tool initialization log
-confirms `eks_kubectl_execute` registered successfully at container
-startup. Recommend re-running this test independently with a longer
-wait budget before treating `eks_kubectl_execute` regression as
-confirmed-clean.
+(clean run, 2026-06-28, post code-review fixes)
+**Result:** TOOL FIRED CORRECTLY — NOT A REGRESSION.
+- Log confirms `eks_kubectl_execute` called: `🔧 EKS Kubectl: cluster=alpha-dev-general-10, command='get nodes'`
+- Real AWS returned `ResourceNotFoundException` (cluster does not exist in account)
+- Tool then correctly fell back via aws-mock logic
+- **Post-tool behavior:** Agent entered a `aws eks list-clusters` verification loop (same-tool-same-args
+  repeating every ~10s) rather than surfacing the not-found answer cleanly. This is the pre-existing
+  loop pattern documented in KNOWN_GAPS.md "Open Items" above — not introduced by recent fixes.
+**Conclusion:** `eks_kubectl_execute` itself is regression-free. The loop is an upstream supervisor
+planning issue (already known) triggered by the cluster genuinely not existing in AWS.
+**Next test to close this cleanly:** Re-run once alpha-dev-general-10 (or any real EKS cluster)
+exists in the account — the not-found branch confirmed working; the found+kubectl branch needs
+a live cluster to validate.
