@@ -405,6 +405,59 @@ subprocess spawn + TCP handshake cost from the hot path.
 This is a separate, not-yet-started item — do not conflate with the
 routing determinism fix above.
 
+## Code-Review Deferred Items (2026-06-28)
+
+Found via 8-angle static code review + verification. Items below were
+confirmed or plausible but deferred from immediate fix pass.
+
+### Deferred — verified, lower urgency
+
+**#2 reflection-agent phantom reference (CONFIRMED via code review, DORMANT in practice)**
+- `agent_aws_agent_langgraph.py:244`: The AWS agent's system prompt instructs the LLM to call
+  `task(agent_name='reflection-agent', ...)` as a mandatory Phase 3 validation gate, but
+  `reflection-agent` is never registered in `deep_agent.py`'s `create_aws_subagent_def` for
+  multi-node mode.
+- Verification: Searched all container logs across today's test sessions — no `reflection-agent`
+  call was ever attempted at runtime. It appears in the system_prompt template text (printed at
+  startup) but was not triggered by any tested query.
+- Risk: Only fires for >3-step planning queries in multi-node mode. Never seen in practice.
+- Fix when triggered: either register a reflection subagent in `create_aws_subagent_def`, or
+  strip the Phase 3 validation block from `_get_system_instruction_with_date()` when called
+  from `create_aws_subagent_def`.
+
+**#6 setup_aws_profiles() race condition (UNVERIFIED — rate limit hit before Phase 2 verify)**
+- `agent_aws_tools.py:132`: `_aws_profiles_configured` flag checked and set without a lock.
+  Two concurrent requests at container startup could both see `False` and both write `~/.aws/config`
+  simultaneously, producing a corrupted config.
+- Finder confidence: HIGH (async function, module-level flag, no lock).
+- Fix: wrap the check+set in `asyncio.Lock()` at module level.
+
+**#7 _safe_enqueue_event silent drain (finder-only, no verifier run)**
+- `agent_executor.py:178`: Once the event queue closes, all subsequent events (including task
+  completion) are silently swallowed with only a log warning. The `execute()` caller has no
+  signal that delivery failed.
+- Fix: set a `_stream_failed` flag or re-raise so `execute()` can detect and surface the failure.
+
+**#8 _rebuild_graph orphaned thread (finder-only, no verifier run)**
+- `deep_agent.py:1396`: `future.result(timeout=120)` raises `TimeoutError` to the caller but the
+  background thread continues running and may still mutate `self._graph` and hold `_graph_lock`.
+- Fix: use `asyncio.Task.cancel()` or a `threading.Event` cancellation signal instead of
+  relying on `future.result()` timeout alone.
+
+### Not yet fixed (low severity, unverified)
+
+**#9 CAIPE base URL triplication (UNVERIFIED — rate limit)**
+- Same `config.getOptionalString('agentForge.baseUrl')` + `localhost:8000→8082` rewrite
+  copy-pasted in `AgentForgeChat.tsx`, `AgentForgePage.tsx`, `AgentForgeStatusDrawer.tsx`.
+- Fix: extract `useCaipeBaseUrl()` hook.
+
+**#10 O(n) setMessages on every SSE chunk (UNVERIFIED — rate limit)**
+- `AgentForgeChat.tsx:349`: every streaming token calls `setMessages(prev => prev.map(...))`,
+  scanning all messages on each packet. Worsens with long sessions.
+- Fix: split last-message state from history, or batch via `useRef` + `flushSync`.
+
+---
+
 ## Regression Close-Out: eks_kubectl_execute (2026-06-26)
 **Test:** "Run kubectl get nodes on EKS cluster alpha-dev-general-10"
 (clean run, no prior context, no Ctrl-C)

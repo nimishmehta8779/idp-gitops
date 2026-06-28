@@ -478,45 +478,28 @@ class AWSCLITool(BaseTool):
                 # Apply jq filter if specified
                 if jq_filter and stdout_str:
                     try:
-                        import tempfile
+                        # Pass filter as a literal argv element (no shell) and feed
+                        # JSON via stdin — eliminates both the shell injection surface
+                        # and the tempfile write/cleanup cycle.
+                        jq_process = await asyncio.create_subprocess_exec(
+                            'jq', jq_filter,
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
 
-                        # Write output to temp file
-                        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                            f.write(stdout_str)
-                            temp_file = f.name
+                        jq_stdout, jq_stderr = await asyncio.wait_for(
+                            jq_process.communicate(input=stdout_str.encode()),
+                            timeout=JQ_TIMEOUT
+                        )
 
-                        try:
-                            # Run jq on the temp file
-                            # Escape single quotes in the filter
-                            safe_filter = jq_filter.replace("'", "'\"'\"'")
-                            jq_command = f"jq '{safe_filter}' {temp_file}"
-
-                            jq_process = await asyncio.create_subprocess_shell(
-                                jq_command,
-                                stdout=asyncio.subprocess.PIPE,
-                                stderr=asyncio.subprocess.PIPE
-                            )
-
-                            jq_stdout, jq_stderr = await asyncio.wait_for(
-                                jq_process.communicate(),
-                                timeout=JQ_TIMEOUT
-                            )
-
-                            if jq_process.returncode == 0:
-                                stdout_str = jq_stdout.decode("utf-8", errors="replace")
-                                logger.info(f"jq filter applied successfully, output size: {len(stdout_str)}")
-                            else:
-                                jq_error = jq_stderr.decode("utf-8", errors="replace")
-                                logger.warning(f"jq filter failed: {jq_error}")
-                                # Return original output with warning
-                                stdout_str = f"⚠️ jq filter failed ({jq_error}), showing raw output:\n\n{stdout_str}"
-                        finally:
-                            # Clean up temp file
-                            import os as os_module
-                            try:
-                                os_module.unlink(temp_file)
-                            except Exception:
-                                pass
+                        if jq_process.returncode == 0:
+                            stdout_str = jq_stdout.decode("utf-8", errors="replace")
+                            logger.info(f"jq filter applied successfully, output size: {len(stdout_str)}")
+                        else:
+                            jq_error = jq_stderr.decode("utf-8", errors="replace")
+                            logger.warning(f"jq filter failed: {jq_error}")
+                            stdout_str = f"⚠️ jq filter failed ({jq_error}), showing raw output:\n\n{stdout_str}"
 
                     except Exception as e:
                         logger.warning(f"jq processing error: {e}")
@@ -785,8 +768,8 @@ class EKSKubectlTool(BaseTool):
         for line in lines:
             stripped = line.strip()
 
-            # Detect a Secret object (works for both standalone and list items)
-            if stripped == "kind: Secret":
+            # Detect a Secret object — handle quoted/unquoted variants kubectl may emit.
+            if re.match(r'^kind:\s+["\']?Secret["\']?\s*$', stripped):
                 in_secret = True
                 in_data = False
                 data_indent = -1
@@ -794,7 +777,7 @@ class EKSKubectlTool(BaseTool):
                 continue
 
             # Detect start of a different kind — leave secret context
-            if in_secret and re.match(r"^kind:\s+\S", stripped) and stripped != "kind: Secret":
+            if in_secret and re.match(r'^kind:\s+["\']?\S', stripped) and not re.match(r'^kind:\s+["\']?Secret["\']?\s*$', stripped):
                 in_secret = False
                 in_data = False
                 data_indent = -1
@@ -1071,4 +1054,98 @@ def get_aws_docs_search_tool() -> Optional[AWSDocsSearchTool]:
         logger.info("AWS docs MCP tool is disabled (USE_AWS_DOCS_MCP_TOOL=false)")
         return None
     return AWSDocsSearchTool()
+
+
+# --- EKS troubleshoot guide MCP tool ---
+# Same stdio-via-uv approach as AWSDocsSearchTool above. Note:
+# search_eks_troubleshoot_guide calls a real AWS-side "EKS Knowledge Base
+# API" (requires IAM permission eks-mcpserver:QueryKnowledgeBase) — it is
+# NOT a static bundled knowledge base. If the IAM permission isn't granted,
+# this fails loudly with the AWS error, consistent with this deployment's
+# fail-loudly-not-silently pattern for unconfigured integrations.
+EKS_MCP_TIMEOUT = int(os.getenv("EKS_MCP_MAX_EXECUTION_TIME", "30"))
+
+
+class EKSTroubleshootToolInput(BaseModel):
+    """Input schema for EKS troubleshoot guide search tool."""
+
+    query: str = Field(
+        description=(
+            "Specific question or issue description related to EKS troubleshooting, "
+            "e.g. 'pod stuck in CrashLoopBackOff'. Must be under 300 characters and "
+            "contain only letters, numbers, commas, periods, question marks, colons, and spaces."
+        )
+    )
+
+
+class EKSTroubleshootTool(BaseTool):
+    """
+    Tool for searching the AWS-authored EKS troubleshooting knowledge base via
+    the awslabs eks-mcp-server (read-only, no cluster access required).
+
+    Use this tool when diagnosing WHY an EKS/Kubernetes resource is failing,
+    unhealthy, or in an error state, before attempting ad-hoc diagnosis.
+    """
+
+    name: str = "search_eks_troubleshoot_guide"
+    description: str = """Search the AWS-authored EKS troubleshooting knowledge base for guidance on diagnosing and resolving EKS issues.
+
+    Use this tool to:
+    - Get step-by-step troubleshooting guidance for cluster creation issues,
+      node group problems, workload deployment issues, and common error states
+      (CrashLoopBackOff, ImagePullBackOff, Pending pods, etc.)
+    - Get authoritative AWS-authored guidance BEFORE attempting ad-hoc diagnosis
+
+    Input is a specific question or symptom description, e.g.
+    "pod stuck in CrashLoopBackOff" or "node group failing to scale".
+    """
+    args_schema: type[BaseModel] = EKSTroubleshootToolInput
+
+    def _run(self, query: str) -> str:
+        return asyncio.run(self._arun(query))
+
+    async def _arun(self, query: str) -> str:
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
+
+        server_params = StdioServerParameters(
+            command="uv",
+            args=[
+                "run",
+                "--with", "awslabs.eks-mcp-server",
+                "awslabs.eks-mcp-server",
+                "--no-allow-write",
+                "--no-allow-sensitive-data-access",
+            ],
+            env={
+                "FASTMCP_LOG_LEVEL": "ERROR",
+            },
+        )
+
+        try:
+            async with asyncio.timeout(EKS_MCP_TIMEOUT):
+                async with stdio_client(server_params) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        result = await session.call_tool(
+                            "search_eks_troubleshoot_guide", {"query": query}
+                        )
+                        parts = [
+                            getattr(c, "text", str(c)) for c in result.content
+                        ]
+                        return "\n".join(parts) if parts else "No troubleshooting guidance found."
+        except asyncio.TimeoutError:
+            return f"❌ EKS troubleshoot guide search timed out after {EKS_MCP_TIMEOUT}s"
+        except Exception as e:
+            logger.error(f"EKS troubleshoot MCP search error: {e}")
+            return f"❌ Error searching EKS troubleshoot guide: {str(e)}"
+
+
+def get_eks_troubleshoot_tool() -> Optional[EKSTroubleshootTool]:
+    """Factory function to create EKS troubleshoot guide search tool if enabled."""
+    use_eks_kb_tool = os.getenv("USE_EKS_MCP_TOOL", "true").lower() == "true"
+    if not use_eks_kb_tool:
+        logger.info("EKS troubleshoot MCP tool is disabled (USE_EKS_MCP_TOOL=false)")
+        return None
+    return EKSTroubleshootTool()
 

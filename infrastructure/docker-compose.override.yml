@@ -13,6 +13,12 @@ services:
       PATH: /usr/local/aws-mock:/app/.venv/bin:/home/appuser/go/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DOCS_MCP_MAX_EXECUTION_TIME: "90"
     volumes:
       - ~/.aws:/home/appuser/.aws:ro
       - ./caipe/aws-mock:/usr/local/aws-mock/aws:ro
+      - ./caipe/patches/agent_aws_tools.py:/app/ai_platform_engineering/agents/aws/agent_aws/tools.py:ro
+      - ./caipe/patches/agent_aws_agent_langgraph.py:/app/ai_platform_engineering/agents/aws/agent_aws/agent_langgraph.py:ro
+      - ./caipe/patches/deep_agent.py:/app/ai_platform_engineering/multi_agents/platform_engineer/deep_agent.py:ro
+      - ./caipe/patches/agent_executor.py:/app/ai_platform_engineering/multi_agents/platform_engineer/protocol_bindings/a2a/agent_executor.py:ro
+

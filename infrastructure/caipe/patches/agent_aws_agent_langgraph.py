@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field
 
 from ai_platform_engineering.utils.a2a_common.base_langgraph_agent import BaseLangGraphAgent
-from .tools import get_aws_cli_tool, get_eks_kubectl_tool, get_aws_docs_search_tool
+from .tools import get_aws_cli_tool, get_eks_kubectl_tool, get_aws_docs_search_tool, get_eks_troubleshoot_tool
 
 logger = logging.getLogger(__name__)
 
@@ -1346,6 +1346,12 @@ Always structure your final answer with:
         if aws_docs_search_tool:
             tools.append(aws_docs_search_tool)
             logger.info(f"✅ {agent_name}: Added AWS docs search tool (aws_docs_search)")
+
+        # Add EKS troubleshoot guide search tool (official awslabs MCP server, spawned via uv/stdio)
+        eks_troubleshoot_tool = get_eks_troubleshoot_tool()
+        if eks_troubleshoot_tool:
+            tools.append(eks_troubleshoot_tool)
+            logger.info(f"✅ {agent_name}: Added EKS troubleshoot tool (search_eks_troubleshoot_guide)")
 
         if not tools:
             raise RuntimeError(

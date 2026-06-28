@@ -955,7 +955,7 @@ async def create_aws_subagent_def(prompt_config: dict = None) -> dict:
     alone may not cover all operations — the CLI tools fill the gap.
     """
     from ai_platform_engineering.agents.aws.agent_aws.agent_langgraph import AWSAgentLangGraph
-    from ai_platform_engineering.agents.aws.agent_aws.tools import get_aws_cli_tool, get_eks_kubectl_tool, get_aws_docs_search_tool
+    from ai_platform_engineering.agents.aws.agent_aws.tools import get_aws_cli_tool, get_eks_kubectl_tool, get_aws_docs_search_tool, get_eks_troubleshoot_tool
 
     agent = AWSAgentLangGraph()
     name = "aws"
@@ -992,6 +992,15 @@ async def create_aws_subagent_def(prompt_config: dict = None) -> dict:
             logger.info(f"{name}: Added AWS docs search tool (aws_docs_search)")
     except Exception as e:
         logger.warning(f"{name}: Failed to load AWS docs search tool: {e}")
+
+    # Add EKS troubleshoot guide search tool (official awslabs MCP server via uv/stdio)
+    try:
+        eks_troubleshoot_tool = get_eks_troubleshoot_tool()
+        if eks_troubleshoot_tool:
+            tools.append(eks_troubleshoot_tool)
+            logger.info(f"{name}: Added EKS troubleshoot tool (search_eks_troubleshoot_guide)")
+    except Exception as e:
+        logger.warning(f"{name}: Failed to load EKS troubleshoot tool: {e}")
 
     tools.extend([get_file_line_count, tool_result_to_file, wait])
 
@@ -1055,7 +1064,7 @@ async def create_komodor_subagent_def(prompt_config: dict = None) -> dict:
     """Create Komodor subagent definition with shared filesystem."""
     from ai_platform_engineering.agents.komodor.agent_komodor.protocol_bindings.a2a_server.agent import KomodorAgent
     agent = KomodorAgent()
-    return await create_subagent_def(agent, "komodor", "Komodor: Kubernetes monitoring, troubleshooting", prompt_config)
+    return await create_subagent_def(agent, "komodor", "Komodor: Kubernetes change intelligence, service maps, and Komodor-specific root cause analysis. NOT for general EKS cluster status, pod listing, or kubectl operations — use AWS agent for those.", prompt_config)
 
 
 async def create_confluence_subagent_def(prompt_config: dict = None) -> dict:
@@ -1568,16 +1577,27 @@ class PlatformEngineerDeepAgent:
             sa_tools = sd.get("tools", [])
             if sa_name and sa_tools:
                 subagent_tools_snapshot[sa_name] = [t.name for t in sa_tools]
+        if self.rag_tools:
+            subagent_tools_snapshot["rag"] = [t.name for t in self.rag_tools]
         self._subagent_tools = subagent_tools_snapshot
 
-        # Build agents_for_prompt dict for generating system prompt
+        # Build agents_for_prompt dict for generating system prompt.
+        # Exclude subagents that have no domain tools (only placeholder utilities) —
+        # they're registered but not configured, and including them causes the LLM
+        # to route queries there even though the agent will fail.
+        _placeholder_tools = {"get_file_line_count", "tool_result_to_file", "wait"}
         agents_for_prompt = {}
         for subagent_def in subagent_defs:
             name = subagent_def.get("name")
-            if name:
-                agents_for_prompt[name] = {
-                    "description": subagent_def.get("description", f"{name} agent")
-                }
+            if not name:
+                continue
+            tool_names = {t.name for t in subagent_def.get("tools", [])}
+            if tool_names and tool_names.issubset(_placeholder_tools):
+                logger.warning(f"⚠️  Excluding {name} from supervisor routing — no domain tools configured")
+                continue
+            agents_for_prompt[name] = {
+                "description": subagent_def.get("description", f"{name} agent")
+            }
 
         # Add RAG to agents_for_prompt when RAG tools are loaded
         # This ensures the system prompt generator includes the RAG agent section

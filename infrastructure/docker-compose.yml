@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: backstage-db
     environment:
       POSTGRES_USER: postgres
@@ -64,6 +64,8 @@ services:
       KUBECONFIG_BASE64: ${KUBECONFIG_BASE64}
       JIRA_AGENT_ENABLED: "false"
       ENABLE_STREAMING: "false"
+      ENABLE_RAG: "true"
+      RAG_SERVER_URL: http://rag-server:9446
     volumes:
       - ./backstage/secrets:/app/secrets:ro
     env_file:
@@ -75,6 +77,27 @@ services:
     depends_on:
       - db
     command: platform-engineer
+
+  rag-server:
+    build:
+      context: ./rag-server
+    container_name: rag-server
+    ports:
+      - "9446:9446"
+    volumes:
+      - ../development:/development:ro
+      - ../docs:/docs:ro
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: backstage_plugin_catalog
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    networks:
+      - default
+    depends_on:
+      - db
 
 volumes:
   pgdata:

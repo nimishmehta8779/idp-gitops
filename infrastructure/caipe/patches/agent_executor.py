@@ -25,7 +25,7 @@ from a2a.types import (
     TextPart,
 )
 from a2a.utils import new_agent_text_message, new_task, new_text_artifact
-from ai_platform_engineering.agents.aws.agent_aws.tools import AWSDocsSearchTool
+from ai_platform_engineering.agents.aws.agent_aws.tools import AWSDocsSearchTool, get_aws_docs_search_tool
 from ai_platform_engineering.multi_agents.platform_engineer.deep_agent import ENABLE_USER_INFO_TOOL
 from ai_platform_engineering.multi_agents.platform_engineer.protocol_bindings.a2a.agent import (
     AIPlatformEngineerA2ABinding
@@ -36,6 +36,38 @@ from langchain_core.messages.base import message_to_dict
 from langgraph.types import Command
 
 logger = logging.getLogger(__name__)
+
+
+def _format_docs_search_result(raw: str) -> str:
+    """Convert aws_docs_search JSON output into readable markdown for the chat UI."""
+    import json
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return raw  # not JSON — return as-is
+
+    results = data.get("search_results", [])
+    if not results:
+        return "No AWS documentation results found."
+
+    lines = ["## AWS Documentation Results\n"]
+    for item in results[:5]:  # top 5 only
+        title = item.get("title", "")
+        url = item.get("url", "")
+        context = item.get("context", "")
+        sections = item.get("sections") or []
+
+        lines.append(f"### {title}")
+        if context:
+            lines.append(f"{context}\n")
+        if sections:
+            lines.append("**Key sections:** " + " · ".join(sections))
+        if url:
+            lines.append(f"[Read more]({url})\n")
+        else:
+            lines.append("")
+
+    return "\n".join(lines)
 
 
 def new_data_artifact(name: str, description: str, data: dict, artifact_id: str = None) -> Artifact:
@@ -1151,25 +1183,31 @@ class AIPlatformEngineerA2AExecutor(AgentExecutor):
         state.trace_id = trace_id
 
         # Pre-router: short-circuit deterministic AWS docs queries before the LLM graph runs.
-        # Guards: no active resume flow, not mid-clarification (input_required), query present.
-        # Prompt-based routing remains as fallback for phrasings the regex doesn't catch.
+        # Guards: no active resume flow, not mid-clarification (input_required), query present,
+        # and the tool is enabled (get_aws_docs_search_tool() returns None when disabled).
         _task_state = task.status.state if (task and task.status) else None
-        if resume_cmd is None and query and _task_state != TaskState.input_required and _matches_aws_docs_pattern(query):
+        _docs_tool = get_aws_docs_search_tool()
+        if resume_cmd is None and query and _task_state != TaskState.input_required and _docs_tool and _matches_aws_docs_pattern(query):
             logger.info(f"Pre-router: matched AWS docs pattern, short-circuiting graph for: {query[:80]}")
             try:
-                _docs_result = await AWSDocsSearchTool()._arun(query)
+                _docs_result = await _docs_tool._arun(query)
             except Exception as _exc:
                 logger.warning(f"Pre-router AWS docs call failed ({_exc}), falling through to graph")
                 _docs_result = None
-            if _docs_result:
+            # _arun swallows errors and returns ❌-prefixed strings rather than raising;
+            # treat those as failures and fall through to the LLM graph.
+            if _docs_result and not _docs_result.startswith("❌"):
+                _formatted = _format_docs_search_result(_docs_result)
                 _artifact = new_text_artifact(
                     name='final_result',
                     description='AWS documentation',
-                    text=_docs_result,
+                    text=_formatted,
                 )
                 await self._send_artifact(event_queue, task, _artifact, append=False, last_chunk=True)
                 await self._send_completion(event_queue, task, trace_id=trace_id)
                 return
+            if _docs_result and _docs_result.startswith("❌"):
+                logger.warning(f"Pre-router AWS docs returned error, falling through to graph: {_docs_result[:120]}")
 
         try:
             # Smart-merge: combine RBAC's OBO/user_id propagation (PR #1257) with

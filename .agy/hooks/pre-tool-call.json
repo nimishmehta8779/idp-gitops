@@ -1,0 +1,11 @@
+{
+  "hook": "before_tool_call",
+  "rules": [
+    {
+      "tool_pattern": "file_write|file_edit|bash",
+      "path_pattern": "infrastructure/backstage/app-config\\.yaml|infrastructure/backstage/packages/backend/src/plugins/permission-policy\\.ts|infrastructure/crossplane/eks/composition\\.yaml|infrastructure/iam/.*|development/templates/.*|team-.*-infra/.*",
+      "action": "block",
+      "message": "This path is on the frozen baseline list (see CLAUDE.md). Modifying it requires explicit human approval outside this session — stop and ask, do not proceed."
+    }
+  ]
+}
