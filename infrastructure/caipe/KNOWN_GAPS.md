@@ -68,6 +68,42 @@ to CAIPE's A2A JSON-RPC endpoint. Renders final_result as markdown,
 tool_notification events as status lines, and UserInputMetaData as
 real input forms.
 
+## Added: Cost Insights Plugin with Real AWS Cost Explorer Data (2026-06-28)
+**What:** Backstage Cost Insights page at `/cost-insights` now shows real AWS
+spend data per team, broken down by cost-center tag, with a group switcher
+for team-alpha / team-beta / team-gamma. Previously wired to
+`ExampleCostInsightsClient` (synthetic demo data).
+**How:**
+- New backend plugin: `packages/backend/src/plugins/cost-insights-backend.ts`
+  — `createBackendPlugin` exposing `GET /api/cost-insights/group-daily-cost`
+  which calls `ce:GetCostAndUsage` server-side using scoped IAM credentials.
+  Filters by `cost-center` tag (key: `cost-center`, values: `CC-ALPHA`,
+  `CC-BETA`, `CC-GAMMA`) sourced directly from team-*-infra/catalog-info.yaml
+  and the Crossplane EKS composition — no invented tag names.
+- New frontend client: `packages/app/src/components/CostInsightsAwsClient.ts`
+  — implements `CostInsightsApi`, calls the backend proxy (never AWS directly),
+  computes linear trendline from aggregation data, returns all three teams as
+  selectable groups.
+- `packages/app/src/App.tsx`: swapped `ExampleCostInsightsClient` →
+  `CostInsightsAwsClient`.
+- `packages/backend/src/index.ts`: registered the new backend plugin.
+**IAM:** Scoped IAM user `backstage-cost-insights`
+(arn:aws:iam::415703161648:user/backstage-cost-insights) with a single inline
+policy allowing only `ce:GetCostAndUsage`. Credentials stored in
+`infrastructure/backstage/.env` (gitignored) as `COST_INSIGHTS_AWS_*`.
+Verified: `ce:GetCostAndUsage` succeeds; `s3:ListBuckets` denied.
+**Cost estimate:** ~$0.90/month at 3 teams × daily refresh (no per-load
+fan-out; 24h caching deferred to future work).
+**Verified (2026-06-28):**
+- Backend proxy: `curl /api/cost-insights/group-daily-cost?group=team-alpha`
+  returned real CE data filtered by CC-ALPHA tag.
+- All three team endpoints confirmed returning real data with correct tag filters.
+- Browser: `/cost-insights` renders group switcher with team-alpha / team-beta /
+  team-gamma, greeting shows selected team name (not "all"), graph shows real
+  near-zero spend (~$0.33 max over 6 months) consistent with dev account — not
+  mock client's synthetic demo values. Network tab confirmed requests hitting
+  `/api/cost-insights/group-daily-cost` with 200 responses.
+
 ## Open Items (Known, Not Blocking)
 - Real-cluster query path was validated extensively earlier on
   2026-06-24 (multiple independent kubectl cross-checks against
