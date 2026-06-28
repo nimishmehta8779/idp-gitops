@@ -82,6 +82,27 @@ real input forms.
   have a tool for that" response instead of the AWS agent's cleaner
   not-found/clarification flow. Workaround: explicitly say "use the
   AWS agent" in the query. Not yet root-caused.
+- **Supervisor aws eks list-clusters post-not-found loop (REPORTED,
+  NOT YET REPRODUCED LIVE IN THIS PASS)**
+  Symptom: after `eks_kubectl_execute` receives a real AWS
+  `ResourceNotFoundException` for the queried cluster, the supervisor
+  enters a loop calling `aws eks list-clusters` with the same arguments
+  roughly every ~10s, unable to surface the not-found answer to the user.
+  Source: session memory observations 1138–1139 ("Agent Stuck in
+  Looping Pattern: Repeated EKS Listing Without Progress"; "Task
+  Creation Missing Task ID Return Value"), 2026-06-28. Not independently
+  reproduced in the current session — the regression close-out test
+  (same date) observed the loop but attributed it to "documented in
+  Open Items above," which was checked and found incorrect: no such
+  entry existed before this one. That cross-reference was wrong;
+  this entry is the first formal record.
+  Suspected root cause (HYPOTHESIS from obs 1138–1139, not confirmed
+  against code): task creation in the supervisor failed to return a
+  Task ID, leaving the planning chain with no valid handle to poll for
+  the result and causing it to re-query instead. Not verified directly
+  against the planning/task-state code.
+  Fix path: not yet investigated. Requires reproducing with a live
+  trace to confirm the task-ID hypothesis before any code change.
 
 
 ## Resolved: GitHub Agent Owner/Repo Confusion (2026-06-25)
@@ -465,8 +486,11 @@ confirmed or plausible but deferred from immediate fix pass.
 - Real AWS returned `ResourceNotFoundException` (cluster does not exist in account)
 - Tool then correctly fell back via aws-mock logic
 - **Post-tool behavior:** Agent entered a `aws eks list-clusters` verification loop (same-tool-same-args
-  repeating every ~10s) rather than surfacing the not-found answer cleanly. This is the pre-existing
-  loop pattern documented in KNOWN_GAPS.md "Open Items" above — not introduced by recent fixes.
+  repeating every ~10s) rather than surfacing the not-found answer cleanly. Originally attributed to
+  "documented in Open Items above" — that cross-reference was checked on 2026-06-28 and found
+  incorrect; no such entry existed at that time. Now formally documented as a new Open Item
+  ("Supervisor aws eks list-clusters post-not-found loop") in the Open Items section above.
+  Not introduced by recent fixes.
 **Conclusion:** `eks_kubectl_execute` itself is regression-free. The loop is an upstream supervisor
 planning issue (already known) triggered by the cluster genuinely not existing in AWS.
 **Next test to close this cleanly:** Re-run once alpha-dev-general-10 (or any real EKS cluster)
