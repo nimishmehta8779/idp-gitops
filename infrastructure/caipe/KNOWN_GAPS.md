@@ -6,13 +6,16 @@
 - AWS Cost Explorer queries
 - Multi-step planning and tool orchestration via A2A protocol
 - Profile-based account routing (profile='default' confirmed working)
+- PagerDuty on-call lookups and incident queries (2026-06-28)
+- Cross-agent queries spanning PagerDuty + ArgoCD (2026-06-28)
 
 ## Confirmed Gaps (failing loudly, not silently — by design, left as-is)
 - Komodor: requires KOMODOR_TOKEN (not configured) — third-party
   SaaS credential, not yet obtained
 - Jira, Confluence: require ATLASSIAN_TOKEN (not configured)
 - Webex: requires WEBEX_TOKEN (not configured)
-- PagerDuty: requires PAGERDUTY_API_KEY (not configured)
+- Weather agent: disabled via ENABLE_WEATHER=false — no weather MCP
+  server running in this deployment; set ENABLE_WEATHER=true to re-enable
 - Splunk: requires SPLUNK_TOKEN (not configured)
 - Slack: real network ConnectError to localhost:3001/mcp — nothing
   listening there in this deployment
@@ -67,6 +70,39 @@ packages/app/src/components/agent-forge/, using Backstage's native
 to CAIPE's A2A JSON-RPC endpoint. Renders final_result as markdown,
 tool_notification events as status lines, and UserInputMetaData as
 real input forms.
+
+## Added: PagerDuty Agent Integration (2026-06-28)
+**What:** PagerDuty subagent enabled and verified with real API credentials.
+Supports on-call lookups, incident listing, and incident acknowledgement/
+resolution. Weather agent disabled (no server in this deployment).
+**How:**
+- `PAGERDUTY_API_KEY` set in `infrastructure/.env` (gitignored) — REST API v2
+  key with read+write scope (needed for ack/resolve tools).
+- `ENABLE_WEATHER=false` set in `infrastructure/.env` — uses the standard
+  `ENABLE_<NAME>` pattern; confirmed in startup logs as
+  `⏭️ Disabled agents (via ENABLE_* env vars): ['weather']`.
+- Proactive routing rule added to `agent_prompts.pagerduty.system_prompt` in
+  `prompt_config.deep_agent.yaml` before testing — applying the lesson from
+  the AWS-docs routing-gap fix: wire routing rules first, not after a failure.
+  Rule covers natural phrasings: "Who is on call?", "Is anyone paged?",
+  "Show triggered incidents", "Acknowledge incident <ID>", etc.
+**Where:** `infrastructure/caipe/charts/ai-platform-engineering/data/
+prompt_config.deep_agent.yaml` (agent_prompts.pagerduty.system_prompt);
+`infrastructure/.env` (PAGERDUTY_API_KEY, ENABLE_WEATHER).
+**Verified (2026-06-28):**
+- Startup log: `🏠 pagerduty → in-process MCP tools`, 11 MCP tools loaded,
+  subagent def created with 14 tools. No PAGERDUTY_API_KEY error at startup.
+- Explicit delegation: "Delegate to the PagerDuty agent: who is currently on
+  call?" → `GET https://api.pagerduty.com/oncalls` HTTP 200, returned
+  "Nimish Mehta is currently on call."
+- Natural phrasing: "Is anyone paged right now?" → routed to PagerDuty without
+  explicit delegation; returned on-call person + live triggered incident
+  (ID: Q1NCOVWNUG64GC, Title: "Example Incident", Status: Triggered,
+  Assigned: Nimish Mehta).
+- Cross-agent: "Who is on call in PagerDuty, and what ArgoCD apps are out of
+  sync?" → supervisor delegated to both agents in sequence. PagerDuty leg
+  succeeded (real data). ArgoCD leg returned INVALID_ARGUMENT error —
+  pre-existing ArgoCD tool config issue, not a regression from this change.
 
 ## Added: Cost Insights Plugin with Real AWS Cost Explorer Data (2026-06-28)
 **What:** Backstage Cost Insights page at `/cost-insights` now shows real AWS

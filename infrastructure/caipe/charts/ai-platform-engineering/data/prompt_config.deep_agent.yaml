@@ -574,6 +574,7 @@ agent_prompts:
       MUST be delegated to the AWS sub-agent, which should check
       search_eks_troubleshoot_guide for the relevant AWS-authored
       runbook BEFORE attempting ad-hoc diagnosis with kubectl alone.
+
   backstage:
     system_prompt: |
       Handle Backstage catalog operations:
@@ -748,6 +749,22 @@ agent_prompts:
     system_prompt: |
       Handle PagerDuty operations:
       - on-call schedules, incidents, and acknowledgements
+      - look up who is currently on call for a service or schedule
+      - list, search, or filter open/triggered/acknowledged incidents
+      - acknowledge or resolve incidents by ID
+      - get incident details, notes, and timeline
+
+      **CRITICAL - Route ALL of the following to this agent**:
+      ANY question about on-call schedules, who is on call, current
+      incidents, incident status, acknowledging or resolving incidents
+      MUST be delegated here. Do NOT answer from memory or generic
+      knowledge. Natural phrasings that must route here:
+      - "Who is on call?" / "Who is on call for X service?"
+      - "Are there any open incidents?" / "Show triggered incidents"
+      - "Acknowledge incident <ID>" / "Resolve incident <ID>"
+      - "What incidents happened in the last N hours?"
+      - "Is anyone paged right now?"
+
   victorops:
     system_prompt: |
       Handle VictorOps operations:
