@@ -115,6 +115,23 @@ _kubectl_semaphore = asyncio.Semaphore(MAX_CONCURRENT_KUBECTL_CALLS)
 
 # AWS profiles configuration
 _aws_profiles_configured = False
+# Protects concurrent async callers from racing on the first-time config write.
+# Module-import-time call (_init_aws_profiles) runs before any event loop so it
+# doesn't use the lock; by the time async callers arrive, the flag is already True.
+_aws_profiles_lock: asyncio.Lock | None = None
+
+
+def _get_profiles_lock() -> asyncio.Lock:
+    global _aws_profiles_lock
+    if _aws_profiles_lock is None:
+        _aws_profiles_lock = asyncio.Lock()
+    return _aws_profiles_lock
+
+
+async def setup_aws_profiles_async() -> list[dict]:
+    """Async wrapper around setup_aws_profiles with a lock for concurrent callers."""
+    async with _get_profiles_lock():
+        return setup_aws_profiles()
 
 
 def setup_aws_profiles() -> list[dict]:
@@ -202,6 +219,12 @@ credential_source = Environment
 def get_configured_profiles() -> list[str]:
     """Get list of configured AWS profile names."""
     accounts = setup_aws_profiles()
+    return [acc['name'] for acc in accounts]
+
+
+async def get_configured_profiles_async() -> list[str]:
+    """Async version — safe to call from concurrent _arun coroutines."""
+    accounts = await setup_aws_profiles_async()
     return [acc['name'] for acc in accounts]
 
 
@@ -425,7 +448,7 @@ class AWSCLITool(BaseTool):
         # that env var credentials (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)
         # are used directly.  Adding --profile when no ~/.aws/config exists
         # causes "The config profile (X) could not be found" errors.
-        configured_profiles = get_configured_profiles()
+        configured_profiles = await get_configured_profiles_async()
         if configured_profiles and profile:
             profile_prefix = f"--profile {profile} "
         else:
