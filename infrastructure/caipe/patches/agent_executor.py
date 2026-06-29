@@ -4,6 +4,7 @@
 import hashlib
 import inspect
 import logging
+import os
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -134,6 +135,65 @@ AWS_DOCS_PRE_ROUTE_PATTERNS = [
 def _matches_aws_docs_pattern(text: str) -> bool:
     lower = text.lower()
     return any(re.search(p, lower) for p in AWS_DOCS_PRE_ROUTE_PATTERNS)
+
+
+_GUARDRAIL_PROMPT = """\
+Your task is to check if the user message is off-topic for an AI Platform Engineering assistant.
+
+The assistant ONLY handles cloud infrastructure and DevOps topics: AWS services, EKS/Kubernetes, ArgoCD, GitHub, PagerDuty, Backstage, Jira, Terraform, infrastructure deployments, CI/CD pipelines, cloud costs, monitoring, and similar platform engineering work.
+
+The following are OFF-TOPIC: sports results, entertainment, cooking, general knowledge, geography, history, celebrities, jokes, weather, and anything unrelated to infrastructure or software engineering.
+
+User message: "{user_input}"
+
+Question: Is this message off-topic or inappropriate for an AI Platform Engineering assistant?
+Answer [Yes/No]:"""
+
+_GUARDRAIL_REFUSAL = (
+    "I'm an AI Platform Engineering assistant focused on AWS, EKS, ArgoCD, GitHub, "
+    "and related infrastructure tasks. I'm not able to help with that topic. "
+    "Is there something related to your infrastructure I can help with?"
+)
+
+_GUARDRAIL_ENABLED = os.getenv("TOPIC_GUARDRAIL_ENABLED", "true").lower() in ("true", "1", "yes")
+
+
+class _TopicGuardrail:
+    """Lightweight LLM-based topic guardrail — no NeMo runtime dependency."""
+
+    def __init__(self):
+        self._llm = None
+
+    def _get_llm(self):
+        if self._llm is not None:
+            return self._llm
+        import os as _os
+        provider = _os.getenv("LLM_PROVIDER", "")
+        if "gemini" in provider.lower():
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            model = _os.getenv("LLM_MODEL", "gemini-2.5-flash-lite")
+            self._llm = ChatGoogleGenerativeAI(model=model, temperature=0, max_tokens=5)
+        else:
+            from langchain_openai import ChatOpenAI
+            model = _os.getenv("LLM_MODEL", "gpt-4o-mini")
+            self._llm = ChatOpenAI(model=model, temperature=0, max_tokens=5)
+        return self._llm
+
+    async def is_blocked(self, user_input: str) -> bool:
+        """Return True if the query is off-topic and should be blocked."""
+        try:
+            llm = self._get_llm()
+            prompt = _GUARDRAIL_PROMPT.format(user_input=user_input.replace('"', "'"))
+            from langchain_core.messages import HumanMessage
+            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+            answer = resp.content.strip().lower()
+            return answer.startswith("yes")
+        except Exception as exc:
+            logger.warning(f"TopicGuardrail LLM call failed ({exc}); allowing query through.")
+            return False
+
+
+_topic_guardrail = _TopicGuardrail()
 
 
 class AIPlatformEngineerA2AExecutor(AgentExecutor):
@@ -1181,6 +1241,21 @@ class AIPlatformEngineerA2AExecutor(AgentExecutor):
         # Initialize state
         state = StreamState()
         state.trace_id = trace_id
+
+        # Topic guardrail: block off-topic queries before any LLM graph work.
+        # Only runs on new queries (not resumes) when the feature is enabled.
+        if _GUARDRAIL_ENABLED and resume_cmd is None and query:
+            _blocked = await _topic_guardrail.is_blocked(query)
+            if _blocked:
+                logger.info(f"TopicGuardrail: blocked off-topic query: {query[:80]}")
+                _artifact = new_text_artifact(
+                    name='guardrail_response',
+                    description='Topic guardrail refusal',
+                    text=_GUARDRAIL_REFUSAL,
+                )
+                await self._send_artifact(event_queue, task, _artifact, append=False, last_chunk=True)
+                await self._send_completion(event_queue, task, trace_id=trace_id)
+                return
 
         # Pre-router: short-circuit deterministic AWS docs queries before the LLM graph runs.
         # Guards: no active resume flow, not mid-clarification (input_required), query present,
