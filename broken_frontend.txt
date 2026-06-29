@@ -1,0 +1,2 @@
+FAILING_STATUS=CrashLoopBackOff
+ERROR_MSG=Back-off restarting failed container
