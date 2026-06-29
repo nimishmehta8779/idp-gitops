@@ -638,10 +638,15 @@ it succeeded — different Python version and dependency tree, not the container
 
 ### What it calls (provider/model)
 
-`_TopicGuardrail._get_llm()` reads `LLM_PROVIDER` at runtime. With
-`LLM_PROVIDER=google-gemini` and `LLM_MODEL=gemini-2.5-flash-lite` in the container
-env, it takes the `langchain_google_genai.ChatGoogleGenerativeAI` branch. Uses the
-`GOOGLE_API_KEY` already present in `docker-compose.yml` — no new credential.
+`_TopicGuardrail._get_llm()` reads `LLM_PROVIDER` and `LLM_MODEL` at runtime — it
+uses whatever the supervisor is configured to use. With `LLM_PROVIDER=google-gemini`
+and `LLM_MODEL=gemini-2.5-flash` (current), it takes the
+`langchain_google_genai.ChatGoogleGenerativeAI` branch. Uses the `GOOGLE_API_KEY`
+already present in `docker-compose.yml` — no new credential.
+Note: `gemini-2.5-flash-lite` was trialled as the supervisor model tonight but reverted
+— `flash-lite` hallucinated agent names (`argocdigger` instead of `argocd`) in the
+supervisor routing step. The guardrail's Yes/No classification works fine on either
+model; it was the supervisor's structured tool-routing that required `flash` capability.
 
 ### How it works
 
