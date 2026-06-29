@@ -110,19 +110,43 @@ prompt_config.deep_agent.yaml` (agent_prompts.pagerduty.system_prompt);
 ## Fixed: ArgoCD Subagent INVALID_ARGUMENT (Gemini Schema Incompatibility) (2026-06-28)
 **Root cause:** Gemini's restricted OpenAPI subset rejects three JSON Schema
 patterns that FastMCP generates from Python type annotations:
-1. `"additionalProperties": false` at any nesting level (not just top-level —
-   langchain_google_genai only stripped top-level ones)
-2. `anyOf: [T, {type: null}]` from `Optional[T]` annotations — Gemini doesn't
-   support `anyOf`
-3. `"items": {}` (empty, no `type` field) from `List[Dict[str, Any]]` — Gemini
-   requires `items.type` to be specified
+1. `"additionalProperties": false` at any nesting level — `langchain_google_genai`
+   only stripped the top-level occurrence; nested ones caused silent
+   `INVALID_ARGUMENT` with no tool call attempted
+2. `"anyOf": [T, {"type": "null"}]` — how FastMCP encodes `Optional[T]`; Gemini
+   does not support `anyOf`
+3. `"items": {}` (empty dict, no `type` field) — how FastMCP encodes
+   `List[Dict[str, Any]]`; Gemini requires `items` to have a `type` key
+All 34 ArgoCD MCP tools had at least one of these patterns. Every
+`list_applications`, `get_application`, and related call silently failed
+before any tool executed.
 **Fix:** `_sanitize_schema_for_gemini()` + `_sanitize_mcp_tools_for_gemini()`
 added to `patches/deep_agent.py`. Called after MCP tools are loaded in
-`create_subagent_def()`. Recursively strips `additionalProperties`, flattens
-`anyOf` Optional patterns, and replaces typeless `items: {}` with
-`items: {type: object}`.
-**Verified:** "List all ArgoCD applications" → `list_applications
-outcome=success` in audit log, 6 real applications returned.
+`create_subagent_def()`. Approach:
+- Recursively walks the full schema dict — catches nested `additionalProperties`
+  that the langchain layer missed
+- `anyOf` containing exactly one non-null type → flattened to that type inline;
+  `anyOf` that can't be reduced is dropped entirely
+- `items: {}` → replaced with `items: {"type": "object"}`
+- Patch is applied by monkey-patching `args_schema.model_json_schema` on each
+  `StructuredTool` so no new tool objects need constructing
+**Scope — applies to all future Gemini-routed MCP tool additions:**
+`_sanitize_mcp_tools_for_gemini()` is called inside `create_subagent_def()`,
+which is the shared entry point for every subagent (ArgoCD, GitHub, AWS, etc.).
+Any future MCP server added under a Gemini-backed subagent automatically gets
+its schemas sanitized. If a new MCP server is ever added outside
+`create_subagent_def()`, the sanitization must be applied explicitly — failure
+mode is silent `INVALID_ARGUMENT` with no error surfaced to the user.
+**Where:** `infrastructure/caipe/patches/deep_agent.py`, lines ~189–246
+(`_sanitize_schema_for_gemini`, `_sanitize_mcp_tools_for_gemini`); called at
+line ~842 inside `create_subagent_def()`.
+**Verified (2026-06-28, re-confirmed 2026-06-29):**
+- Audit log: `list_applications outcome=success` — appeared 3× in a single
+  query window with no `INVALID_ARGUMENT` in surrounding logs
+- "List all ArgoCD applications and show their sync and health status" →
+  returned real health summary table: 15 applications, all Healthy, 0 OutOfSync
+- Before fix (same query, same deployment): silent failure on every call,
+  no tool result returned, supervisor reported inability to retrieve data
 
 ## Added: Cost Insights Plugin with Real AWS Cost Explorer Data (2026-06-28)
 **What:** Backstage Cost Insights page at `/cost-insights` now shows real AWS
@@ -588,6 +612,42 @@ planning issue (already known) triggered by the cluster genuinely not existing i
 **Next test to close this cleanly:** Re-run once alpha-dev-general-10 (or any real EKS cluster)
 exists in the account — the not-found branch confirmed working; the found+kubectl branch needs
 a live cluster to validate.
+
+## Investigated and Reverted: gemini-2.5-flash-lite Supervisor Model (2026-06-29)
+**What was tried:** Switched supervisor LLM from `gemini-2.5-flash` to
+`gemini-2.5-flash-lite` (`LLM_MODEL` / `GOOGLE_GEMINI_MODEL_NAME` in
+`docker-compose.yml`, commit `dca9710`).
+**What broke:** `flash-lite` hallucinated agent names in the supervisor routing
+step, producing names that don't exist in the agent registry. Two observed
+corruption patterns from live docker logs:
+1. **Garbled name:** `argocd` → `argocdigger`
+   ```
+   📋 Detected task from updates: [argocdigger=] List all ArgoCD applications...
+   ResponseFormat: I am sorry, I cannot fulfill this request. The `argocdigger`
+   agent is not a valid agent. Please choose from the available agents: ...argocd...
+   ```
+2. **Task-description substituted for agent name:** instead of an agent name,
+   the model emitted a task description string (`check-deployment-status`) in
+   the agent name field — also rejected by the registry.
+Every ArgoCD and AWS query failed this way. The LLM was firing correctly
+(`google_genai.models AFC enabled`, token output produced) — the output was
+valid JSON but with the wrong value in the agent name field.
+**Root cause:** `flash-lite` is Gemini's smallest/cheapest model. It lacks
+the reliable instruction-following needed to reproduce exact registered agent
+names from the supervisor's system prompt. The supervisor's routing format
+requires the model to output a precise string (`argocd`, `aws`, `github`, etc.)
+from a fixed registry; `flash-lite` interpolates or corrupts these under the
+structured-output constraints.
+**What flash-lite IS reliable enough for:** simple Yes/No classification with
+`max_tokens=5` and no structured tool routing — which is exactly what the
+`_TopicGuardrail` guardrail uses it for (via `LLM_MODEL` env var). The
+guardrail works correctly on either `flash` or `flash-lite`.
+**Reverted:** `LLM_MODEL` and `GOOGLE_GEMINI_MODEL_NAME` set back to
+`gemini-2.5-flash` in `docker-compose.yml` (commit `741a4b8`).
+**Verified post-revert:**
+- `📋 Detected task from updates: [argocd]` — correct agent name in logs
+- Real MCP call fired: `GET https://backstage-dev-control-plane:30080/api/v1/applications`
+- 15 real ArgoCD applications returned, state=completed
 
 ## Added: Topic Guardrail — Custom LLM Classifier (NOT NeMo Guardrails) (2026-06-29)
 
