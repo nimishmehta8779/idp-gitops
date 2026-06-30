@@ -10,6 +10,7 @@ metadata:
     managed-by: crossplane
     provisioned-by: backstage-idp
     cost-center: ${{ values.costCenter }}
+    backstage.io/kubernetes-id: ${{ values.appName }}-${{ values.environment }}
   annotations:
     idp.platform.io/app-name: ${{ values.appName }}
     idp.platform.io/environment: ${{ values.environment }}

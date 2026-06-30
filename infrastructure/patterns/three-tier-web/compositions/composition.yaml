@@ -80,6 +80,16 @@ spec:
             string:
               type: Format
               fmt: aws-%s
+        - &id002
+          type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.appName
+            - fromFieldPath: spec.parameters.environment
+            strategy: string
+            string:
+              fmt: '%s-%s'
+          toFieldPath: metadata.labels['backstage.io/kubernetes-id']
       - name: sg-app
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -114,6 +124,7 @@ spec:
           fromFieldPath: status.atProvider.id
           toFieldPath: status.appSgId
         - *id001
+        - *id002
       - name: sg-data
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -142,6 +153,7 @@ spec:
           fromFieldPath: spec.parameters.networkRef
           toFieldPath: spec.forProvider.vpcIdSelector.matchLabels[network]
         - *id001
+        - *id002
       - name: sg-rule-alb-ingress-80
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -163,6 +175,7 @@ spec:
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
         - *id001
+        - *id002
       - name: sg-rule-alb-ingress-443
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -184,6 +197,7 @@ spec:
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
         - *id001
+        - *id002
       - name: sg-rule-alb-egress
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -205,6 +219,7 @@ spec:
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
         - *id001
+        - *id002
       - name: sg-rule-app-ingress-alb
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -232,6 +247,7 @@ spec:
           fromFieldPath: spec.parameters.containerPort
           toFieldPath: spec.forProvider.toPort
         - *id001
+        - *id002
       - name: sg-rule-app-egress
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -253,6 +269,7 @@ spec:
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
         - *id001
+        - *id002
       - name: sg-rule-data-ingress-app
         base:
           apiVersion: ec2.aws.upbound.io/v1beta1
@@ -276,6 +293,7 @@ spec:
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
         - *id001
+        - *id002
       - name: ecs-task-execution-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -306,6 +324,7 @@ spec:
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.taskExecutionRoleArn
         - *id001
+        - *id002
       - name: ecs-task-execution-policy
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -319,6 +338,7 @@ spec:
                   iam-type: ecs-task-execution
         patches:
         - *id001
+        - *id002
       - name: ecs-task-role
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
@@ -346,6 +366,7 @@ spec:
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.taskRoleArn
         - *id001
+        - *id002
       - name: log-group
         base:
           apiVersion: cloudwatchlogs.aws.upbound.io/v1beta1
@@ -389,6 +410,7 @@ spec:
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.logGroupArn
         - *id001
+        - *id002
       - name: db-subnet-group
         base:
           apiVersion: rds.aws.upbound.io/v1beta1
@@ -415,6 +437,7 @@ spec:
           fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags[environment]
         - *id001
+        - *id002
       - name: rds-instance
         base:
           apiVersion: rds.aws.upbound.io/v1beta1
@@ -486,6 +509,7 @@ spec:
           fromFieldPath: status.atProvider.port
           toFieldPath: status.rdsPort
         - *id001
+        - *id002
         readinessChecks:
         - type: MatchString
           fieldPath: status.atProvider.dbInstanceStatus
@@ -519,6 +543,7 @@ spec:
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.ecsClusterArn
         - *id001
+        - *id002
       - name: ecs-task-definition
         base:
           apiVersion: ecs.aws.upbound.io/v1beta1
@@ -568,6 +593,7 @@ spec:
           fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags[environment]
         - *id001
+        - *id002
       - name: ecs-service
         base:
           apiVersion: ecs.aws.upbound.io/v1beta1
@@ -613,6 +639,7 @@ spec:
           fromFieldPath: status.atProvider.id
           toFieldPath: status.ecsServiceArn
         - *id001
+        - *id002
       - name: alb
         base:
           apiVersion: elbv2.aws.upbound.io/v1beta1
@@ -658,6 +685,7 @@ spec:
           fromFieldPath: status.atProvider.dnsName
           toFieldPath: status.albDnsName
         - *id001
+        - *id002
       - name: alb-target-group
         base:
           apiVersion: elbv2.aws.upbound.io/v1beta1
@@ -707,6 +735,7 @@ spec:
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.targetGroupArn
         - *id001
+        - *id002
       - name: alb-listener-http
         base:
           apiVersion: elbv2.aws.upbound.io/v1beta1
@@ -730,3 +759,4 @@ spec:
           policy:
             fromFieldPath: Required
         - *id001
+        - *id002
