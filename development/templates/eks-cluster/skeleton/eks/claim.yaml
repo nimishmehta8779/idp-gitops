@@ -1,0 +1,50 @@
+apiVersion: platform.io/v1alpha1
+kind: EKSCluster
+metadata:
+  name: ${{ values.clusterName }}
+  namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}
+  labels:
+    team: ${{ values.teamName }}
+    environment: ${{ values.environment }}
+    managed-by: crossplane
+    provisioned-by: backstage-idp
+    cost-center: ${{ values.costCenter }}
+    # Addon toggle labels — propagated to the ArgoCD cluster Secret by the
+    # Crossplane composition so that the ApplicationSet selectors can gate
+    # optional addon deployments.
+    enable-cluster-autoscaler: "${{ values.enableClusterAutoscaler }}"
+    enable-external-dns: "${{ values.enableExternalDNS }}"
+    enable-velero: "${{ values.enableVelero }}"
+  annotations:
+    idp.platform.io/cost-acknowledged: "true"
+    idp.platform.io/cluster-status: provisioning
+    idp.platform.io/aws-region: ${{ values.awsRegion }}
+    idp.platform.io/cluster-version: "${{ values.kubernetesVersion }}"
+    idp.platform.io/node-count: "${{ values.nodeCount }}"
+    idp.platform.io/instance-type: ${{ values.instanceType }}
+    idp.platform.io/environment: ${{ values.environment }}
+    idp.platform.io/created-by: ${{ values.teamName }}
+    backstage.io/kubernetes-id: ${{ values.clusterName }}
+    backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}clusters-dev{% else %}clusters-staging{% endif %}
+    enableClusterAutoscaler: "${{ values.enableClusterAutoscaler }}"
+    enableExternalDNS: "${{ values.enableExternalDNS }}"
+    enableVelero: "${{ values.enableVelero }}"
+spec:
+  parameters:
+    clusterName: ${{ values.clusterName }}
+    region: ${{ values.awsRegion }}
+    nodeInstanceType: ${{ values.instanceType }}
+    nodeCount: ${{ values.nodeCount }}
+    kubernetesVersion: "${{ values.kubernetesVersion }}"
+    environment: ${{ values.environment }}
+    teamName: ${{ values.teamName }}
+    costCenter: ${{ values.costCenter }}
+    enableClusterAutoscaler: ${{ values.enableClusterAutoscaler }}
+    enableExternalDNS: ${{ values.enableExternalDNS }}
+    enableVelero: ${{ values.enableVelero }}
+    adminRoleArn: ${{ values.adminRoleArn }}
+    networkRef: {% if values.environment == 'dev' %}dev-network{% else %}staging-network{% endif %}
+  compositionRef:
+    name: eks-cluster
+  writeConnectionSecretToRef:
+    name: ${{ values.clusterName }}-kubeconfig

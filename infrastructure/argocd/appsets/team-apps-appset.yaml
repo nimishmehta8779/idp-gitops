@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: team-infra
+  name: team-apps
   namespace: argocd
 spec:
   generators:
@@ -18,7 +18,7 @@ spec:
 
   template:
     metadata:
-      name: '{{team}}-infra'
+      name: '{{team}}-apps'
       labels:
         team: '{{team}}'
         managed-by: argocd-applicationset
@@ -27,14 +27,14 @@ spec:
       source:
         repoURL: 'https://github.com/nimishmehta8779/{{repo}}'
         targetRevision: main
-        path: eks
+        path: apps
         directory:
           recurse: true
           include: '*.yaml'
           exclude: '{.gitkeep,*-catalog.yaml,catalog-info.yaml}'
       destination:
         server: https://kubernetes.default.svc
-        namespace: clusters-dev
+        namespace: apps-dev
       syncPolicy:
         automated:
           prune: true
@@ -43,7 +43,7 @@ spec:
           - CreateNamespace=true
       ignoreDifferences:
         - group: platform.io
-          kind: XEKSCluster
+          kind: ThreeTierApp
           jsonPointers:
             - /status
             - /metadata/annotations/crossplane.io
