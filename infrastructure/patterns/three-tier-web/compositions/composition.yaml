@@ -390,8 +390,7 @@ spec:
             forProvider:
               description: DB subnet group - data tier subnets from enterprise network
               subnetIdSelector:
-                matchLabels:
-                  tier: data
+                matchLabels: {}
               tags:
                 managed-by: crossplane
                 provisioned-by: backstage-idp
@@ -426,8 +425,10 @@ spec:
               manageMasterUserPassword: true
               dbSubnetGroupNameRef:
                 name: db-subnet-group
-              vpcSecurityGroupIdRefs:
-              - name: sg-data
+              vpcSecurityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-data
               tags:
                 managed-by: crossplane
                 provisioned-by: backstage-idp
@@ -574,10 +575,11 @@ spec:
               networkConfiguration:
               - assignPublicIp: false
                 subnetSelector:
+                  matchLabels: {}
+                securityGroupSelector:
+                  matchControllerRef: true
                   matchLabels:
-                    tier: private
-                securityGroupRefs:
-                - name: sg-app
+                    role: sg-app
               tags:
                 managed-by: crossplane
                 provisioned-by: backstage-idp
@@ -613,10 +615,11 @@ spec:
               loadBalancerType: application
               internal: false
               subnetSelector:
+                matchLabels: {}
+              securityGroupSelector:
+                matchControllerRef: true
                 matchLabels:
-                  tier: public
-              securityGroupRefs:
-              - name: sg-alb
+                  role: sg-alb
               tags:
                 managed-by: crossplane
                 provisioned-by: backstage-idp
