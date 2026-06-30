@@ -305,9 +305,6 @@ spec:
         - type: ToCompositeFieldPath
           fromFieldPath: status.atProvider.arn
           toFieldPath: status.taskExecutionRoleArn
-        - type: ToCompositeFieldPath
-          fromFieldPath: metadata.name
-          toFieldPath: status.taskExecutionRoleName
         - *id001
       - name: ecs-task-execution-policy
         base:
@@ -316,13 +313,11 @@ spec:
           spec:
             forProvider:
               policyArn: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-              roleName: placeholder
+              roleSelector:
+                matchControllerRef: true
+                matchLabels:
+                  iam-type: ecs-task-execution
         patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: status.taskExecutionRoleName
-          toFieldPath: spec.forProvider.roleName
-          policy:
-            fromFieldPath: Required
         - *id001
       - name: ecs-task-role
         base:
