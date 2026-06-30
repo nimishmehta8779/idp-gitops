@@ -31,7 +31,7 @@ spec:
         directory:
           recurse: true
           include: '*.yaml'
-          exclude: '{.gitkeep,*-catalog.yaml,catalog-info.yaml}'
+          exclude: '{.gitkeep,**/catalog-info.yaml,**/*-catalog.yaml}'
       destination:
         server: https://kubernetes.default.svc
         namespace: apps-dev
