@@ -27,11 +27,11 @@ spec:
       source:
         repoURL: 'https://github.com/nimishmehta8779/{{repo}}'
         targetRevision: main
-        path: eks
+        path: .
         directory:
           recurse: true
           include: '*.yaml'
-          exclude: '{.gitkeep,*-catalog.yaml}'
+          exclude: '{.gitkeep,*-catalog.yaml,catalog-info.yaml}'
       destination:
         server: https://kubernetes.default.svc
         namespace: clusters-dev

@@ -25,11 +25,11 @@ spec:
       source:
         repoURL: 'https://github.com/nimishmehta8779/{{repo}}'
         targetRevision: main
-        path: eks
+        path: .
         directory:
           recurse: true
           include: '*-staging-*.yaml'
-          exclude: '.gitkeep'
+          exclude: '{.gitkeep,catalog-info.yaml}'
       destination:
         server: https://kubernetes.default.svc
         namespace: clusters-staging

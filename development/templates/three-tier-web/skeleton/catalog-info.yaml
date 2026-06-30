@@ -13,6 +13,9 @@ metadata:
     idp.platform.io/aws-region: ${{ values.region }}
     idp.platform.io/network-ref: ${{ values.networkRef }}
     idp.platform.io/created-by: ${{ values.teamName }}
+    # Well-Architected — populated from pattern scorecard at provision time
+    idp.platform.io/well-architected-status: "review-pass"
+    idp.platform.io/well-architected-scorecard: "infrastructure/patterns/three-tier-web/docs/well-architected-review.md"
     # Provisioning status — Crossplane updates these after reconcile
     idp.platform.io/provision-status: provisioning
     # Outputs — populated by Crossplane after resources are READY
@@ -38,6 +41,12 @@ metadata:
     - title: Application URL
       url: "https://provisioning-pending"
       icon: web
+    - title: Architecture Diagram
+      url: "https://github.com/nimishmehta8779/idp/blob/main/infrastructure/patterns/three-tier-web/docs/architecture.svg"
+      icon: docs
+    - title: Well-Architected Review
+      url: "https://github.com/nimishmehta8779/idp/blob/main/infrastructure/patterns/three-tier-web/docs/well-architected-review.md"
+      icon: docs
     - title: ECS Service Console
       url: "https://console.aws.amazon.com/ecs/v2/clusters/${{ values.appName }}-${{ values.environment }}/services"
       icon: dashboard

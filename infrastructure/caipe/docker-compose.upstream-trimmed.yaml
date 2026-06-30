@@ -102,9 +102,32 @@ services:
       # Audit log storage is owned by the lightweight Python audit-service.
       - AUDIT_LOG_BACKEND=${AUDIT_LOG_BACKEND:-service}
       - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:8010}
+      - REMEDIATION_MCP_HOST=remediation-mcp
+      - REMEDIATION_MCP_PORT=8000
+      - ENABLE_REMEDIATION=true
     command: platform-engineer
     profiles:
       - caipe-supervisor
+
+  remediation-mcp:
+    image: ghcr.io/cnoe-io/ai-platform-engineering:${IMAGE_TAG:-0.5.16}
+    container_name: remediation-mcp
+    volumes:
+      - ./remediation/mcp/mcp_remediation:/app/mcp_remediation
+      - ../../.env:/app/.env
+    working_dir: /app
+    entrypoint: ["sh", "-c"]
+    command: ["uv pip install --python /app/.venv fastmcp && /app/.venv/bin/python -m mcp_remediation"]
+    environment:
+      - MCP_MODE=http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+      - ARGOCD_TOKEN=${ARGOCD_TOKEN}
+      - ARGOCD_API_URL=https://backstage-dev-control-plane:30080
+    profiles:
+      - all-agents
+      - mcp-servers
 
   github-mcp-server:
     image: ghcr.io/github/github-mcp-server:latest
@@ -142,3 +165,4 @@ networks:
   default:
     name: kind
     external: true
+

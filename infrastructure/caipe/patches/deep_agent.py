@@ -1231,11 +1231,37 @@ async def create_weather_remote_subagent_def(prompt_config: dict = None) -> dict
     }
 
 
+async def create_remediation_subagent_def(prompt_config: dict = None) -> dict:
+    """Create Remediation subagent definition with MCP tools."""
+    from ai_platform_engineering.utils.a2a_common.base_langgraph_agent import BaseLangGraphAgent
+    
+    class RemediationAgent(BaseLangGraphAgent):
+        def get_agent_name(self) -> str:
+            return "remediation"
+        
+        def get_system_instruction(self) -> str:
+            return "You are an automated incident triage and remediation agent. Use the triage_and_remediate_frontend tool to solve incidents."
+        
+        def get_mcp_config(self, server_path: str) -> dict:
+            return {}
+        
+        def get_mcp_http_config(self) -> dict:
+            host = os.getenv("REMEDIATION_MCP_HOST", "remediation-mcp")
+            port = os.getenv("REMEDIATION_MCP_PORT", "8000")
+            return {
+                "url": f"http://{host}:{port}/mcp"
+            }
+            
+    agent = RemediationAgent()
+    return await create_subagent_def(agent, "remediation", "Remediation: automated incident triage and revert PR workflow", prompt_config)
+
+
 # Registry of in-process subagents for single-node (all-in-one) mode.
 # Each entry maps agent name to its creation function.
 # Agents are loaded only when ENABLE_<NAME> env var is "true" (default).
 SINGLE_NODE_AGENTS = [
     ("github", create_github_subagent_def),
+    ("remediation", create_remediation_subagent_def),
     ("gitlab", create_gitlab_remote_subagent_def),
     ("aigateway", create_aigateway_subagent_def),
     ("backstage", create_backstage_subagent_def),

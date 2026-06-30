@@ -1,0 +1,284 @@
+# AWS Well-Architected Framework — Pattern Checklist
+#
+# Maps Well-Architected best-practice IDs to the guardrails this skill
+# enforces in generated Crossplane/Backstage artifacts. Scoped to the
+# component types this skill provisions; this is NOT an exhaustive copy
+# of the full Framework.
+#
+# Schema per entry:
+#   id:           Canonical BP ID from docs.aws.amazon.com/wellarchitected/
+#   pillar:       OPS | SEC | REL | PERF | COST | SUS
+#   title:        Exact title from AWS docs (do not paraphrase)
+#   applies_to:   List of component types: rds, ecs, alb, iam, s3,
+#                 dynamodb, sqs, cloudwatch, sg, all
+#   severity:     high | medium | low
+#   check:        What to look for in generated YAML to mark Pass
+#   source:       Canonical docs URL (verified against latest framework)
+#
+# NOT FROZEN. Update independently when AWS revises the Framework.
+# Source: https://docs.aws.amazon.com/wellarchitected/latest/framework/
+# Last verified: 2026-06-29 against framework version 2025-02-25
+
+practices:
+
+  # ── SECURITY ────────────────────────────────────────────────────────
+
+  - id: SEC02-BP02
+    pillar: SEC
+    title: "Use temporary credentials"
+    applies_to: [iam, ecs]
+    severity: high
+    check: >
+      ECS task role uses assumeRolePolicy scoped to ecs-tasks.amazonaws.com
+      (no long-lived access keys embedded in the composition). IRSA pattern
+      used for Kubernetes workloads.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_identities_unique.html
+
+  - id: SEC03-BP02
+    pillar: SEC
+    title: "Grant least privilege access"
+    applies_to: [iam, ecs]
+    severity: high
+    check: >
+      No wildcard (*) actions in staging/prod IAM policies. Separate
+      task-role and task-execution-role defined. AmazonECSTaskExecutionRolePolicy
+      used for execution role rather than AdministratorAccess.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_permissions_least_privileges.html
+
+  - id: SEC05-BP01
+    pillar: SEC
+    title: "Create network layers"
+    applies_to: [sg, alb, ecs, rds]
+    severity: high
+    check: >
+      Three distinct security groups defined: sg-alb (public 80/443),
+      sg-app (ingress from ALB SG only), sg-data (ingress from app SG
+      only on 5432). No single flat SG for all tiers.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_network_protection_create_layers.html
+
+  - id: SEC05-BP02
+    pillar: SEC
+    title: "Control traffic flow within your network layers"
+    applies_to: [sg, alb, ecs, rds]
+    severity: high
+    check: >
+      ALB SG allows 0.0.0.0/0 on 443 only. App SG ingress references ALB
+      SG (not 0.0.0.0/0). Data SG ingress restricted to port 5432 from
+      app SG. All egress uses minimal required scope.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_network_protection_layered.html
+
+  - id: SEC08-BP01
+    pillar: SEC
+    title: "Implement secure key management"
+    applies_to: [rds, s3, dynamodb, sqs]
+    severity: high
+    check: >
+      KMS CMK referenced for S3, SQS, SNS, DynamoDB encryption. RDS uses
+      storageEncrypted: true (AWS-managed key minimum; CMK preferred for
+      prod).
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_protect_data_rest_key_mgmt.html
+
+  - id: SEC08-BP02
+    pillar: SEC
+    title: "Enforce encryption at rest"
+    applies_to: [rds, s3, dynamodb, sqs]
+    severity: high
+    check: >
+      RDS: storageEncrypted: true. S3: BucketServerSideEncryptionConfiguration
+      with aws:kms. DynamoDB: SSESpecification enabled. SQS/SNS: KmsMasterKeyId
+      set. All must appear in composition.yaml.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_protect_data_rest_encrypt.html
+
+  - id: SEC09-BP02
+    pillar: SEC
+    title: "Enforce encryption in transit"
+    applies_to: [rds, alb, ecs]
+    severity: high
+    check: >
+      ALB HTTPS listener (port 443) present with HTTP→HTTPS redirect on
+      port 80. RDS: publiclyAccessible: false; clients must use SSL.
+      ECS service: no plaintext inter-service communication.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_protect_data_transit_encrypt.html
+
+  # ── RELIABILITY ─────────────────────────────────────────────────────
+
+  - id: REL09-BP01
+    pillar: REL
+    title: "Identify and back up all data that needs to be backed up, or reproduce the data from sources"
+    applies_to: [rds, dynamodb, s3]
+    severity: high
+    check: >
+      RDS backupRetentionPeriod set via environment transform map:
+      dev=0, staging=7, prod=30. S3 versioning enabled when applicable.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_backing_up_data_identified_backups_data.html
+
+  - id: REL09-BP02
+    pillar: REL
+    title: "Secure and encrypt backups"
+    applies_to: [rds, dynamodb, s3]
+    severity: medium
+    check: >
+      RDS storageEncrypted: true covers automated backups. S3 bucket
+      encryption covers versioned objects. No unencrypted snapshot
+      configuration present.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_backing_up_data_secured_backups_data.html
+
+  - id: REL09-BP03
+    pillar: REL
+    title: "Perform data backup automatically"
+    applies_to: [rds]
+    severity: medium
+    check: >
+      RDS autoMinorVersionUpgrade: true present. Backup retention >0 for
+      non-dev environments enforces automated snapshot creation.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_backing_up_data_automated_backups_data.html
+
+  - id: REL10-BP01
+    pillar: REL
+    title: "Deploy the workload to multiple locations"
+    applies_to: [rds, ecs, alb]
+    severity: high
+    check: >
+      RDS multiAz transform: dev=false, staging=true, prod=true. ALB
+      subnetIdSelector targets public subnets (multi-AZ by design).
+      ECS service spans multiple private subnets via subnetIdSelector.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_fault_isolation_multiaz_region_system.html
+
+  - id: REL11-BP01
+    pillar: REL
+    title: "Monitor all components of the workload to detect failures"
+    applies_to: [ecs, cloudwatch]
+    severity: high
+    check: >
+      ECS cluster has containerInsights: enabled. CloudWatch log group
+      provisioned with appropriate retentionInDays transform map.
+      ALB health check configured on target group.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_withstand_component_failures_monitoring_health.html
+
+  - id: REL11-BP02
+    pillar: REL
+    title: "Fail over to healthy resources"
+    applies_to: [alb, ecs]
+    severity: medium
+    check: >
+      ALB target group healthCheck defined with healthyThreshold,
+      unhealthyThreshold, intervalSeconds, and timeoutSeconds. ECS
+      desiredCount >= 2 for staging/prod (enforced via XRD minimum).
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/rel_withstand_component_failures_failover2good.html
+
+  # ── PERFORMANCE EFFICIENCY ──────────────────────────────────────────
+
+  - id: PERF01-BP03
+    pillar: PERF
+    title: "Factor cost into architectural decisions"
+    applies_to: [rds, ecs]
+    severity: low
+    check: >
+      Dev environment uses smaller instance class (db.t3.medium default)
+      and lower desiredCount. Environment-specific transforms present for
+      CPU/memory. No prod-tier resources provisioned in dev.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/perf_architecture_factor_cost_into_architectural_decisions.html
+
+  - id: PERF01-BP07
+    pillar: PERF
+    title: "Use a data-driven approach for architectural choices"
+    applies_to: [ecs, rds]
+    severity: low
+    check: >
+      XRD exposes ecsTaskCpu, ecsTaskMemory, dbInstanceClass as explicit
+      parameters so teams can right-size based on observed metrics rather
+      than hardcoded values.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/perf_architecture_use_data_driven_approach.html
+
+  # ── COST OPTIMIZATION ───────────────────────────────────────────────
+
+  - id: COST03-BP01
+    pillar: COST
+    title: "Configure detailed information sources"
+    applies_to: [all]
+    severity: medium
+    check: >
+      All managed resources carry five mandatory tags: team, environment,
+      cost-center, managed-by, provisioned-by. Tags enable cost allocation
+      in Cost Explorer and AWS Cost and Usage Report.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/cost_monitor_usage_detailed_source.html
+
+  - id: COST03-BP02
+    pillar: COST
+    title: "Add organization information to cost and usage"
+    applies_to: [all]
+    severity: medium
+    check: >
+      cost-center tag patched from spec.parameters.costCenter on every
+      resource. team tag patched from spec.parameters.teamName. Tags are
+      not hardcoded — they flow from claim parameters.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/cost_monitor_usage_org_information.html
+
+  - id: COST06-BP02
+    pillar: COST
+    title: "Select resource type, size, and number based on data"
+    applies_to: [rds, ecs]
+    severity: medium
+    check: >
+      dbInstanceClass exposed as XRD enum parameter. ecsTaskCpu and
+      ecsTaskMemory exposed as enum parameters matching Fargate valid
+      combinations. desiredCount has minimum: 1 enforced in XRD.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/cost_type_size_number_resources_data.html
+
+  - id: COST07-BP04
+    pillar: COST
+    title: "Implement pricing models for all components of this workload"
+    applies_to: [rds, ecs]
+    severity: low
+    check: >
+      Dev environment uses smallest valid instance sizes (cost optimized).
+      Staging/prod use larger sizes matched to load. Fargate pricing model
+      used for ECS (no EC2 instance reservation management needed).
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/cost_pricing_model_implement_models.html
+
+  # ── OPERATIONAL EXCELLENCE ──────────────────────────────────────────
+
+  - id: OPS04-BP01
+    pillar: OPS
+    title: "Implement application telemetry"
+    applies_to: [ecs, cloudwatch]
+    severity: medium
+    check: >
+      CloudWatch log group provisioned with logGroupName derived from
+      appName and environment. ECS cluster containerInsights enabled.
+      Log retention varies by environment (dev=7d, staging=30d).
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/ops-04.html
+
+  - id: OPS05-BP04
+    pillar: OPS
+    title: "Use version control"
+    applies_to: [all]
+    severity: low
+    check: >
+      All compositions reference idp.platform.io/pattern-version annotation.
+      Backstage catalog-info.yaml includes catalog.backstage.io/managed-by
+      annotation. ArgoCD GitOps manages drift detection.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/ops-05.html
+
+  # ── SUSTAINABILITY ───────────────────────────────────────────────────
+
+  - id: SUS05-BP03
+    pillar: SUS
+    title: "Use managed services"
+    applies_to: [ecs, rds]
+    severity: low
+    check: >
+      ECS Fargate used (no EC2 instances to manage). RDS managed service
+      used (no self-managed Postgres). Both shift hardware efficiency
+      optimization to AWS, reducing per-tenant sustainability impact.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sus-hardware-patterns.html
+
+  - id: SUS05-BP04
+    pillar: SUS
+    title: "Optimize your use of GPUs"
+    applies_to: [ecs]
+    severity: low
+    check: >
+      N/A for standard three-tier-web (no GPU workloads). Mark N-A if
+      pattern does not include GPU instances.
+    source: https://docs.aws.amazon.com/wellarchitected/latest/framework/sus-hardware-patterns.html

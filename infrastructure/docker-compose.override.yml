@@ -21,4 +21,3 @@ services:
       - ./caipe/patches/agent_aws_agent_langgraph.py:/app/ai_platform_engineering/agents/aws/agent_aws/agent_langgraph.py:ro
       - ./caipe/patches/deep_agent.py:/app/ai_platform_engineering/multi_agents/platform_engineer/deep_agent.py:ro
       - ./caipe/patches/agent_executor.py:/app/ai_platform_engineering/multi_agents/platform_engineer/protocol_bindings/a2a/agent_executor.py:ro
-

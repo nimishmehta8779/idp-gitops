@@ -1,0 +1,25 @@
+[project]
+name = "mcp-remediation"
+version = "0.1.0"
+description = "Remediation MCP Server"
+license = "Apache-2.0"
+authors = [
+  { name = "Sri Aradhyula", email = "sraradhy@cisco.com" }
+]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+  "httpx==0.28.1",
+  "python-dotenv==1.2.2",
+  "pydantic==2.12.5",
+  "mcp==1.27.1",
+  "fastmcp==3.2.4",
+  "typing-extensions==4.15.0",
+]
+
+[project.scripts]
+mcp-remediation = "mcp_remediation.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -16,6 +16,7 @@ metadata:
     idp.platform.io/aws-region: ${{ values.region }}
     idp.platform.io/created-by: ${{ values.teamName }}
     idp.platform.io/network-ref: ${{ values.networkRef }}
+    idp.platform.io/cost-acknowledged: "true"
     backstage.io/kubernetes-id: ${{ values.appName }}-${{ values.environment }}
     backstage.io/kubernetes-namespace: {% if values.environment == 'dev' %}apps-dev{% else %}apps-staging{% endif %}
 spec:
