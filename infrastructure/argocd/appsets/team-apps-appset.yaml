@@ -30,8 +30,7 @@ spec:
         path: apps
         directory:
           recurse: true
-          include: '*.yaml'
-          exclude: '{.gitkeep,**/catalog-info.yaml,**/*-catalog.yaml}'
+          include: 'claim.yaml'
       destination:
         server: https://kubernetes.default.svc
         namespace: apps-dev
