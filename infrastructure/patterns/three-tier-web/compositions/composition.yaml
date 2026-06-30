@@ -310,6 +310,10 @@ spec:
           spec:
             forProvider:
               policyArn: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+              roleNameSelector:
+                matchControllerRef: true
+                matchLabels:
+                  iam-type: ecs-task-execution
         patches:
         - *id001
       - name: ecs-task-role
@@ -696,6 +700,9 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags[environment]
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: status.targetGroupArn
         - *id001
       - name: alb-listener-http
         base:
@@ -730,10 +737,14 @@ spec:
                 matchControllerRef: true
               defaultAction:
               - type: forward
-                targetGroupArnSelector:
-                  matchControllerRef: true
+                targetGroupArn: placeholder
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.targetGroupArn
+          toFieldPath: spec.forProvider.defaultAction[0].targetGroupArn
+          policy:
+            fromFieldPath: Required
         - *id001
