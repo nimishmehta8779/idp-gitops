@@ -21,6 +21,8 @@ spec:
       namespace: clusters-dev
     - server: https://kubernetes.default.svc
       namespace: clusters
+    - server: https://kubernetes.default.svc
+      namespace: apps-dev
     # All provisioned EKS clusters — for addon deployments
     - server: '*'
       namespace: kube-system

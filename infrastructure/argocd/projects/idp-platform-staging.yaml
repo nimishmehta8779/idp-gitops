@@ -13,6 +13,8 @@ spec:
       namespace: clusters-staging
     - server: https://kubernetes.default.svc
       namespace: clusters
+    - server: https://kubernetes.default.svc
+      namespace: apps-staging
   clusterResourceWhitelist:
     - group: 'platform.io'
       kind: 'XEKSCluster'
