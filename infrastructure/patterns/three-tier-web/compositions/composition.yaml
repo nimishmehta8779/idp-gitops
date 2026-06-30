@@ -280,6 +280,9 @@ spec:
         base:
           apiVersion: iam.aws.upbound.io/v1beta1
           kind: Role
+          metadata:
+            labels:
+              iam-type: ecs-task-execution
           spec:
             forProvider:
               assumeRolePolicy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\"\
