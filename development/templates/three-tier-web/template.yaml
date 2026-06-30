@@ -155,8 +155,18 @@ spec:
           enableRoute53: ${{ parameters.enableRoute53 }}
           domainName: ${{ parameters.domainName }}
 
-    - id: publish
-      name: Commit to team infra repo
+    - id: publish-dev
+      name: Commit directly to main (dev)
+      if: ${{ parameters.environment === 'dev' }}
+      action: github:repo:push
+      input:
+        repoUrl: github.com?repo=${{ parameters.teamName }}-infra&owner=nimishmehta8779
+        branchName: main
+        commitMessage: "feat(infra): provision three-tier-web ${{ parameters.appName }}-dev"
+
+    - id: publish-staging
+      name: Open PR for approval (staging)
+      if: ${{ parameters.environment !== 'dev' }}
       action: publish:github:pull-request
       input:
         repoUrl: github.com?repo=${{ parameters.teamName }}-infra&owner=nimishmehta8779
@@ -172,7 +182,7 @@ spec:
           ### Resources to be provisioned
           - Application Load Balancer (HTTPS, redirect from HTTP) on enterprise `${{ parameters.environment }}-network`
           - ECS Fargate service (${{ parameters.ecsTaskCpu }} CPU / ${{ parameters.ecsTaskMemory }} MiB)
-          - RDS PostgreSQL `${{ parameters.dbInstanceClass }}`${{ ' (Multi-AZ)' if parameters.environment != 'dev' else '' }}
+          - RDS PostgreSQL `${{ parameters.dbInstanceClass }}` (Multi-AZ)
 
           ### Compliance
           Pattern reviewed against AWS Well-Architected Framework (all six pillars).
@@ -187,14 +197,15 @@ spec:
 
     - id: register
       name: Register in software catalog
-      action: idp:catalog:register
+      action: catalog:register
       input:
-        catalogInfoUrl: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/idp/three-tier-${{ parameters.appName }}-${{ parameters.environment }}/catalog-info.yaml
+        catalogInfoUrl: https://github.com/nimishmehta8779/${{ parameters.teamName }}-infra/blob/main/apps/${{ parameters.appName }}-${{ parameters.environment }}/catalog-info.yaml
+        optional: true
 
   output:
     links:
       - title: Pull Request
-        url: ${{ steps.publish.output.remoteUrl }}
+        url: ${{ steps['publish-staging'].output.remoteUrl if parameters.environment !== 'dev' else '' }}
         icon: github
       - title: View in Catalog
         url: http://localhost:3000/catalog/default/system/${{ parameters.appName }}-${{ parameters.environment }}
@@ -204,34 +215,32 @@ spec:
         content: |
           ## Your app is being provisioned
 
-          **Step 1 — PR review** *(now)*
-          The PR `idp/three-tier-${{ parameters.appName }}-${{ parameters.environment }}` has been opened.
-          For **dev**: merge it to trigger immediate ArgoCD sync.
-          For **staging**: platform team reviews before merging.
+          ${{ '**Committed directly to main** — ArgoCD sync starts immediately.' if parameters.environment === 'dev' else '**PR opened for platform team review** — provisioning begins after merge.' }}
 
-          **Step 2 — Crossplane reconciles** *(~10–15 min after merge)*
-          ArgoCD applies the claim. Crossplane provisions:
+          **Provisioning progress** *(~10–15 min)*
+          Track live in Backstage:
+          1. Open your catalog entity → **Kubernetes** tab
+          2. Watch the `ThreeTierApp` object — status moves from `READY: False` → `READY: True`
+
+          Crossplane will provision:
           - Security groups (ALB / App / Data tiers)
           - ECS Cluster + Task Definition + Fargate Service
-          - RDS PostgreSQL (Multi-AZ for staging)
+          - RDS PostgreSQL${{ ' (Multi-AZ)' if parameters.environment !== 'dev' else '' }}
           - ALB with HTTPS listener + HTTP→HTTPS redirect
           - CloudWatch log group `/ecs/${{ parameters.appName }}-${{ parameters.environment }}`
 
-          **Step 3 — Outputs appear in catalog** *(auto, after provisioning)*
-          Visit your catalog entity. The following will populate once Crossplane reports `READY`:
-          | Output | Where to find it |
+          **Resources in catalog** *(visible immediately)*
+          Your entity page shows three child resources:
+          - `${{ parameters.appName }}-${{ parameters.environment }}-alb` — web tier
+          - `${{ parameters.appName }}-${{ parameters.environment }}-ecs` — app tier
+          - `${{ parameters.appName }}-${{ parameters.environment }}-rds` — data tier
+
+          **Outputs appear once READY**
+          | Output | Where |
           |---|---|
           | ALB DNS name | Entity overview → **Links** |
-          | RDS endpoint + port | Entity overview → **About** annotations |
-          | ECS Cluster ARN | Entity overview → **About** annotations |
+          | RDS endpoint + port | Entity overview → **About** |
+          | ECS Cluster ARN | Entity overview → **About** |
           | CloudWatch log group | Entity overview → **Links** |
-          | AWS Console links | Entity overview → **Links** |
 
-          All outputs are also written to the Kubernetes Secret:
-          `${{ parameters.appName }}-${{ parameters.environment }}-connection`
-          in namespace `apps-${{ parameters.environment }}`.
-
-          **Architecture & compliance**
-          - Architecture diagram: entity overview → **Links → Architecture Diagram**
-          - Well-Architected scorecard (all six pillars): entity overview → **Links → Well-Architected Review**
-          - This pattern carries a **review-pass** status (all high-severity practices satisfied at provision time).
+          Connection secret: `${{ parameters.appName }}-${{ parameters.environment }}-connection` in `apps-${{ parameters.environment }}`
