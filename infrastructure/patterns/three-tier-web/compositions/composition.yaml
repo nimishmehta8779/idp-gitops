@@ -423,8 +423,8 @@ spec:
               publiclyAccessible: false
               autoMinorVersionUpgrade: true
               manageMasterUserPassword: true
-              dbSubnetGroupNameRef:
-                name: db-subnet-group
+              dbSubnetGroupNameSelector:
+                matchControllerRef: true
               vpcSecurityGroupIdSelector:
                 matchControllerRef: true
                 matchLabels:
@@ -568,10 +568,10 @@ spec:
           spec:
             forProvider:
               launchType: FARGATE
-              clusterRef:
-                name: ecs-cluster
-              taskDefinitionRef:
-                name: ecs-task-definition
+              clusterSelector:
+                matchControllerRef: true
+              taskDefinitionSelector:
+                matchControllerRef: true
               networkConfiguration:
               - assignPublicIp: false
                 subnetSelector:
@@ -705,8 +705,8 @@ spec:
             forProvider:
               port: 80
               protocol: HTTP
-              loadBalancerArnRef:
-                name: alb
+              loadBalancerArnSelector:
+                matchControllerRef: true
               defaultAction:
               - type: redirect
                 redirect:
@@ -726,12 +726,12 @@ spec:
             forProvider:
               port: 443
               protocol: HTTPS
-              loadBalancerArnRef:
-                name: alb
+              loadBalancerArnSelector:
+                matchControllerRef: true
               defaultAction:
               - type: forward
-                targetGroupArnRef:
-                  name: alb-target-group
+                targetGroupArnSelector:
+                  matchControllerRef: true
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
