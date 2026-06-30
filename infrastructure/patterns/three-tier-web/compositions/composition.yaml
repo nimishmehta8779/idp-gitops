@@ -49,6 +49,9 @@ spec:
                 tier: web
                 managed-by: crossplane
                 provisioned-by: backstage-idp
+          metadata:
+            labels:
+              role: sg-alb
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -88,6 +91,9 @@ spec:
                 tier: app
                 managed-by: crossplane
                 provisioned-by: backstage-idp
+          metadata:
+            labels:
+              role: sg-app
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -119,6 +125,9 @@ spec:
                 tier: data
                 managed-by: crossplane
                 provisioned-by: backstage-idp
+          metadata:
+            labels:
+              role: sg-data
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -145,8 +154,10 @@ spec:
               protocol: tcp
               cidrBlocks:
               - 0.0.0.0/0
-              securityGroupIdRef:
-                name: sg-alb
+              securityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-alb
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -164,8 +175,10 @@ spec:
               protocol: tcp
               cidrBlocks:
               - 0.0.0.0/0
-              securityGroupIdRef:
-                name: sg-alb
+              securityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-alb
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -183,8 +196,10 @@ spec:
               protocol: '-1'
               cidrBlocks:
               - 0.0.0.0/0
-              securityGroupIdRef:
-                name: sg-alb
+              securityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-alb
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -198,10 +213,14 @@ spec:
             forProvider:
               type: ingress
               protocol: tcp
-              sourceSecurityGroupIdRef:
-                name: sg-alb
-              securityGroupIdRef:
-                name: sg-app
+              securityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-app
+              sourceSecurityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-alb
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -225,8 +244,10 @@ spec:
               protocol: '-1'
               cidrBlocks:
               - 0.0.0.0/0
-              securityGroupIdRef:
-                name: sg-app
+              securityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-app
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
@@ -242,10 +263,14 @@ spec:
               fromPort: 5432
               toPort: 5432
               protocol: tcp
-              sourceSecurityGroupIdRef:
-                name: sg-app
-              securityGroupIdRef:
-                name: sg-data
+              securityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-data
+              sourceSecurityGroupIdSelector:
+                matchControllerRef: true
+                matchLabels:
+                  role: sg-app
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
