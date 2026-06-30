@@ -121,6 +121,9 @@ spec:
                 taskExecutionRoleArn:
                   type: string
                   description: "ECS task execution IAM role ARN"
+                targetGroupArn:
+                  type: string
+                  description: "ALB target group ARN"
                 logGroupArn:
                   type: string
                   description: "CloudWatch log group ARN"
