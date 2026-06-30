@@ -718,27 +718,6 @@ spec:
               loadBalancerArnSelector:
                 matchControllerRef: true
               defaultAction:
-              - type: redirect
-                redirect:
-                - port: '443'
-                  protocol: HTTPS
-                  statusCode: HTTP_301
-        patches:
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.parameters.region
-          toFieldPath: spec.forProvider.region
-        - *id001
-      - name: alb-listener-https
-        base:
-          apiVersion: elbv2.aws.upbound.io/v1beta1
-          kind: LBListener
-          spec:
-            forProvider:
-              port: 443
-              protocol: HTTPS
-              loadBalancerArnSelector:
-                matchControllerRef: true
-              defaultAction:
               - type: forward
                 targetGroupArn: placeholder
         patches:
