@@ -99,6 +99,7 @@ spec:
                       description: "Required when enableRoute53 is true"
             status:
               type: object
+              x-kubernetes-preserve-unknown-fields: true
               properties:
                 albDnsName:
                   type: string
