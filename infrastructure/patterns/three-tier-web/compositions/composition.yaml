@@ -731,9 +731,6 @@ spec:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.environment
           toFieldPath: spec.forProvider.tags[environment]
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.arn
-          toFieldPath: status.targetGroupArn
         - *id001
         - *id002
       - name: alb-listener-http
@@ -748,15 +745,11 @@ spec:
                 matchControllerRef: true
               defaultAction:
               - type: forward
-                targetGroupArn: placeholder
+                targetGroupArnSelector:
+                  matchControllerRef: true
         patches:
         - type: FromCompositeFieldPath
           fromFieldPath: spec.parameters.region
           toFieldPath: spec.forProvider.region
-        - type: FromCompositeFieldPath
-          fromFieldPath: status.targetGroupArn
-          toFieldPath: spec.forProvider.defaultAction[0].targetGroupArn
-          policy:
-            fromFieldPath: Required
         - *id001
         - *id002
